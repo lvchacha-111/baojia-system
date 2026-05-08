@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单详情 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5; min-height: 100vh;
+        }
+
+        .bg-gradient {
+            position: fixed; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.04) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(34,197,94,0.03) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1;
+            background: #fff; border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .btn-back {
+            font-size: 13px; color: #666;
+            background: none; border: none; cursor: pointer;
+            padding: 6px 0; text-decoration: none;
+        }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+        .user-email { font-size: 13px; color: #999; margin-left: auto; }
+
+        .layout {
+            position: relative; z-index: 1;
+            display: flex; min-height: calc(100vh - 56px);
+            max-width: 1000px; margin: 0 auto;
+        }
+
+        /* ---- Sidebar ---- */
+        .sidebar {
+            width: 180px; flex-shrink: 0;
+            background: #fff; border-right: 1px solid #eee;
+            padding: 20px 0;
+        }
+        .sidebar-nav { list-style: none; }
+        .sidebar-nav li {
+            padding: 12px 24px; font-size: 14px; color: #666;
+            cursor: pointer; transition: all 0.15s;
+            border-right: 2px solid transparent;
+        }
+        .sidebar-nav li:hover { color: #1a1a1a; background: #fafafa; }
+        .sidebar-nav li.active {
+            color: #6366f1; font-weight: 600;
+            background: #eef2ff; border-right-color: #6366f1;
+        }
+
+        /* ---- Main content ---- */
+        .main {
+            flex: 1; padding: 32px 40px; overflow-y: auto;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ---- Status badge ---- */
+        .status-badge {
+            display: inline-block; font-size: 12px; font-weight: 500;
+            padding: 3px 10px; border-radius: 4px;
+        }
+        .status-pending { background: #fefce8; color: #a16207; }
+        .status-confirmed { background: #fef3c7; color: #b45309; }
+        .status-in_production { background: #eff6ff; color: #2563eb; }
+        .status-completed { background: #f0fdf4; color: #16a34a; }
+        .status-shipped { background: #faf5ff; color: #9333ea; }
+        .status-signed { background: #f0fdf4; color: #15803d; }
+
+        /* ---- Detail sections ---- */
+        .detail-header-block {
+            margin-bottom: 28px; padding: 20px;
+            background: #fff; border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        .detail-header-block .quote-num {
+            font-size: 13px; color: #999; margin-bottom: 4px;
+        }
+        .detail-header-block .quote-num span {
+            font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: 1px;
+        }
+        .detail-header-block .meta {
+            font-size: 13px; color: #888; margin-top: 10px;
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+        }
+
+        .section {
+            background: #fff; border-radius: 12px;
+            border: 1px solid #eee; padding: 20px 24px;
+            margin-bottom: 12px;
+        }
+        .section h4 {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 12px; padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .row {
+            display: flex; justify-content: space-between;
+            padding: 5px 0; font-size: 14px;
+        }
+        .row .label { color: #888; }
+        .row .value { color: #1a1a1a; font-weight: 500; }
+
+        .price-total {
+            text-align: right; padding: 16px 0 0;
+            font-size: 26px; font-weight: 700; color: #1a1a1a;
+        }
+        .price-total small { font-size: 13px; color: #999; font-weight: 400; display: block; }
+
+        .svg-preview {
+            text-align: center; padding: 12px;
+            max-height: 280px; overflow: auto;
+        }
+        .svg-preview svg { max-width: 100%; max-height: 250px; }
+
+        /* ---- Progress ---- */
+        .progress-wrap {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 20px;
+        }
+        .progress-bar {
+            flex: 1; height: 8px;
+            background: #eee; border-radius: 4px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 4px;
+            background: #22c55e; transition: width 0.4s;
+        }
+        .progress-pct { font-size: 14px; font-weight: 600; color: #22c55e; min-width: 40px; }
+
+        .step-list { list-style: none; }
+        .step-list li {
+            display: flex; align-items: center; padding: 10px 12px;
+            border-radius: 8px; margin-bottom: 4px;
+            font-size: 14px; color: #1a1a1a;
+            background: #fafafa;
+        }
+        .step-list li.done { background: #f0fdf4; color: #16a34a; }
+        .step-check {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid #ddd; margin-right: 12px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: transparent;
+        }
+        .step-list li.done .step-check {
+            background: #22c55e; border-color: #22c55e; color: #fff;
+        }
+        .step-name { flex: 1; }
+
+        .no-process {
+            text-align: center; padding: 40px 0; color: #999; font-size: 14px;
+        }
+        .no-process p { margin-top: 4px; font-size: 13px; }
+
+        .state-loading {
+            text-align: center; padding: 80px 0; color: #999;
+        }
+
+        /* Confirm button in detail */
+        .btn-confirm-inline {
+            display: inline-block; padding: 10px 28px;
+            background: #16a34a; color: #fff;
+            border: none; border-radius: 8px;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; margin-top: 12px;
+        }
+        .btn-confirm-inline:hover { background: #15803d; }
+        .btn-confirm-inline:disabled { opacity: 0.6; cursor: default; }
+        .btn-confirm-inline.confirmed { background: #999; cursor: default; }
+
+        .confused-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 12px; color: #888;
+            cursor: pointer; transition: all 0.2s;
+            padding: 8px 14px; border-radius: 20px;
+            border: 1px solid #eee; background: #fafafa;
+            white-space: nowrap;
+        }
+        .confused-link:hover { color: #6366f1; border-color: #6366f1; background: #eef2ff; }
+        .confused-link .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #6366f1; flex-shrink: 0;
+        }
+
+        .detail-header-top {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 20px;
+        }
+        .detail-header-top .left { flex: 1; min-width: 0; }
+
+        /* Chat overlay */
+        .chat-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 200; align-items: center; justify-content: center;
+        }
+        .chat-overlay.show { display: flex; }
+
+        .chat-dialog {
+            background: #fff; border-radius: 16px;
+            width: 420px; max-height: 560px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        .chat-header h3 { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+        .chat-close {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #f5f5f5;
+            font-size: 18px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .chat-close:hover { background: #eee; color: #1a1a1a; }
+
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px 20px;
+            display: flex; flex-direction: column; gap: 12px;
+            min-height: 200px; max-height: 340px;
+        }
+        .chat-messages .empty { text-align: center; color: #ccc; font-size: 13px; padding: 40px 0; }
+
+        .chat-bubble {
+            max-width: 75%; padding: 10px 14px;
+            border-radius: 18px; font-size: 14px; line-height: 1.5;
+            word-break: break-word; position: relative;
+        }
+        .chat-bubble.left {
+            align-self: flex-start;
+            background: #f0f0f0; color: #1a1a1a;
+            border-top-left-radius: 4px;
+        }
+        .chat-bubble.right {
+            align-self: flex-end;
+            background: #95ec69; color: #1a1a1a;
+            border-top-right-radius: 4px;
+        }
+        .chat-bubble .time {
+            display: block; font-size: 11px; color: #999;
+            margin-top: 4px; text-align: right;
+        }
+
+        .chat-input-area {
+            display: flex; gap: 8px; padding: 12px 16px;
+            border-top: 1px solid #eee; flex-shrink: 0;
+        }
+        .chat-input-area textarea {
+            flex: 1; height: 38px; max-height: 80px;
+            padding: 9px 12px; border: 1px solid #e8e8e8;
+            border-radius: 10px; font-size: 14px; color: #1a1a1a;
+            background: #fafafa; outline: none; resize: none;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .chat-input-area textarea:focus { border-color: #6366f1; background: #fff; }
+        .chat-send {
+            width: 56px; flex-shrink: 0;
+            background: #6366f1; color: #fff;
+            border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chat-send:hover { background: #4f46e5; }
+        .chat-send:disabled { opacity: 0.5; cursor: default; }
+
+        @media (max-width: 640px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; padding: 0; }
+            .sidebar-nav { display: flex; }
+            .sidebar-nav li { border-right: none; border-bottom: 2px solid transparent; padding: 10px 16px; font-size: 13px; }
+            .sidebar-nav li.active { border-right: none; border-bottom-color: #6366f1; }
+            .main { padding: 24px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="user.html" class="btn-back">← 返回</a>
+        <span class="header-title">订单详情</span>
+        <span class="user-email" id="userEmail"></span>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <ul class="sidebar-nav">
+                <li class="active" data-tab="detail">订单详情</li>
+                <li data-tab="process">厂内工序</li>
+            </ul>
+        </aside>
+
+        <main class="main">
+            <div class="tab-content active" id="tab-detail">
+                <div class="state-loading">加载中...</div>
+            </div>
+            <div class="tab-content" id="tab-process">
+                <div class="state-loading">加载中...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chat overlay -->
+    <div class="chat-overlay" id="chatOverlay">
+        <div class="chat-dialog">
+            <div class="chat-header">
+                <h3>Messages</h3>
+                <button class="chat-close" onclick="closeChat()">×</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="empty">Send a message and we'll get back to you</div>
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chatInput" rows="1" placeholder="Type your message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage()}"></textarea>
+                <button class="chat-send" id="btnChatSend" onclick="sendChatMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, getCurrentUser, db } from "./firebase-init.js";
+        import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; }
+        document.getElementById('userEmail').textContent = user.email;
+
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('id');
+        if (!orderId) {
+            document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>缺少订单ID</p></div>';
+            throw new Error('缺少订单ID');
+        }
+
+        // Load order
+        let order = null;
+        try {
+            const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', orderId));
+            if (!snap.exists()) {
+                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>订单不存在</p></div>';
+                throw new Error('订单不存在');
+            }
+            order = { id: snap.id, ...snap.data() };
+        } catch (e) {
+            console.error('加载订单失败:', e);
+            if (!order) {
+                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p style="color:#dc2626">加载失败，请刷新重试</p></div>';
+                throw e;
+            }
+        }
+
+        // ---- Tab switching ----
+        document.querySelectorAll('.sidebar-nav li').forEach(li => {
+            li.addEventListener('click', function() {
+                document.querySelectorAll('.sidebar-nav li').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            });
+        });
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        // ---- Render order detail tab ----
+        function renderDetail() {
+            const o = order;
+            const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+            const st = o.status || 'pending';
+
+            let html = '';
+
+            // Header block
+            html += '<div class="detail-header-block">';
+            html += '<div class="detail-header-top">';
+            html += '<div class="left">';
+            html += '<div class="quote-num">报价编号<br><span>' + esc(o.quoteNumber) + '</span></div>';
+            html += '<div class="meta">';
+            html += '<span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span>';
+            html += '<span>' + date + '</span>';
+            if (o.publishedBy) html += '<span>负责销售: ' + esc(o.publishedBy.split('@')[0]) + '</span>';
+            html += '</div>';
+            if (st === 'pending') {
+                html += '<button class="btn-confirm-inline" id="btnConfirmInline" onclick="confirmQuote()">确认报价</button>';
+            } else if (st === 'confirmed') {
+                html += '<button class="btn-confirm-inline confirmed" disabled>已确认 ✓</button>';
+            }
+            html += '</div>';
+            html += '<div class="confused-link" onclick="openChat()"><span class="dot"></span>Questions? Contact us</div>';
+            html += '</div>';
+            html += '</div>';
+
+            // Product info
+            html += '<div class="section"><h4>产品信息</h4>';
+            html += '<div class="row"><span class="label">产品ID</span><span class="value">' + esc(o.productId) + '</span></div>';
+            html += '<div class="row"><span class="label">产品名称</span><span class="value">' + esc(o.productName) + '</span></div>';
+            html += '<div class="row"><span class="label">使用区域</span><span class="value">' + esc(o.usageArea) + '</span></div>';
+            html += '</div>';
+
+            // Font details
+            if (o.fontPrices && o.fontPrices.length > 0) {
+                html += '<div class="section"><h4>字体明细</h4>';
+                o.fontPrices.forEach(f => {
+                    html += '<div class="row"><span class="label">长' + (f.length||0).toFixed(2) + '×宽' + (f.width||0).toFixed(2) + '×厚' + (f.thickness||0) + 'mm × ' + (f.quantity||0) + '个</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
+                });
+                html += '</div>';
+            }
+
+            // Config
+            html += '<div class="section"><h4>配置选项</h4>';
+            html += '<div class="row"><span class="label">表面颜色</span><span class="value">' + esc(o.surfaceColor) + '</span></div>';
+            html += '<div class="row"><span class="label">喷漆标准</span><span class="value">' + esc(o.paint) + '</span></div>';
+            html += '<div class="row"><span class="label">开关电源</span><span class="value">' + esc(o.power) + '</span></div>';
+            html += '<div class="row"><span class="label">固定方式</span><span class="value">' + esc(o.fixing) + '</span></div>';
+            html += '</div>';
+
+            // Price
+            html += '<div class="section"><h4>价格明细</h4>';
+            html += '<div class="row"><span class="label">产品总价</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">表面处理</span><span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">喷漆费用</span><span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">开关电源</span><span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span></div>';
+            if (o.laborFee > 0) html += '<div class="row"><span class="label">人工费</span><span class="value">¥' + (o.laborFee||0).toFixed(2) + '</span></div>';
+            html += '</div>';
+
+            // Freight
+            if (o.freight) {
+                html += '<div class="section"><h4>运费</h4>';
+                html += '<div class="row"><span class="label">目的地</span><span class="value">' + esc(o.freight.destination) + '</span></div>';
+                html += '<div class="row"><span class="label">体积重</span><span class="value">' + (o.freight.volumetricWeight||0).toFixed(2) + ' kg</span></div>';
+                html += '<div class="row"><span class="label">计费重</span><span class="value">' + (o.freight.chargeableWeight||0).toFixed(2) + ' kg</span></div>';
+                html += '<div class="row"><span class="label">运费金额</span><span class="value">¥' + (o.freight.price||0).toFixed(2) + '</span></div>';
+                html += '</div>';
+            }
+
+            // Total
+            html += '<div class="price-total"><small>总价</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
+
+            // SVG
+            if (o.svgContent) {
+                html += '<div class="section"><h4>矢量图</h4>';
+                html += '<div class="svg-preview">' + o.svgContent + '</div>';
+                html += '</div>';
+            }
+
+            document.getElementById('tab-detail').innerHTML = html;
+        }
+
+        // ---- Render process tab ----
+        function calcProgress(proc) {
+            if (!proc || !proc.steps || proc.steps.length === 0) return 0;
+            const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
+            const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
+            return total > 0 ? Math.round(done / total * 100) : 0;
+        }
+
+        function renderProcess() {
+            const o = order;
+            const proc = o.process;
+
+            if (!proc || !proc.steps || proc.steps.length === 0) {
+                document.getElementById('tab-process').innerHTML =
+                    '<div class="no-process"><h3 style="color:#666;font-size:16px">暂无工序信息</h3><p>工厂排工序后将在此显示进度</p></div>';
+                return;
+            }
+
+            const pct = calcProgress(proc);
+            let html = '';
+
+            html += '<div class="section"><h4>整体进度</h4>';
+            html += '<div class="progress-wrap">';
+            html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+            html += '<span class="progress-pct">' + pct + '%</span>';
+            html += '</div></div>';
+
+            // Main steps
+            if (proc.steps && proc.steps.length > 0) {
+                html += '<div class="section"><h4>主要工序</h4><ul class="step-list">';
+                proc.steps.forEach(s => {
+                    html += '<li class="' + (s.done ? 'done' : '') + '">';
+                    html += '<span class="step-check">✓</span>';
+                    html += '<span class="step-name">' + esc(s.name) + '</span>';
+                    html += '</li>';
+                });
+                html += '</ul></div>';
+            }
+
+            // Surface treatments
+            if (proc.surfaceTreatments && proc.surfaceTreatments.length > 0) {
+                html += '<div class="section"><h4>表面处理</h4><ul class="step-list">';
+                proc.surfaceTreatments.forEach(s => {
+                    html += '<li class="' + (s.done ? 'done' : '') + '">';
+                    html += '<span class="step-check">✓</span>';
+                    html += '<span class="step-name">' + esc(s.name) + '</span>';
+                    html += '</li>';
+                });
+                html += '</ul></div>';
+            }
+
+            document.getElementById('tab-process').innerHTML = html;
+        }
+
+        // Initial render
+        renderDetail();
+        renderProcess();
+
+        // ---- Confirm quote ----
+        window.confirmQuote = async function() {
+            if (!order || order.status !== 'pending') return;
+            const btn = document.getElementById('btnConfirmInline');
+            if (btn) { btn.disabled = true; btn.textContent = '确认中...'; }
+            try {
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'confirmed' });
+                order.status = 'confirmed';
+                if (order.publishedByUid) {
+                    try {
+                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), { status: 'confirmed' });
+                    } catch (e) { console.error('同步确认到销售端失败:', e); }
+                }
+                if (btn) { btn.textContent = '已确认 ✓'; btn.className = 'btn-confirm-inline confirmed'; btn.disabled = false; }
+                // Update status badge
+                const badge = document.querySelector('.status-badge');
+                if (badge) { badge.textContent = '已确认'; badge.className = 'status-badge status-confirmed'; }
+            } catch (err) {
+                console.error('确认失败:', err);
+                if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                alert('确认失败: ' + (err.message || '未知错误'));
+            }
+        };
+
+        // ---- Chat ----
+        let _chatUnsub = null;
+
+        function formatChatTime(ts) {
+            if (!ts || !ts.seconds) return '';
+            const d = new Date(ts.seconds * 1000);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            if (isToday) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderChatMessages(messages) {
+            const container = document.getElementById('chatMessages');
+            if (!messages || messages.length === 0) {
+                container.innerHTML = '<div class="empty">Send a message and we\'ll get back to you</div>';
+                return;
+            }
+            container.innerHTML = messages.map(m => {
+                const isMe = m.from === user.email;
+                const cls = isMe ? 'right' : 'left';
+                const timeStr = formatChatTime(m.timestamp);
+                return '<div class="chat-bubble ' + cls + '">' +
+                    esc(m.text || '') +
+                    (timeStr ? '<span class="time">' + timeStr + '</span>' : '') +
+                    '</div>';
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        window.openChat = function() {
+            document.getElementById('chatOverlay').classList.add('show');
+            document.getElementById('chatMessages').innerHTML = '<div class="empty">Loading...</div>';
+
+            // Mark unread for customer as false
+            setDoc(doc(db, 'conversations', user.uid), { unreadForCustomer: false }, { merge: true }).catch(() => {});
+
+            // Real-time listener
+            if (_chatUnsub) _chatUnsub();
+            const q = query(collection(db, 'conversations', user.uid, 'messages'), orderBy('timestamp', 'asc'));
+            _chatUnsub = onSnapshot(q, (snap) => {
+                const msgs = [];
+                snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+                renderChatMessages(msgs);
+            }, (err) => {
+                console.error('Chat listener error:', err);
+                document.getElementById('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626">Failed to load messages</div>';
+            });
+        };
+
+        window.closeChat = function() {
+            document.getElementById('chatOverlay').classList.remove('show');
+            if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+        };
+
+        window.sendChatMessage = async function() {
+            const input = document.getElementById('chatInput');
+            const btn = document.getElementById('btnChatSend');
+            const text = input.value.trim();
+            if (!text) return;
+
+            btn.disabled = true;
+            input.disabled = true;
+
+            try {
+                // Update conversation doc
+                await setDoc(doc(db, 'conversations', user.uid), {
+                    customerEmail: user.email,
+                    customerName: order.customerName || '',
+                    salesEmail: order.publishedBy || '',
+                    lastMessage: text,
+                    lastTimestamp: serverTimestamp(),
+                    unreadForSales: true,
+                    unreadForCustomer: false
+                }, { merge: true });
+
+                // Add message
+                await addDoc(collection(db, 'conversations', user.uid, 'messages'), {
+                    from: user.email,
+                    text,
+                    timestamp: serverTimestamp()
+                });
+
+                input.value = '';
+                input.style.height = '38px';
+            } catch (err) {
+                console.error('发送消息失败:', err);
+                alert('发送失败，请重试');
+            } finally {
+                btn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        };
+
+        // Close chat on overlay click
+        document.getElementById('chatOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeChat();
+        });
+
+        // Auto-resize textarea
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = '38px';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+        });
+    </script>
+</body>
+</html>

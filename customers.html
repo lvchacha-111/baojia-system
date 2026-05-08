@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的客户 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5; min-height: 100vh;
+        }
+
+        .bg-gradient {
+            position: fixed; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.04) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1;
+            background: #fff; border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; gap: 16px;
+        }
+
+        .btn-back {
+            font-size: 13px; color: #666;
+            background: none; border: none; cursor: pointer;
+            padding: 6px 0; text-decoration: none;
+        }
+        .btn-back:hover { color: #1a1a1a; }
+
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+
+        .main {
+            position: relative; z-index: 1;
+            max-width: 800px; margin: 0 auto; padding: 32px;
+        }
+
+        .page-top {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .page-title { font-size: 24px; font-weight: 600; color: #1a1a1a; }
+
+        .btn-add {
+            height: 38px; padding: 0 18px;
+            border-radius: 8px; border: none;
+            background: #6366f1; color: #fff;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-add:hover { background: #4f46e5; }
+
+        .customer-group { margin-bottom: 32px; }
+
+        .customer-group-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px; padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .customer-header-left { display: flex; align-items: center; gap: 10px; }
+
+        .customer-name { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+
+        .customer-count { font-size: 13px; color: #999; }
+
+        .btn-del-customer {
+            width: 28px; height: 28px;
+            border-radius: 6px; border: none;
+            background: transparent; color: #ccc;
+            font-size: 16px; cursor: pointer;
+            transition: all 0.15s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-del-customer:hover { background: #fef2f2; color: #dc2626; }
+
+        .quote-card {
+            background: #fff; border-radius: 10px;
+            border: 1px solid #eee;
+            padding: 16px 20px; margin-bottom: 8px;
+            display: flex; align-items: center;
+            transition: all 0.2s;
+        }
+
+        .quote-card:hover {
+            border-color: #ddd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .quote-card-clickable { cursor: pointer; }
+
+        .quote-info { flex: 1; min-width: 0; }
+
+        .quote-number {
+            font-size: 13px; font-weight: 600; color: #6366f1;
+            letter-spacing: 0.5px; margin-bottom: 4px;
+        }
+
+        .quote-meta {
+            font-size: 13px; color: #888;
+            display: flex; gap: 16px;
+        }
+
+        .quote-price {
+            font-size: 18px; font-weight: 700; color: #1a1a1a;
+            text-align: right; white-space: nowrap;
+            margin: 0 20px;
+        }
+
+        .btn-delete {
+            width: 32px; height: 32px;
+            border-radius: 8px; border: none;
+            background: transparent;
+            color: #ccc; font-size: 18px;
+            cursor: pointer; transition: all 0.15s;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-delete:hover { background: #fef2f2; color: #dc2626; }
+
+        .empty-quotes {
+            text-align: center; padding: 16px 0;
+            color: #ccc; font-size: 13px;
+        }
+
+        .empty-quotes { text-align: center; padding: 16px 0; color: #ccc; font-size: 13px; }
+
+        .btn-convert {
+            height: 28px; padding: 0 10px; border-radius: 6px;
+            border: 1px solid #ddd; background: #fff; color: #666;
+            font-size: 11px; cursor: pointer; flex-shrink: 0; margin-right: 8px;
+        }
+        .btn-convert:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+
+        .state-msg { text-align: center; padding: 60px 0; color: #999; }
+        .state-msg h3 { font-size: 18px; color: #666; margin-bottom: 8px; }
+
+        /* Overlays */
+        .overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 100;
+            justify-content: center; align-items: center;
+        }
+        .overlay.show { display: flex; }
+
+        .dialog {
+            background: #fff; border-radius: 14px;
+            padding: 28px 32px; width: 360px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .dialog h3 { font-size: 17px; margin-bottom: 8px; color: #1a1a1a; }
+
+        .dialog p { font-size: 14px; color: #888; margin-bottom: 24px; }
+
+        .dialog input {
+            width: 100%; height: 44px;
+            padding: 0 14px; border: 1.5px solid #e8e8e8;
+            border-radius: 10px; font-size: 15px; color: #1a1a1a;
+            background: #fafafa; outline: none; margin-bottom: 20px;
+            text-align: center;
+        }
+        .dialog input:focus { border-color: #6366f1; background: #fff; }
+
+        .dialog-btns { display: flex; gap: 10px; justify-content: center; }
+
+        .dialog-btns button {
+            height: 40px; padding: 0 24px;
+            border-radius: 8px; border: none;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+        }
+
+        .btn-cancel { background: #f5f5f5; color: #666; }
+        .btn-cancel:hover { background: #eee; }
+        .btn-confirm { background: #dc2626; color: #fff; }
+        .btn-confirm:hover { background: #b91c1c; }
+        .btn-primary { background: #6366f1; color: #fff; }
+        .btn-primary:hover { background: #4f46e5; }
+
+        .dialog-divider {
+            text-align: center; margin: 18px 0 14px; position: relative;
+            font-size: 12px; color: #bbb;
+        }
+        .dialog-divider::before {
+            content: ''; position: absolute; left: 0; top: 50%;
+            width: 100%; height: 1px; background: #eee;
+        }
+        .dialog-divider span {
+            position: relative; background: #fff; padding: 0 10px;
+        }
+
+        .client-select-list {
+            max-height: 220px; overflow-y: auto;
+            border: 1px solid #e8e8e8; border-radius: 10px;
+            margin-bottom: 4px; text-align: left;
+        }
+        .client-select-list .select-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+            transition: background 0.1s;
+        }
+        .client-select-list .select-item:last-child { border-bottom: none; }
+        .client-select-list .select-item:hover { background: #fafafa; }
+        .select-item .select-info .select-name { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+        .select-item .select-info .select-country { font-size: 12px; color: #999; margin-top: 1px; }
+        .select-item .btn-select-add {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #eef2ff; color: #6366f1;
+            font-size: 18px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .select-item .btn-select-add:hover { background: #6366f1; color: #fff; }
+        .select-item .btn-select-added {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #f0fdf4; color: #16a34a;
+            font-size: 14px; cursor: default; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .client-select-list .no-result {
+            padding: 20px; text-align: center; font-size: 13px; color: #999;
+        }
+
+        /* Detail overlay */
+        .detail-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100; overflow-y: auto;
+        }
+        .detail-overlay.show { display: block; }
+
+        .detail-container {
+            background: #fff; border-radius: 16px;
+            max-width: 700px; margin: 40px auto;
+            padding: 40px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .detail-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 36px; height: 36px; border-radius: 10px;
+            border: none; background: #f5f5f5;
+            font-size: 20px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .detail-close:hover { background: #eee; color: #1a1a1a; }
+
+        .detail-header {
+            text-align: center; margin-bottom: 28px;
+            padding: 16px; background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .detail-header .number {
+            font-size: 13px; color: #999; margin-bottom: 4px;
+        }
+
+        .detail-header .number span {
+            font-size: 20px; font-weight: 700; color: #1a1a1a;
+            letter-spacing: 1px;
+        }
+
+        .detail-header .customer {
+            font-size: 14px; color: #666; margin-top: 8px;
+        }
+
+        .detail-section {
+            background: #fafafa; border-radius: 10px;
+            padding: 16px 20px; margin-bottom: 12px;
+        }
+
+        .detail-section h4 {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; font-size: 14px;
+        }
+
+        .detail-row .label { color: #888; }
+        .detail-row .value { color: #1a1a1a; font-weight: 500; }
+
+        .detail-total {
+            text-align: center; padding: 20px 0 0;
+            font-size: 28px; font-weight: 700; color: #1a1a1a;
+        }
+
+        .detail-total small { font-size: 14px; color: #999; display: block; }
+
+        .detail-btns {
+            display: flex; gap: 12px; justify-content: center; margin-top: 16px;
+        }
+        .btn-publish {
+            padding: 10px 36px; background: #16a34a; color: #fff;
+            border: none; border-radius: 10px; font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-publish:hover { background: #15803d; }
+        .btn-publish:disabled { opacity: 0.5; cursor: default; }
+        .btn-publish.published { background: #999; cursor: default; }
+
+        .publish-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 150;
+            justify-content: center; align-items: center;
+        }
+        .publish-overlay.show { display: flex; }
+        .publish-dialog {
+            background: #fff; border-radius: 16px; padding: 36px 40px;
+            width: 400px; text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .publish-dialog h3 { font-size: 18px; color: #1a1a1a; margin-bottom: 8px; }
+        .publish-dialog .publish-warn {
+            font-size: 14px; color: #dc2626; background: #fef2f2;
+            border-radius: 8px; padding: 10px 14px; margin: 16px 0;
+        }
+        .publish-dialog .dialog-btns { margin-top: 20px; }
+
+        .svg-preview-box {
+            background: #fff; border: 1px solid #eee;
+            border-radius: 10px; padding: 16px;
+            text-align: center; margin-top: 8px;
+            max-height: 300px; overflow: auto;
+        }
+
+        .svg-preview-box svg { max-width: 100%; max-height: 260px; }
+
+        .svg-hover-preview {
+            display: none; position: fixed;
+            z-index: 200; pointer-events: none;
+            background: #fff; border: 1px solid #e0e0e0;
+            border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            padding: 12px; max-width: 360px; max-height: 320px;
+            overflow: auto;
+        }
+        .svg-hover-preview svg { max-width: 100%; max-height: 290px; }
+        .svg-hover-preview .no-svg { font-size: 13px; color: #999; padding: 20px; text-align: center; }
+
+        .detail-input {
+            width: 100px; text-align: right;
+            border: 1px solid #ddd; border-radius: 6px;
+            padding: 4px 8px; font-size: 14px; font-weight: 500;
+            color: #1a1a1a; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .detail-input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+
+        .btn-save-detail {
+            padding: 10px 40px; background: #1a1a1a; color: #fff;
+            border: none; border-radius: 10px; font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-save-detail:hover { background: #333; }
+        .btn-save-detail:disabled { opacity: 0.6; cursor: default; }
+
+        .detail-select {
+            width: 170px; border: 1px solid #ddd; border-radius: 6px;
+            padding: 4px 8px; font-size: 14px; font-weight: 500;
+            color: #1a1a1a; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .detail-select:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+
+        .pool-badge {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px;
+            background: #f0fdf4; color: #16a34a;
+            margin-left: 6px; vertical-align: middle;
+        }
+        .temp-badge {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px;
+            background: #f5f5f5; color: #999;
+            margin-left: 6px; vertical-align: middle;
+        }
+        .pool-sales {
+            font-size: 11px; color: #888; margin-left: 4px;
+        }
+        .btn-add-to-pool {
+            height: 26px; padding: 0 10px; border-radius: 6px;
+            border: 1px solid #16a34a; background: #fff; color: #16a34a;
+            font-size: 11px; cursor: pointer; flex-shrink: 0;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .btn-add-to-pool:hover { background: #f0fdf4; }
+
+        @media (max-width: 600px) {
+            .main { padding: 24px 16px; }
+            .header { padding: 0 16px; }
+            .quote-card { flex-wrap: wrap; }
+            .quote-price { margin: 8px 0 0 0; width: 100%; text-align: left; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="myorders.html" class="btn-back">← 返回</a>
+        <span class="header-title">我的客户</span>
+    </header>
+
+    <main class="main">
+        <div id="content">
+            <div class="state-msg"><p>加载中...</p></div>
+        </div>
+    </main>
+
+    <!-- Add customer modal -->
+    <div class="overlay" id="addCustomerOverlay">
+        <div class="dialog" style="width:460px">
+            <h3>新增客户</h3>
+            <p>从注册用户中选择，或手动输入</p>
+            <input type="text" id="clientSearchInput" placeholder="搜索注册用户..." autocomplete="off" style="margin-bottom:8px">
+            <div class="client-select-list" id="clientSelectList">
+                <div class="no-result">加载中...</div>
+            </div>
+            <div class="dialog-divider"><span>或手动输入</span></div>
+            <input type="text" id="newCustomerName" placeholder="输入客户名称" autocomplete="off">
+            <div class="dialog-btns">
+                <button class="btn-cancel" onclick="closeAddCustomerDialog()">取消</button>
+                <button class="btn-primary" onclick="confirmAddCustomer()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete quote modal -->
+    <div class="overlay" id="deleteOverlay">
+        <div class="dialog">
+            <h3>确认删除</h3>
+            <p>删除后无法恢复，确定要删除该报价吗？</p>
+            <div class="dialog-btns">
+                <button class="btn-cancel" onclick="closeDeleteDialog()">取消</button>
+                <button class="btn-confirm" onclick="confirmDelete()">删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete customer modal -->
+    <div class="overlay" id="deleteCustomerOverlay">
+        <div class="dialog">
+            <h3>确认删除客户</h3>
+            <p id="deleteCustomerMsg">确定要删除该客户吗？</p>
+            <div class="dialog-btns">
+                <button class="btn-cancel" onclick="closeDeleteCustomerDialog()">取消</button>
+                <button class="btn-confirm" id="btnDelCustomerOnly" style="font-size:12px">仅删客户</button>
+                <button class="btn-confirm" id="btnDelCustomerWithQuotes" style="font-size:12px">客户+报价</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SVG hover preview -->
+    <div class="svg-hover-preview" id="svgHoverPreview"></div>
+
+    <!-- Publish confirmation overlay -->
+    <div class="publish-overlay" id="publishOverlay">
+        <div class="publish-dialog">
+            <h3>确认发布</h3>
+            <p style="font-size:14px;color:#666;margin-top:4px;">将订单发送至客户"我的订单"</p>
+            <div class="publish-warn">⚠ 一旦发布无法撤回，确认发布？</div>
+            <div class="dialog-btns">
+                <button class="btn-cancel" onclick="closePublishDialog()">取消</button>
+                <button class="btn-confirm" id="btnConfirmPublish" onclick="publishOrder()" style="background:#16a34a">确认发布</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quote detail overlay -->
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-container" id="detailContainer"></div>
+    </div>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, setDoc, serverTimestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+
+        let allCustomers = [];
+        let allQuotes = [];
+        let deleteTarget = null;
+        let deleteCustomerTarget = null;
+        let clientPoolMap = {}; // name → { uid, assignedTo, country, company }
+
+        async function loadData() {
+            const content = document.getElementById('content');
+            try {
+                // Load client pool (clientProfiles)
+                const poolSnap = await getDocs(collection(db, 'clientProfiles'));
+                clientPoolMap = {};
+                poolSnap.forEach(d => {
+                    const data = d.data();
+                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company };
+                });
+
+                const custRef = collection(db, 'users', user.uid, 'customers');
+                const custSnapshot = await getDocs(custRef);
+                allCustomers = [];
+                custSnapshot.forEach(d => { allCustomers.push({ id: d.id, ...d.data() }); });
+
+                // Also include pool clients assigned to current user (not already in private list)
+                const existingNames = new Set(allCustomers.map(c => c.name));
+                for (const [name, info] of Object.entries(clientPoolMap)) {
+                    if (info.assignedTo === user.email && !existingNames.has(name)) {
+                        allCustomers.push({ id: 'pool_' + info.uid, name, _fromPool: true, poolUid: info.uid });
+                    }
+                }
+                allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
+
+                const quoteRef = collection(db, 'users', user.uid, 'quotes');
+                const q = query(quoteRef, orderBy('createdAt', 'desc'));
+                const quoteSnapshot = await getDocs(q);
+                allQuotes = [];
+                quoteSnapshot.forEach(d => { allQuotes.push({ id: d.id, ...d.data() }); });
+
+                if (allCustomers.length === 0 && allQuotes.length === 0) {
+                    content.innerHTML = '<div class="page-top"><h1 class="page-title">我的客户</h1><button class="btn-add" id="btnAddCustomer">+ 新增客户</button></div><div class="state-msg"><h3>暂无客户</h3><p>点击右上角"新增客户"开始添加</p></div>';
+                    document.getElementById('btnAddCustomer').addEventListener('click', function() {
+                        document.getElementById('addCustomerOverlay').classList.add('show');
+                        document.getElementById('newCustomerName').value = '';
+                        document.getElementById('clientSearchInput').value = '';
+                        document.getElementById('newCustomerName').focus();
+                        refreshClientSelectList();
+                    });
+                    return;
+                }
+                render();
+            } catch (err) {
+                console.error('加载失败:', err);
+                content.innerHTML = '<div class="state-msg"><p style="color:#dc2626;">加载失败，请刷新重试</p></div>';
+            }
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function render() {
+            const content = document.getElementById('content');
+            const customerNames = new Set(allCustomers.map(c => c.name));
+
+            const quotesByCustomer = {};
+            const orphanQuotes = [];
+            allQuotes.forEach(q => {
+                const name = q.customerName || '未命名客户';
+                if (customerNames.has(name)) {
+                    if (!quotesByCustomer[name]) quotesByCustomer[name] = [];
+                    quotesByCustomer[name].push(q);
+                } else {
+                    orphanQuotes.push(q);
+                }
+            });
+
+            let html = '<div class="page-top"><h1 class="page-title">我的客户</h1>';
+            html += '<button class="btn-add" id="btnAddCustomer">+ 新增客户</button></div>';
+
+            allCustomers.forEach(cust => {
+                const quotes = quotesByCustomer[cust.name] || [];
+                const total = quotes.reduce((s, q) => s + (q.totalPrice || 0), 0);
+                const poolInfo = clientPoolMap[cust.name];
+                const isInPool = !!poolInfo;
+
+                html += '<div class="customer-group">';
+                html += '<div class="customer-group-header">';
+                html += '<div class="customer-header-left">';
+                html += '<span class="customer-name">' + esc(cust.name) + '</span>';
+                if (isInPool) {
+                    html += '<span class="pool-badge">客户池</span>';
+                    if (poolInfo.assignedTo) {
+                        html += '<span class="pool-sales">负责: ' + esc(poolInfo.assignedTo.split('@')[0]) + '</span>';
+                    }
+                } else {
+                    html += '<span class="temp-badge">临时</span>';
+                }
+                html += '<span class="customer-count">' + quotes.length + ' 条报价' + (total > 0 ? ' · 合计 ¥' + total.toFixed(2) : '') + '</span>';
+                html += '</div>';
+                html += '<div style="display:flex;align-items:center;gap:8px">';
+                if (!isInPool) {
+                    html += '<button class="btn-add-to-pool" data-cname="' + esc(cust.name) + '" title="加入客户池">加入客户池</button>';
+                }
+                if (!cust._fromPool) {
+                    html += '<button class="btn-del-customer" data-cid="' + cust.id + '" data-cname="' + esc(cust.name) + '" title="删除客户">×</button>';
+                }
+                html += '</div>';
+                html += '</div>';
+
+                if (quotes.length === 0) {
+                    html += '<div class="empty-quotes">暂无报价</div>';
+                } else {
+                    quotes.forEach(q => {
+                        const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        html += '<div class="quote-card quote-card-clickable" data-qid="' + q.id + '">';
+                        html += '<div class="quote-info">';
+                        html += '<div class="quote-number">' + esc(q.quoteNumber || '-') + '</div>';
+                        html += '<div class="quote-meta">';
+                        html += '<span>' + esc(q.productName || '-') + '</span>';
+                        html += '<span>' + date + '</span>';
+                        if (q.freight) html += '<span>运费 ¥' + q.freight.price.toFixed(2) + '</span>';
+                        html += '</div></div>';
+                        html += '<div class="quote-price">¥' + (q.totalPrice || 0).toFixed(2) + '</div>';
+                        html += '<button class="btn-delete" data-id="' + q.id + '" title="删除">×</button>';
+                        html += '</div>';
+                    });
+                }
+                html += '</div>';
+            });
+
+            if (orphanQuotes.length > 0) {
+                html += '<div class="customer-group">';
+                html += '<div class="customer-group-header">';
+                html += '<span class="customer-name" style="color:#999">其他报价（未关联客户）</span>';
+                html += '</div>';
+                orphanQuotes.forEach(q => {
+                    const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    html += '<div class="quote-card quote-card-clickable" data-qid="' + q.id + '">';
+                    html += '<div class="quote-info">';
+                    html += '<div class="quote-number">' + esc(q.quoteNumber || '-') + ' · ' + esc(q.customerName || '-') + '</div>';
+                    html += '<div class="quote-meta">';
+                    html += '<span>' + esc(q.productName || '-') + '</span>';
+                    html += '<span>' + date + '</span>';
+                    if (q.freight) html += '<span>运费 ¥' + q.freight.price.toFixed(2) + '</span>';
+                    html += '</div></div>';
+                    html += '<div class="quote-price">¥' + (q.totalPrice || 0).toFixed(2) + '</div>';
+                    html += '<button class="btn-convert" data-cname="' + esc(q.customerName || '-') + '" title="转为客户">转为客户</button>';
+                    html += '<button class="btn-delete" data-id="' + q.id + '" title="删除">×</button>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            content.innerHTML = html;
+
+            const btnAdd = content.querySelector('#btnAddCustomer');
+            if (btnAdd) {
+                btnAdd.addEventListener('click', function() {
+                    document.getElementById('addCustomerOverlay').classList.add('show');
+                    document.getElementById('newCustomerName').value = '';
+                    document.getElementById('clientSearchInput').value = '';
+                    document.getElementById('newCustomerName').focus();
+                    refreshClientSelectList();
+                });
+            }
+
+            content.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deleteTarget = this.dataset.id;
+                    document.getElementById('deleteOverlay').classList.add('show');
+                });
+            });
+
+            content.querySelectorAll('.btn-del-customer').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    deleteCustomerTarget = { id: this.dataset.cid, name: this.dataset.cname };
+                    document.getElementById('deleteCustomerMsg').textContent = '确定要删除客户"' + this.dataset.cname + '"吗？';
+                    document.getElementById('deleteCustomerOverlay').classList.add('show');
+                });
+            });
+
+            content.querySelectorAll('.btn-add-to-pool').forEach(btn => {
+                btn.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    const name = this.dataset.cname;
+                    this.textContent = '添加中...';
+                    this.disabled = true;
+                    try {
+                        await addToClientPool(name);
+                        this.textContent = '已添加';
+                        this.style.color = '#16a34a';
+                        this.style.borderColor = '#16a34a';
+                        setTimeout(() => loadData(), 400);
+                    } catch (err) {
+                        console.error('加入客户池失败:', err);
+                        alert('加入客户池失败，请重试');
+                        this.textContent = '加入客户池';
+                        this.disabled = false;
+                    }
+                });
+            });
+
+            content.querySelectorAll('.btn-convert').forEach(btn => {
+                btn.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    const name = this.dataset.cname;
+                    if (!name || name === '-') return;
+                    try {
+                        await addDoc(collection(db, 'users', user.uid, 'customers'), {
+                            name,
+                            createdAt: serverTimestamp()
+                        });
+                        await autoAssignClientProfile(name);
+                        // Update sessionStorage cache
+                        const cached = sessionStorage.getItem('_customerList');
+                        if (cached) {
+                            const list = JSON.parse(cached);
+                            list.push(name);
+                            list.sort((a, b) => a.localeCompare(b, 'zh'));
+                            sessionStorage.setItem('_customerList', JSON.stringify(list));
+                            sessionStorage.removeItem('_customerListV4');
+                        }
+                        loadData();
+                    } catch (err) {
+                        console.error('转为客户失败:', err);
+                    }
+                });
+            });
+
+            content.querySelectorAll('.quote-card-clickable').forEach(card => {
+                card.addEventListener('click', function() {
+                    const q = allQuotes.find(q => q.id === this.dataset.qid);
+                    if (q) showDetail(q);
+                });
+
+                // Hover preview: show SVG after 2s delay
+                let hoverTimer = null;
+                const preview = document.getElementById('svgHoverPreview');
+
+                card.addEventListener('mouseenter', function(e) {
+                    const qid = this.dataset.qid;
+                    hoverTimer = setTimeout(() => {
+                        const q = allQuotes.find(q => q.id === qid);
+                        if (q && q.svgContent) {
+                            preview.innerHTML = q.svgContent;
+                            preview.style.display = 'block';
+                        } else {
+                            preview.innerHTML = '<div class="no-svg">无矢量图</div>';
+                            preview.style.display = 'block';
+                        }
+                    }, 2000);
+                });
+
+                card.addEventListener('mousemove', function(e) {
+                    if (preview.style.display === 'block') {
+                        let x = e.clientX + 16;
+                        let y = e.clientY + 16;
+                        if (x + 376 > window.innerWidth) x = e.clientX - 376;
+                        if (y + 340 > window.innerHeight) y = e.clientY - 340;
+                        preview.style.left = x + 'px';
+                        preview.style.top = y + 'px';
+                    }
+                });
+
+                card.addEventListener('mouseleave', function() {
+                    clearTimeout(hoverTimer);
+                    preview.style.display = 'none';
+                    preview.innerHTML = '';
+                });
+            });
+        }
+
+        // ---- Client select list from registered users ----
+        let allClientProfiles = [];
+
+        async function refreshClientSelectList() {
+            const listEl = document.getElementById('clientSelectList');
+            const existingNames = new Set(allCustomers.map(c => c.name));
+            try {
+                const snap = await getDocs(collection(db, 'clientProfiles'));
+                allClientProfiles = [];
+                clientPoolMap = {};
+                snap.forEach(d => {
+                    const data = d.data();
+                    allClientProfiles.push({ uid: d.id, ...data });
+                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company };
+                });
+                allClientProfiles.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
+                renderClientSelectList(allClientProfiles, existingNames);
+            } catch (e) {
+                console.error('加载注册用户失败:', e);
+                listEl.innerHTML = '<div class="no-result">加载失败</div>';
+            }
+        }
+
+        function renderClientSelectList(profiles, existingNames) {
+            const listEl = document.getElementById('clientSelectList');
+            const q = (document.getElementById('clientSearchInput')?.value || '').trim().toLowerCase();
+            let filtered = profiles;
+            if (q) {
+                filtered = profiles.filter(p =>
+                    (p.name || '').toLowerCase().includes(q) ||
+                    (p.country || '').toLowerCase().includes(q)
+                );
+            }
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<div class="no-result">' + (q ? '无匹配结果' : '暂无注册用户') + '</div>';
+                return;
+            }
+            listEl.innerHTML = filtered.map(p => {
+                const added = existingNames.has(p.name);
+                return '<div class="select-item">' +
+                    '<div class="select-info"><div class="select-name">' + esc(p.name || '-') + '</div>' +
+                    '<div class="select-country">' + esc(p.country || '-') + (p.company ? ' · ' + esc(p.company) : '') + '</div></div>' +
+                    (added
+                        ? '<div class="btn-select-added" title="已添加">✓</div>'
+                        : '<button class="btn-select-add" data-name="' + esc(p.name || '') + '" title="添加">+</button>'
+                    ) +
+                    '</div>';
+            }).join('');
+
+            listEl.querySelectorAll('.btn-select-add').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    quickAddCustomer(this.dataset.name);
+                });
+            });
+        }
+
+        document.getElementById('clientSearchInput').addEventListener('input', function() {
+            const existingNames = new Set(allCustomers.map(c => c.name));
+            renderClientSelectList(allClientProfiles, existingNames);
+        });
+
+        async function addToClientPool(name) {
+            if (!name) return;
+            await addDoc(collection(db, 'clientProfiles'), {
+                name,
+                assignedTo: user.email,
+                createdAt: serverTimestamp()
+            });
+            clientPoolMap[name] = { uid: null, assignedTo: user.email };
+        }
+
+        async function autoAssignClientProfile(name) {
+            if (!name) return;
+            try {
+                const q = query(collection(db, 'clientProfiles'), where('name', '==', name));
+                const snap = await getDocs(q);
+                snap.forEach(async (d) => {
+                    if (!d.data().assignedTo) {
+                        await updateDoc(doc(db, 'clientProfiles', d.id), { assignedTo: user.email });
+                    }
+                });
+            } catch (e) { /* silent */ }
+        }
+
+        async function quickAddCustomer(name) {
+            if (!name) return;
+            try {
+                await addDoc(collection(db, 'users', user.uid, 'customers'), {
+                    name,
+                    createdAt: serverTimestamp()
+                });
+                await autoAssignClientProfile(name);
+                const cached = sessionStorage.getItem('_customerList');
+                if (cached) {
+                    const list = JSON.parse(cached);
+                    if (!list.includes(name)) { list.push(name); list.sort((a, b) => a.localeCompare(b, 'zh')); }
+                    sessionStorage.setItem('_customerList', JSON.stringify(list));
+                    sessionStorage.removeItem('_customerListV4');
+                }
+                localStorage.setItem('_customerListVersion', Date.now().toString());
+                // Refresh the select list to show checkmark
+                const existingNames = new Set(allCustomers.map(c => c.name));
+                existingNames.add(name);
+                renderClientSelectList(allClientProfiles, existingNames);
+                loadData();
+            } catch (err) {
+                console.error('添加客户失败:', err);
+                alert('添加失败，请重试');
+            }
+        }
+
+        // ---- Add Customer (manual input) ----
+        window.confirmAddCustomer = async function() {
+            const name = document.getElementById('newCustomerName').value.trim();
+            if (!name) return;
+            try {
+                await addDoc(collection(db, 'users', user.uid, 'customers'), {
+                    name,
+                    createdAt: serverTimestamp()
+                });
+                await autoAssignClientProfile(name);
+                const cached = sessionStorage.getItem('_customerList');
+                if (cached) {
+                    const list = JSON.parse(cached);
+                    if (!list.includes(name)) { list.push(name); list.sort((a, b) => a.localeCompare(b, 'zh')); }
+                    sessionStorage.setItem('_customerList', JSON.stringify(list));
+                    sessionStorage.removeItem('_customerListV4');
+                }
+                localStorage.setItem('_customerListVersion', Date.now().toString());
+                document.getElementById('addCustomerOverlay').classList.remove('show');
+                loadData();
+            } catch (err) {
+                console.error('添加客户失败:', err);
+                alert('添加失败，请重试');
+            }
+        };
+
+        window.closeAddCustomerDialog = function() {
+            document.getElementById('addCustomerOverlay').classList.remove('show');
+        };
+
+        // ---- Delete Quote ----
+        window.confirmDelete = async function() {
+            if (!deleteTarget) return;
+            try {
+                await deleteDoc(doc(db, 'users', user.uid, 'quotes', deleteTarget));
+                allQuotes = allQuotes.filter(q => q.id !== deleteTarget);
+                deleteTarget = null;
+                document.getElementById('deleteOverlay').classList.remove('show');
+                if (allCustomers.length === 0 && allQuotes.length === 0) {
+                    const c = document.getElementById('content');
+                    c.innerHTML = '<div class="page-top"><h1 class="page-title">我的客户</h1><button class="btn-add" id="btnAddCustomer">+ 新增客户</button></div><div class="state-msg"><h3>暂无客户</h3><p>点击右上角"新增客户"开始添加</p></div>';
+                    document.getElementById('btnAddCustomer').addEventListener('click', function() {
+                        document.getElementById('addCustomerOverlay').classList.add('show');
+                        document.getElementById('newCustomerName').value = '';
+                        document.getElementById('clientSearchInput').value = '';
+                        document.getElementById('newCustomerName').focus();
+                        refreshClientSelectList();
+                    });
+                } else {
+                    render();
+                }
+            } catch (err) {
+                console.error('删除失败:', err);
+            }
+        };
+
+        window.closeDeleteDialog = function() {
+            deleteTarget = null;
+            document.getElementById('deleteOverlay').classList.remove('show');
+        };
+
+        // ---- Delete Customer ----
+        window.closeDeleteCustomerDialog = function() {
+            deleteCustomerTarget = null;
+            document.getElementById('deleteCustomerOverlay').classList.remove('show');
+        };
+
+        function removeCustomerFromCache(name) {
+            const cached = sessionStorage.getItem('_customerList');
+            if (cached) {
+                const list = JSON.parse(cached).filter(n => n !== name);
+                sessionStorage.setItem('_customerList', JSON.stringify(list));
+                sessionStorage.removeItem('_customerListV4');
+            }
+            // Broadcast to other tabs via localStorage version bump
+            localStorage.setItem('_customerListVersion', Date.now().toString());
+        }
+
+        document.getElementById('btnDelCustomerOnly').addEventListener('click', async function() {
+            if (!deleteCustomerTarget) return;
+            try {
+                await deleteDoc(doc(db, 'users', user.uid, 'customers', deleteCustomerTarget.id));
+                allCustomers = allCustomers.filter(c => c.id !== deleteCustomerTarget.id);
+                removeCustomerFromCache(deleteCustomerTarget.name);
+                deleteCustomerTarget = null;
+                document.getElementById('deleteCustomerOverlay').classList.remove('show');
+                render();
+            } catch (err) {
+                console.error('删除客户失败:', err);
+            }
+        });
+
+        document.getElementById('btnDelCustomerWithQuotes').addEventListener('click', async function() {
+            if (!deleteCustomerTarget) return;
+            try {
+                await deleteDoc(doc(db, 'users', user.uid, 'customers', deleteCustomerTarget.id));
+                const toDelete = allQuotes.filter(q => q.customerName === deleteCustomerTarget.name);
+                for (const q of toDelete) {
+                    await deleteDoc(doc(db, 'users', user.uid, 'quotes', q.id));
+                }
+                allCustomers = allCustomers.filter(c => c.id !== deleteCustomerTarget.id);
+                allQuotes = allQuotes.filter(q => q.customerName !== deleteCustomerTarget.name);
+                removeCustomerFromCache(deleteCustomerTarget.name);
+                deleteCustomerTarget = null;
+                document.getElementById('deleteCustomerOverlay').classList.remove('show');
+                if (allCustomers.length === 0 && allQuotes.length === 0) {
+                    const c = document.getElementById('content');
+                    c.innerHTML = '<div class="page-top"><h1 class="page-title">我的客户</h1><button class="btn-add" id="btnAddCustomer">+ 新增客户</button></div><div class="state-msg"><h3>暂无客户</h3><p>点击右上角"新增客户"开始添加</p></div>';
+                    document.getElementById('btnAddCustomer').addEventListener('click', function() {
+                        document.getElementById('addCustomerOverlay').classList.add('show');
+                        document.getElementById('newCustomerName').value = '';
+                        document.getElementById('clientSearchInput').value = '';
+                        document.getElementById('newCustomerName').focus();
+                        refreshClientSelectList();
+                    });
+                } else {
+                    render();
+                }
+            } catch (err) {
+                console.error('删除失败:', err);
+            }
+        });
+
+        // ---- Quote Detail ----
+        function recalcDetailTotal() {
+            let total = 0;
+            document.querySelectorAll('.price-input').forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            const el = document.getElementById('detailTotal');
+            if (el) el.innerHTML = '<small>总价</small>¥' + total.toFixed(2);
+        }
+
+        async function saveDetailChanges(q) {
+            const btn = document.getElementById('btnSaveDetail');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            try {
+                const fontPrices = (q.fontPrices || []).map((f, i) => {
+                    const input = document.querySelector('.price-input[data-field="fontPrice"][data-index="' + i + '"]');
+                    const letterPrice = input ? (parseFloat(input.value) || 0) : (f.letterPrice || 0);
+                    return { length: f.length, width: f.width, thickness: f.thickness, quantity: f.quantity, letterPrice };
+                });
+
+                const getPrice = (field) => {
+                    const input = document.querySelector('.price-input[data-field="' + field + '"]');
+                    return input ? (parseFloat(input.value) || 0) : 0;
+                };
+
+                const totalLetterPrice = getPrice('totalLetterPrice');
+                const surfacePrice = getPrice('surfacePrice');
+                const paintPrice = getPrice('paintPrice');
+                const powerPrice = getPrice('powerPrice');
+                const laborFee = getPrice('laborFee');
+
+                const freightPrice = q.freight ? getPrice('freightPrice') : 0;
+                const fontTotal = fontPrices.reduce((s, f) => s + (f.letterPrice || 0), 0);
+                const newTotal = fontTotal + surfacePrice + paintPrice + powerPrice + laborFee + freightPrice;
+
+                const getConfig = (field) => {
+                    const sel = document.querySelector('.config-select[data-field="' + field + '"]');
+                    return sel ? sel.value : '';
+                };
+
+                const updateData = {
+                    fontPrices,
+                    totalLetterPrice,
+                    surfacePrice,
+                    paintPrice,
+                    powerPrice,
+                    laborFee,
+                    totalPrice: newTotal,
+                    surfaceColor: getConfig('surfaceColor'),
+                    paint: getConfig('paint'),
+                    power: getConfig('power'),
+                    fixing: getConfig('fixing')
+                };
+
+                if (q.freight) {
+                    updateData.freight = { destination: q.freight.destination, volumetricWeight: q.freight.volumetricWeight, chargeableWeight: q.freight.chargeableWeight, price: freightPrice };
+                }
+
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), updateData);
+
+                const idx = allQuotes.findIndex(x => x.id === q.id);
+                if (idx >= 0) Object.assign(allQuotes[idx], updateData);
+
+                btn.textContent = '已保存';
+                btn.style.background = '#16a34a';
+                setTimeout(() => {
+                    document.getElementById('detailOverlay').classList.remove('show');
+                    render();
+                }, 600);
+            } catch (err) {
+                console.error('保存失败:', err);
+                btn.textContent = '保存失败，重试';
+                btn.style.background = '#dc2626';
+                btn.disabled = false;
+            }
+        }
+
+        // ---- Publish order to client ----
+        window.closePublishDialog = function() {
+            document.getElementById('publishOverlay').classList.remove('show');
+            window._publishTarget = null;
+        };
+
+        window.publishOrder = async function() {
+            const q = window._publishTarget;
+            if (!q) return;
+            const btn = document.getElementById('btnConfirmPublish');
+            btn.disabled = true;
+            btn.textContent = '发布中...';
+
+            try {
+                // Find client UID by customerName
+                let clientUid = null;
+                const snap = await getDocs(collection(db, 'clientProfiles'));
+                snap.forEach(d => {
+                    if (d.data().name === q.customerName) clientUid = d.id;
+                });
+
+                if (!clientUid) {
+                    alert('未找到对应注册用户"' + q.customerName + '"，请确认客户名称与注册姓名一致');
+                    btn.disabled = false;
+                    btn.textContent = '确认发布';
+                    return;
+                }
+
+                // Get latest quote data
+                const latestQuote = allQuotes.find(x => x.id === q.id) || q;
+
+                // Build a clean order document for the client
+                const orderDoc = {
+                    quoteNumber: latestQuote.quoteNumber || '',
+                    customerName: latestQuote.customerName || '',
+                    productId: latestQuote.productId || '',
+                    productName: latestQuote.productName || '',
+                    usageArea: latestQuote.usageArea || '',
+                    fontPrices: latestQuote.fontPrices || [],
+                    surfaceColor: latestQuote.surfaceColor || '',
+                    surfacePrice: latestQuote.surfacePrice || 0,
+                    paint: latestQuote.paint || '',
+                    paintPrice: latestQuote.paintPrice || 0,
+                    power: latestQuote.power || '',
+                    powerPrice: latestQuote.powerPrice || 0,
+                    fixing: latestQuote.fixing || '',
+                    laborFee: latestQuote.laborFee || 0,
+                    totalLetterPrice: latestQuote.totalLetterPrice || 0,
+                    freight: latestQuote.freight || null,
+                    totalPrice: latestQuote.totalPrice || 0,
+                    svgContent: latestQuote.svgContent || '',
+                    status: 'pending',
+                    publishedByUid: user.uid,
+                    publishedAt: serverTimestamp(),
+                    publishedBy: user.email,
+                    createdAt: latestQuote.createdAt || serverTimestamp()
+                };
+
+                await setDoc(doc(db, 'users', clientUid, 'quotes', q.id), orderDoc);
+
+                // Mark as published in business account
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), {
+                    published: true,
+                    publishedTo: clientUid,
+                    publishedAt: serverTimestamp(),
+                    status: 'pending'
+                });
+
+                // Update local data
+                const idx = allQuotes.findIndex(x => x.id === q.id);
+                if (idx >= 0) {
+                    allQuotes[idx].published = true;
+                }
+
+                document.getElementById('publishOverlay').classList.remove('show');
+                document.getElementById('detailOverlay').classList.remove('show');
+                render();
+            } catch (err) {
+                console.error('发布失败:', err);
+                alert('发布失败，请重试');
+                btn.disabled = false;
+                btn.textContent = '确认发布';
+            }
+        };
+
+        function showDetail(q) {
+            const container = document.getElementById('detailContainer');
+            const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+
+            let html = '<button class="detail-close" onclick="document.getElementById(\'detailOverlay\').classList.remove(\'show\')">×</button>';
+
+            html += '<div class="detail-header">';
+            html += '<div class="number">报价编号<br><span>' + esc(q.quoteNumber || '-') + '</span></div>';
+            html += '<div class="customer">客户：' + esc(q.customerName || '-') + ' · ' + date + '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>产品信息</h4>';
+            html += '<div class="detail-row"><span class="label">产品ID</span><span class="value">' + esc(q.productId || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">产品名称</span><span class="value">' + esc(q.productName || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">使用区域</span><span class="value">' + esc(q.usageArea || '-') + '</span></div>';
+            html += '</div>';
+
+            if (q.fontPrices && q.fontPrices.length > 0) {
+                html += '<div class="detail-section"><h4>字体明细</h4>';
+                q.fontPrices.forEach((f, i) => {
+                    html += '<div class="detail-row"><span class="label">长' + (f.length || 0).toFixed(2) + '×宽' + (f.width || 0).toFixed(2) + '×厚' + (f.thickness || 0) + 'mm × ' + (f.quantity || 0) + '个</span>';
+                    html += '<span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="fontPrice" data-index="' + i + '" value="' + (f.letterPrice || 0).toFixed(2) + '"></span></div>';
+                });
+                html += '</div>';
+            }
+
+            html += '<div class="detail-section"><h4>配置选项</h4>';
+            html += '<div class="detail-row"><span class="label">表面颜色</span><span class="value"><select class="detail-select config-select" data-field="surfaceColor" data-target="surfacePrice">';
+            html += '<option value="亚克力颜色" data-price="0"' + (q.surfaceColor === '亚克力颜色' ? ' selected' : '') + '>亚克力颜色（默认）</option>';
+            html += '<option value="需要贴膜" data-price="200"' + (q.surfaceColor === '需要贴膜' ? ' selected' : '') + '>需要贴膜（¥200/个）</option>';
+            html += '<option value="需要打印" data-price="200"' + (q.surfaceColor === '需要打印' ? ' selected' : '') + '>需要打印（¥200）</option>';
+            html += '</select></span></div>';
+
+            html += '<div class="detail-row"><span class="label">喷漆标准</span><span class="value"><select class="detail-select config-select" data-field="paint" data-target="paintPrice">';
+            html += '<option value="亮光" data-price="200"' + (q.paint === '亮光' ? ' selected' : '') + '>亮光（+¥200）</option>';
+            html += '<option value="三分哑" data-price="0"' + (q.paint === '三分哑' ? ' selected' : '') + '>三分哑（默认）</option>';
+            html += '<option value="半哑" data-price="0"' + (q.paint === '半哑' ? ' selected' : '') + '>半哑</option>';
+            html += '<option value="七分哑" data-price="0"' + (q.paint === '七分哑' ? ' selected' : '') + '>七分哑</option>';
+            html += '<option value="全哑" data-price="0"' + (q.paint === '全哑' ? ' selected' : '') + '>全哑</option>';
+            html += '</select></span></div>';
+
+            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value"><select class="detail-select config-select" data-field="power" data-target="powerPrice">';
+            html += '<option value="MW LRS 室内" data-price="200"' + (q.power === 'MW LRS 室内' ? ' selected' : '') + '>MW LRS 室内（¥200）</option>';
+            html += '<option value="MW LPV 室内" data-price="300"' + (q.power === 'MW LPV 室内' ? ' selected' : '') + '>MW LPV 室内（¥300）</option>';
+            html += '<option value="MW HLG 室外" data-price="400"' + (q.power === 'MW HLG 室外' ? ' selected' : '') + '>MW HLG 室外（¥400）</option>';
+            html += '<option value="适配器 室外" data-price="300"' + (q.power === '适配器 室外' ? ' selected' : '') + '>适配器 室外（¥300）</option>';
+            html += '</select></span></div>';
+
+            html += '<div class="detail-row"><span class="label">固定方式</span><span class="value"><select class="detail-select config-select" data-field="fixing">';
+            html += '<option value="丝杆"' + (q.fixing === '丝杆' ? ' selected' : '') + '>丝杆（默认）</option>';
+            html += '<option value="双面胶+硅胶"' + (q.fixing === '双面胶+硅胶' ? ' selected' : '') + '>双面胶+硅胶</option>';
+            html += '<option value="架子"' + (q.fixing === '架子' ? ' selected' : '') + '>架子</option>';
+            html += '<option value="背板"' + (q.fixing === '背板' ? ' selected' : '') + '>背板</option>';
+            html += '</select></span></div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>价格明细</h4>';
+            html += '<div class="detail-row"><span class="label">产品总价</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="totalLetterPrice" value="' + (q.totalLetterPrice || 0).toFixed(2) + '"></span></div>';
+            html += '<div class="detail-row"><span class="label">表面处理</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="surfacePrice" value="' + (q.surfacePrice || 0).toFixed(2) + '"></span></div>';
+            html += '<div class="detail-row"><span class="label">喷漆费用</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="paintPrice" value="' + (q.paintPrice || 0).toFixed(2) + '"></span></div>';
+            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="powerPrice" value="' + (q.powerPrice || 0).toFixed(2) + '"></span></div>';
+            html += '<div class="detail-row"><span class="label">人工费</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="laborFee" value="' + (q.laborFee || 0).toFixed(2) + '"></span></div>';
+            html += '</div>';
+
+            if (q.freight) {
+                html += '<div class="detail-section"><h4>运费信息</h4>';
+                html += '<div class="detail-row"><span class="label">目的地</span><span class="value">' + esc(q.freight.destination || '-') + '</span></div>';
+                html += '<div class="detail-row"><span class="label">体积重</span><span class="value">' + (q.freight.volumetricWeight || 0).toFixed(2) + ' kg</span></div>';
+                html += '<div class="detail-row"><span class="label">计费重</span><span class="value">' + (q.freight.chargeableWeight || 0).toFixed(2) + ' kg</span></div>';
+                html += '<div class="detail-row"><span class="label">运费</span><span class="value"><input type="number" step="0.01" class="detail-input price-input" data-field="freightPrice" value="' + q.freight.price.toFixed(2) + '"></span></div>';
+                html += '</div>';
+            }
+
+            if (q.svgContent) {
+                html += '<div class="detail-section"><h4>矢量图</h4>';
+                html += '<div class="svg-preview-box">' + q.svgContent + '</div>';
+                html += '</div>';
+            }
+
+            html += '<div class="detail-total" id="detailTotal"><small>总价</small>¥' + (q.totalPrice || 0).toFixed(2) + '</div>';
+            html += '<div class="detail-btns">';
+            html += '<button class="btn-save-detail" id="btnSaveDetail">保存修改</button>';
+            if (q.published) {
+                html += '<button class="btn-publish published" disabled>已发布</button>';
+            } else {
+                html += '<button class="btn-publish" id="btnPublish">确认发布</button>';
+            }
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            container.querySelectorAll('.price-input').forEach(input => {
+                input.addEventListener('input', recalcDetailTotal);
+            });
+
+            container.querySelectorAll('.config-select').forEach(sel => {
+                sel.addEventListener('change', function() {
+                    const price = parseInt(this.options[this.selectedIndex].dataset.price) || 0;
+                    const targetField = this.dataset.target;
+                    if (targetField) {
+                        const priceInput = document.querySelector('.price-input[data-field="' + targetField + '"]');
+                        if (priceInput) {
+                            priceInput.value = price.toFixed(2);
+                            recalcDetailTotal();
+                        }
+                    }
+                });
+            });
+
+            document.getElementById('btnSaveDetail').addEventListener('click', async function() {
+                await saveDetailChanges(q);
+            });
+
+            const btnPublish = document.getElementById('btnPublish');
+            if (btnPublish) {
+                btnPublish.addEventListener('click', function() {
+                    window._publishTarget = q;
+                    document.getElementById('publishOverlay').classList.add('show');
+                });
+            }
+
+            document.getElementById('detailOverlay').classList.add('show');
+
+            document.getElementById('detailOverlay').addEventListener('click', function(e) {
+                if (e.target === this) this.classList.remove('show');
+            });
+        }
+
+        document.getElementById('newCustomerName').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') window.confirmAddCustomer();
+        });
+
+        loadData();
+    </script>
+</body>
+</html>

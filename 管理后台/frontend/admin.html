@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员后台 - DHL 运费计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px 0;
+        }
+
+        .sidebar h2 {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #34495e;
+            margin-bottom: 20px;
+        }
+
+        .nav-item {
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .nav-item:hover {
+            background: #34495e;
+        }
+
+        .nav-item.active {
+            background: #3498db;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .page {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page h1 {
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .file-upload {
+            border: 2px dashed #ddd;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+        }
+
+        .price-table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .editable-cell {
+            cursor: pointer;
+            padding: 8px;
+            border: 1px solid transparent;
+        }
+
+        .editable-cell:hover {
+            background: #f0f0f0;
+            border: 1px solid #3498db;
+        }
+
+        .editable-cell input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="sidebar">
+            <h2>🔧 管理后台</h2>
+            <div class="nav-item active" onclick="showPage('parameters')">参数管理</div>
+            <div class="nav-item" onclick="showPage('excel')">Excel 导入导出</div>
+            <div class="nav-item" onclick="showPage('prices')">价格表管理</div>
+            <div class="nav-item" onclick="showPage('countries')">国家管理</div>
+            <div class="nav-item" onclick="logout()" style="margin-top: 40px; background: #e74c3c;">🚪 退出登录</div>
+        </div>
+
+        <div class="main-content">
+            <!-- 参数管理页面 -->
+            <div id="parameters" class="page active">
+                <h1>参数管理</h1>
+                <div id="param-alert"></div>
+
+                <div class="form-group">
+                    <label>燃油系数</label>
+                    <input type="number" id="fuel_rate" step="0.1" value="1.4">
+                </div>
+
+                <div class="form-group">
+                    <label>利润系数</label>
+                    <input type="number" id="profit_rate" step="0.1" value="1.2">
+                </div>
+
+                <div class="form-group">
+                    <label>超长附加费（元）</label>
+                    <input type="number" id="oversize_fee" value="350">
+                </div>
+
+                <div class="form-group">
+                    <label>超重附加费（元）</label>
+                    <input type="number" id="overweight_fee" value="750">
+                </div>
+
+                <div class="form-group">
+                    <label>重货阈值（kg）</label>
+                    <input type="number" id="heavy_weight_threshold" value="21">
+                </div>
+
+                <button class="btn btn-primary" onclick="saveParameters()">保存参数</button>
+            </div>
+
+            <!-- Excel 导入导出页面 -->
+            <div id="excel" class="page">
+                <h1>Excel 导入导出</h1>
+                <div id="excel-alert"></div>
+
+                <h3>导入 Excel 文件</h3>
+                <div class="file-upload" onclick="document.getElementById('excel-file').click()">
+                    <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="uploadExcel()">
+                    <p>📁 点击选择 Excel 文件或拖拽文件到此处</p>
+                    <p style="color: #666; font-size: 14px;">支持 .xlsx 和 .xls 格式</p>
+                </div>
+
+                <h3 style="margin-top: 40px;">导出当前价格表</h3>
+                <button class="btn btn-success" onclick="exportExcel()">📥 导出为 Excel</button>
+            </div>
+
+            <!-- 价格表管理页面 -->
+            <div id="prices" class="page">
+                <h1>价格表管理</h1>
+                <div id="price-alert"></div>
+
+                <div class="price-table-container">
+                    <table id="price-table">
+                        <thead>
+                            <tr>
+                                <th>重量(kg)</th>
+                                <th>1区</th>
+                                <th>2区</th>
+                                <th>3区</th>
+                                <th>4区</th>
+                                <th>5区</th>
+                                <th>6区</th>
+                                <th>7区</th>
+                                <th>8区</th>
+                                <th>9区</th>
+                            </tr>
+                        </thead>
+                        <tbody id="price-table-body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <button class="btn btn-primary" style="margin-top: 20px;" onclick="savePriceTable()">保存价格表</button>
+            </div>
+
+            <!-- 国家管理页面 -->
+            <div id="countries" class="page">
+                <h1>国家管理</h1>
+                <div id="country-alert"></div>
+
+                <button class="btn btn-success" onclick="showAddCountryForm()">+ 添加国家</button>
+
+                <table id="country-table">
+                    <thead>
+                        <tr>
+                            <th>国家名称</th>
+                            <th>分区</th>
+                            <th>旺季附加费</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="country-table-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录遮罩层 -->
+    <div id="login-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; width: 90%;">
+            <h2 style="margin-bottom: 30px; text-align: center; color: #2c3e50;">🔐 管理员登录</h2>
+            <div id="login-error" style="display: none; padding: 10px; margin-bottom: 20px; background: #f8d7da; color: #721c24; border-radius: 4px; text-align: center;"></div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">密码</label>
+                <input type="password" id="admin-password" placeholder="请输入管理员密码" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 14px;" onkeypress="if(event.key==='Enter') login()">
+            </div>
+            <button onclick="login()" style="width: 100%; padding: 12px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600;">登录</button>
+            <p style="margin-top: 20px; text-align: center; color: #666; font-size: 14px;">默认密码: admin</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        let authToken = null;
+
+        // 检查是否已登录
+        function checkAuth() {
+            authToken = localStorage.getItem('admin_token');
+            if (authToken) {
+                document.getElementById('login-overlay').style.display = 'none';
+            }
+        }
+
+        // 登录
+        async function login() {
+            const password = document.getElementById('admin-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (!password) {
+                errorDiv.textContent = '请输入密码';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: password})
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.token;
+                    localStorage.setItem('admin_token', authToken);
+                    document.getElementById('login-overlay').style.display = 'none';
+                    errorDiv.style.display = 'none';
+                    loadParameters();
+                } else {
+                    errorDiv.textContent = '密码错误，请重试';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '登录失败，请检查网络连接';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('admin_token');
+            authToken = null;
+            document.getElementById('login-overlay').style.display = 'flex';
+        }
+
+        // 获取请求头
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+            document.getElementById(pageId).classList.add('active');
+            event.target.classList.add('active');
+
+            if (pageId === 'parameters') loadParameters();
+            if (pageId === 'prices') loadPriceTable();
+            if (pageId === 'countries') loadCountries();
+        }
+
+        function showAlert(elementId, message, type) {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => alertDiv.innerHTML = '', 3000);
+        }
+
+        // 参数管理
+        async function loadParameters() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/parameters`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                const params = data.carriers.DHL.parameters;
+
+                document.getElementById('fuel_rate').value = params.fuel_rate;
+                document.getElementById('profit_rate').value = params.profit_rate;
+                document.getElementById('oversize_fee').value = params.oversize_fee;
+                document.getElementById('overweight_fee').value = params.overweight_fee;
+                document.getElementById('heavy_weight_threshold').value = params.heavy_weight_threshold;
+            } catch (error) {
+                if (error.message.includes('401')) {
+                    logout();
+                }
+                showAlert('param-alert', '加载参数失败', 'error');
+            }
+        }
+
+        async function saveParameters() {
+            const params = {
+                fuel_rate: parseFloat(document.getElementById('fuel_rate').value),
+                profit_rate: parseFloat(document.getElementById('profit_rate').value),
+                oversize_fee: parseFloat(document.getElementById('oversize_fee').value),
+                overweight_fee: parseFloat(document.getElementById('overweight_fee').value),
+                heavy_weight_threshold: parseFloat(document.getElementById('heavy_weight_threshold').value)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/parameters`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(params)
+                });
+
+                if (response.ok) {
+                    showAlert('param-alert', '参数保存成功！', 'success');
+                } else {
+                    showAlert('param-alert', '参数保存失败', 'error');
+                }
+            } catch (error) {
+                showAlert('param-alert', '参数保存失败', 'error');
+            }
+        }
+
+        // Excel 导入导出
+        async function uploadExcel() {
+            const fileInput = document.getElementById('excel-file');
+            const file = fileInput.files[0];
+
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/upload-excel`, {
+                    method: 'POST',
+                    headers: {'Authorization': `Bearer ${authToken}`},
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showAlert('excel-alert', 'Excel 文件导入成功！', 'success');
+                } else {
+                    showAlert('excel-alert', 'Excel 文件导入失败', 'error');
+                }
+            } catch (error) {
+                showAlert('excel-alert', 'Excel 文件导入失败', 'error');
+            }
+        }
+
+        async function exportExcel() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/export-excel`, {
+                    headers: {'Authorization': `Bearer ${authToken}`}
+                });
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'dhl_prices.xlsx';
+                a.click();
+                showAlert('excel-alert', 'Excel 文件导出成功！', 'success');
+            } catch (error) {
+                showAlert('excel-alert', 'Excel 文件导出失败', 'error');
+            }
+        }
+
+        // 价格表管理
+        async function loadPriceTable() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/price-table/DHL`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                const priceTable = data.price_table;
+
+                const tbody = document.getElementById('price-table-body');
+                tbody.innerHTML = '';
+
+                Object.keys(priceTable).sort((a, b) => parseFloat(a) - parseFloat(b)).forEach(weight => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${weight}</td>`;
+
+                    for (let i = 1; i <= 9; i++) {
+                        const price = priceTable[weight][`zone${i}`] || 0;
+                        row.innerHTML += `<td class="editable-cell" data-weight="${weight}" data-zone="zone${i}">${price}</td>`;
+                    }
+
+                    tbody.appendChild(row);
+                });
+
+                // 添加点击编辑功能
+                document.querySelectorAll('.editable-cell').forEach(cell => {
+                    cell.addEventListener('click', function() {
+                        const currentValue = this.textContent;
+                        this.innerHTML = `<input type="number" value="${currentValue}" onblur="updatePrice(this)" onkeypress="if(event.key==='Enter') this.blur()">`;
+                        this.querySelector('input').focus();
+                    });
+                });
+            } catch (error) {
+                showAlert('price-alert', '加载价格表失败', 'error');
+            }
+        }
+
+        function updatePrice(input) {
+            const cell = input.parentElement;
+            cell.textContent = input.value;
+        }
+
+        async function savePriceTable() {
+            const priceTable = {};
+
+            document.querySelectorAll('#price-table-body tr').forEach(row => {
+                const weight = row.cells[0].textContent;
+                priceTable[weight] = {};
+
+                for (let i = 1; i <= 9; i++) {
+                    priceTable[weight][`zone${i}`] = parseFloat(row.cells[i].textContent);
+                }
+            });
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/price-table/DHL`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({price_table: priceTable})
+                });
+
+                if (response.ok) {
+                    showAlert('price-alert', '价格表保存成功！', 'success');
+                } else {
+                    showAlert('price-alert', '价格表保存失败', 'error');
+                }
+            } catch (error) {
+                showAlert('price-alert', '价格表保存失败', 'error');
+            }
+        }
+
+        // 国家管理
+        async function loadCountries() {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/countries`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                const countries = data.country_zones;
+
+                const tbody = document.getElementById('country-table-body');
+                tbody.innerHTML = '';
+
+                Object.keys(countries).sort().forEach(country => {
+                    const info = countries[country];
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${country}</td>
+                        <td>${info.zone}</td>
+                        <td>${info.peak_surcharge}</td>
+                        <td>
+                            <button class="btn btn-danger" onclick="deleteCountry('${country}')">删除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                showAlert('country-alert', '加载国家列表失败', 'error');
+            }
+        }
+
+        function showAddCountryForm() {
+            const name = prompt('请输入国家名称：');
+            if (!name) return;
+
+            const zone = prompt('请输入分区（1-9）：');
+            if (!zone) return;
+
+            const peak = prompt('请输入旺季附加费：');
+            if (!peak) return;
+
+            addCountry(name, parseInt(zone), parseFloat(peak));
+        }
+
+        async function addCountry(name, zone, peak_surcharge) {
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/countries`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        country: name,
+                        zone: zone,
+                        peak_surcharge: peak_surcharge
+                    })
+                });
+
+                if (response.ok) {
+                    showAlert('country-alert', '国家添加成功！', 'success');
+                    loadCountries();
+                } else {
+                    showAlert('country-alert', '国家添加失败', 'error');
+                }
+            } catch (error) {
+                showAlert('country-alert', '国家添加失败', 'error');
+            }
+        }
+
+        async function deleteCountry(country) {
+            if (!confirm(`确定要删除 ${country} 吗？`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/admin/countries/${country}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+
+                if (response.ok) {
+                    showAlert('country-alert', '国家删除成功！', 'success');
+                    loadCountries();
+                } else {
+                    showAlert('country-alert', '国家删除失败', 'error');
+                }
+            } catch (error) {
+                showAlert('country-alert', '国家删除失败', 'error');
+            }
+        }
+
+        // 初始加载
+        checkAuth();
+        if (authToken) {
+            loadParameters();
+        }
+    </script>
+</body>
+</html>

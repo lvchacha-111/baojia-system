@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的订单 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+        }
+
+        .bg-dot {
+            position: fixed; inset: 0;
+            background: radial-gradient(circle, #e5e5e5 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1;
+            background: #fff; border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .header-logo {
+            width: 28px; height: 28px;
+            background: #1a1a1a; border-radius: 7px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .header-logo svg {
+            width: 14px; height: 14px;
+            fill: none; stroke: #fff; stroke-width: 2;
+        }
+
+        .header-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+
+        .user-email { font-size: 13px; color: #999; }
+
+        .btn-logout {
+            font-size: 13px; color: #999;
+            background: none; border: none; cursor: pointer;
+            padding: 6px 12px; border-radius: 6px; transition: all 0.15s;
+        }
+
+        .btn-logout:hover { color: #dc2626; background: #fef2f2; }
+
+        .main {
+            position: relative; z-index: 1;
+            max-width: 720px; margin: 0 auto; padding: 60px 32px;
+        }
+
+        .greeting { margin-bottom: 32px; }
+
+        .greeting h2 {
+            font-size: 24px; font-weight: 600; color: #1a1a1a;
+            letter-spacing: -0.3px;
+        }
+
+        .greeting p { font-size: 14px; color: #999; margin-top: 4px; }
+
+        .card-grid {
+            display: grid; gap: 20px;
+        }
+
+        .card {
+            background: #fff; border-radius: 14px; border: 1px solid #eee;
+            padding: 36px 32px; cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none; display: flex; align-items: center; gap: 20px;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            border-color: #ddd;
+        }
+
+        .card-icon {
+            width: 52px; height: 52px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            background: #f0f4ff; color: #4f6ef7;
+        }
+
+        .card-icon svg {
+            width: 24px; height: 24px;
+            fill: none; stroke: currentColor; stroke-width: 1.8;
+        }
+
+        .card-body h3 {
+            font-size: 17px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .card-body p { font-size: 13px; color: #999; }
+
+        .empty-state {
+            text-align: center; padding: 80px 20px;
+        }
+
+        .empty-state .icon {
+            width: 64px; height: 64px; border-radius: 50%;
+            background: #f5f5f5;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .empty-state .icon svg {
+            width: 28px; height: 28px;
+            fill: none; stroke: #ccc; stroke-width: 1.5;
+        }
+
+        .empty-state h3 { font-size: 17px; color: #1a1a1a; margin-bottom: 6px; }
+        .empty-state p { font-size: 14px; color: #999; }
+
+        /* Order cards */
+        .order-card {
+            background: #fff; border-radius: 12px; border: 1px solid #eee;
+            padding: 20px 24px; cursor: pointer;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s; margin-bottom: 12px;
+        }
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-color: #ddd;
+        }
+        .order-left .order-number {
+            font-size: 15px; font-weight: 600; color: #1a1a1a;
+        }
+        .order-left .order-meta {
+            font-size: 13px; color: #999; margin-top: 3px;
+        }
+        .order-sales {
+            font-size: 12px; color: #888; margin-top: 4px;
+        }
+        .order-price {
+            font-size: 18px; font-weight: 700; color: #1a1a1a;
+        }
+
+        /* Detail overlay */
+        .detail-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100; overflow-y: auto;
+        }
+        .detail-overlay.show { display: block; }
+
+        .detail-container {
+            background: #fff; border-radius: 16px;
+            max-width: 680px; margin: 40px auto;
+            padding: 40px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .detail-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 36px; height: 36px; border-radius: 10px;
+            border: none; background: #f5f5f5;
+            font-size: 20px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .detail-close:hover { background: #eee; color: #1a1a1a; }
+
+        .detail-section {
+            background: #fafafa; border-radius: 10px;
+            padding: 16px 20px; margin-bottom: 12px;
+        }
+        .detail-section h4 {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; font-size: 14px;
+        }
+        .detail-row .label { color: #888; }
+        .detail-row .value { color: #1a1a1a; font-weight: 500; }
+
+        .detail-total {
+            text-align: right; margin-top: 16px; padding-top: 16px;
+            border-top: 2px solid #eee;
+            font-size: 24px; font-weight: 700; color: #1a1a1a;
+        }
+        .detail-total small {
+            font-size: 13px; color: #999; font-weight: 400; margin-right: 8px;
+        }
+
+        .svg-preview-box {
+            background: #fff; border: 1px solid #eee; border-radius: 8px;
+            padding: 16px; text-align: center;
+            max-height: 300px; overflow: auto;
+        }
+        .svg-preview-box svg { max-width: 100%; height: auto; }
+        .status-badge {
+            display: inline-block; font-size: 11px; font-weight: 500;
+            padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: middle;
+        }
+        .status-pending { background: #fefce8; color: #a16207; }
+        .status-in_production { background: #eff6ff; color: #2563eb; }
+        .status-completed { background: #f0fdf4; color: #16a34a; }
+        .status-shipped { background: #faf5ff; color: #9333ea; }
+        .status-signed { background: #f0fdf4; color: #15803d; }
+        .status-confirmed { background: #fefce8; color: #ca8a04; }
+        .btn-confirm-quote {
+            display: inline-block; padding: 8px 20px;
+            background: #16a34a; color: #fff;
+            border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; margin-top: 8px;
+        }
+        .btn-confirm-quote:hover { background: #15803d; }
+        .btn-confirm-quote:disabled { opacity: 0.6; cursor: default; }
+        .progress-wrap { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+        .progress-bar { flex: 1; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; background: #22c55e; transition: width 0.4s; }
+        .progress-pct { font-size: 12px; font-weight: 600; color: #22c55e; min-width: 34px; text-align: right; }
+        .status-help {
+            display: inline-block; width: 16px; height: 16px; border-radius: 50%;
+            background: #e5e5e5; color: #999; font-size: 11px; font-weight: 600;
+            text-align: center; line-height: 16px; cursor: help;
+            margin-left: 4px; vertical-align: middle; position: relative;
+        }
+        .status-help .help-tip {
+            display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%); white-space: nowrap;
+            background: #1a1a1a; color: #fff; font-size: 12px; font-weight: 400;
+            padding: 10px 14px; border-radius: 8px; line-height: 1.6;
+            pointer-events: none; z-index: 300;
+        }
+        .status-help:hover .help-tip { display: block; }
+    </style>
+</head>
+<body>
+    <div class="bg-dot"></div>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <span class="header-title">报价系统</span>
+        </div>
+        <div class="header-right">
+            <span class="user-email" id="userEmail"></span>
+            <button class="btn-logout" onclick="logout()">退出</button>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="greeting">
+            <h2>欢迎</h2>
+            <p>查看您的订单和报价</p>
+        </div>
+
+        <div id="orderListContainer">
+            <div class="empty-state" id="emptyState">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </div>
+                <h3>暂无订单</h3>
+                <p>您的订单将在这里显示</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Order detail overlay -->
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-container" id="detailContainer"></div>
+    </div>
+
+    <script type="module">
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "./firebase-init.js";
+        import { collection, getDocs, query, orderBy, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('userEmail').textContent = user.email;
+        let allOrders = [];
+
+        try {
+            const q = query(collection(db, 'users', user.uid, 'quotes'), orderBy('publishedAt', 'desc'));
+            const snapshot = await getDocs(q);
+            allOrders = [];
+            snapshot.forEach(d => { allOrders.push({ id: d.id, ...d.data() }); });
+        } catch (e) {
+            console.error('加载订单失败:', e);
+        }
+
+        if (allOrders.length === 0) {
+            document.getElementById('emptyState').style.display = '';
+        } else {
+            document.getElementById('emptyState').style.display = 'none';
+            let html = '';
+            allOrders.forEach(o => {
+                const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                const s = o.status || 'pending';
+                html += '<div class="order-card" data-oid="' + o.id + '">';
+                html += '<div class="order-left">';
+                html += '<div class="order-number">' + escHTML(o.quoteNumber || '-') + '<span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span></div>';
+                html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
+                // Confirm button for pending orders
+                if (s === 'pending') {
+                    html += '<button class="btn-confirm-quote" data-oid="' + o.id + '" onclick="event.stopPropagation();confirmQuote(\'' + o.id + '\')">确认报价</button>';
+                }
+                // Confirmed hint
+                if (s === 'confirmed') {
+                    html += '<div class="order-sales" style="color:#b45309">已确认 · 等待工厂排工序</div>';
+                }
+                // Progress bar for in_production orders
+                if (s === 'in_production' && o.process) {
+                    const pct = calcProgress(o.process);
+                    html += '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
+                }
+                html += '</div>';
+                if (o.publishedBy) {
+                    html += '<div class="order-sales">负责销售: ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
+                }
+                html += '<div class="order-price">¥' + (o.totalPrice || 0).toFixed(2) + '</div>';
+                html += '</div>';
+            });
+            document.getElementById('orderListContainer').insertAdjacentHTML('afterbegin', html);
+
+            document.querySelectorAll('.order-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    window.location.href = 'order-detail.html?id=' + this.dataset.oid;
+                });
+            });
+        }
+
+        function showOrderDetail(o) {
+            const container = document.getElementById('detailContainer');
+            const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            let html = '<button class="detail-close" onclick="document.getElementById(\'detailOverlay\').classList.remove(\'show\')">×</button>';
+            const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+            const st = o.status || 'pending';
+            html += '<div class="detail-header" style="text-align:center;margin-bottom:24px;padding:20px;background:#f8f9fa;border-radius:10px">';
+            html += '<div style="font-size:13px;color:#999">报价编号</div>';
+            html += '<div style="font-size:20px;font-weight:700;color:#1a1a1a;margin-top:4px">' + escHTML(o.quoteNumber || '-') + '</div>';
+            html += '<div style="font-size:13px;margin-top:8px"><span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span><span class="status-help">?<span class="help-tip">销售报价 → 客户确认 → 工厂排工序 → 生产中 → 已完成<br>待确认 → 已确认 → 生产中 → 生产中 → 已完成</span></span></div>';
+            html += '<div style="font-size:14px;color:#666;margin-top:6px">' + date + '</div>';
+            if (o.publishedBy) {
+                html += '<div style="font-size:13px;color:#888;margin-top:4px">负责销售: ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
+            }
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>产品信息</h4>';
+            html += '<div class="detail-row"><span class="label">产品ID</span><span class="value">' + escHTML(o.productId || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">产品名称</span><span class="value">' + escHTML(o.productName || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">使用区域</span><span class="value">' + escHTML(o.usageArea || '-') + '</span></div>';
+            html += '</div>';
+
+            if (o.fontPrices && o.fontPrices.length > 0) {
+                html += '<div class="detail-section"><h4>字体明细</h4>';
+                o.fontPrices.forEach(f => {
+                    html += '<div class="detail-row"><span class="label">长' + (f.length||0).toFixed(2) + '×宽' + (f.width||0).toFixed(2) + '×厚' + (f.thickness||0) + 'mm × ' + (f.quantity||0) + '个</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
+                });
+                html += '</div>';
+            }
+
+            html += '<div class="detail-section"><h4>配置</h4>';
+            html += '<div class="detail-row"><span class="label">表面颜色</span><span class="value">' + escHTML(o.surfaceColor||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">喷漆标准</span><span class="value">' + escHTML(o.paint||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value">' + escHTML(o.power||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">固定方式</span><span class="value">' + escHTML(o.fixing||'-') + '</span></div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>价格明细</h4>';
+            html += '<div class="detail-row"><span class="label">产品总价</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="detail-row"><span class="label">表面处理</span><span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="detail-row"><span class="label">喷漆费用</span><span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span></div>';
+            if (o.laborFee > 0) html += '<div class="detail-row"><span class="label">人工费</span><span class="value">¥' + o.laborFee.toFixed(2) + '</span></div>';
+            html += '</div>';
+
+            if (o.freight) {
+                html += '<div class="detail-section"><h4>运费</h4>';
+                html += '<div class="detail-row"><span class="label">目的地</span><span class="value">' + escHTML(o.freight.destination||'-') + '</span></div>';
+                html += '<div class="detail-row"><span class="label">运费</span><span class="value">¥' + o.freight.price.toFixed(2) + '</span></div>';
+                html += '</div>';
+            }
+
+            if (o.process && o.process.steps && o.process.steps.length > 0) {
+                const pct = calcProgress(o.process);
+                html += '<div class="detail-section"><h4>生产进度</h4>';
+                html += '<div class="progress-wrap" style="margin-bottom:12px"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
+                html += '<div style="font-size:13px">';
+                o.process.steps.forEach(s => {
+                    html += '<div style="padding:4px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
+                });
+                if (o.process.surfaceTreatments && o.process.surfaceTreatments.length > 0) {
+                    o.process.surfaceTreatments.forEach(s => {
+                        html += '<div style="padding:4px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
+                    });
+                }
+                html += '</div></div>';
+            }
+
+            if (o.svgContent) {
+                html += '<div class="detail-section"><h4>矢量图</h4>';
+                html += '<div class="svg-preview-box">' + o.svgContent + '</div>';
+                html += '</div>';
+            }
+            html += '<div class="detail-total"><small>总价</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
+
+            container.innerHTML = html;
+            document.getElementById('detailOverlay').classList.add('show');
+        }
+
+        document.getElementById('detailOverlay').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+
+        function calcProgress(proc) {
+            if (!proc || !proc.steps || proc.steps.length === 0) return 0;
+            const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
+            const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
+            return total > 0 ? Math.round(done / total * 100) : 0;
+        }
+
+        window.confirmQuote = async function(orderId) {
+            const o = allOrders.find(x => x.id === orderId);
+            if (!o || o.status !== 'pending') return;
+
+            // Find and update the button to show loading state
+            const card = document.querySelector('.order-card[data-oid="' + orderId + '"]');
+            let btn = null;
+            if (card) {
+                btn = card.querySelector('.btn-confirm-quote');
+                if (btn) { btn.disabled = true; btn.textContent = '确认中...'; }
+            }
+
+            try {
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'confirmed' });
+                o.status = 'confirmed';
+
+                // Sync to sales copy
+                if (o.publishedByUid) {
+                    try {
+                        await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { status: 'confirmed' });
+                    } catch (e) {
+                        console.error('同步确认状态到销售端失败:', e);
+                    }
+                }
+
+                // Update UI in place instead of reload
+                if (btn) {
+                    btn.textContent = '已确认 ✓';
+                    btn.style.background = '#16a34a';
+                    btn.style.color = '#fff';
+                    btn.style.border = 'none';
+                    btn.style.cursor = 'default';
+                    btn.disabled = false;
+                }
+                // Update status badge
+                if (card) {
+                    const badge = card.querySelector('.status-badge');
+                    if (badge) {
+                        badge.textContent = '已确认';
+                        badge.className = 'status-badge status-confirmed';
+                    }
+                }
+            } catch (err) {
+                console.error('确认报价失败:', err);
+                if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                alert('确认失败，请重试: ' + (err.message || '未知错误'));
+            }
+        };
+
+        function escHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        window.logout = async function() {
+            await firebaseLogout();
+            window.location.href = 'login.html';
+        };
+    </script>
+</body>
+</html>

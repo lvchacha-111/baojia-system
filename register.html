@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .bg-gradient {
+            position: fixed; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative; width: 400px;
+            background: #fff; border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 40px rgba(0,0,0,0.06);
+            padding: 48px 40px;
+        }
+
+        .logo { text-align: center; margin-bottom: 40px; }
+
+        .logo-icon {
+            width: 44px; height: 44px; background: #1a1a1a; border-radius: 12px;
+            display: inline-flex; align-items: center; justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon svg {
+            width: 22px; height: 22px;
+            fill: none; stroke: #fff; stroke-width: 2;
+        }
+
+        h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+        .subtitle { font-size: 14px; color: #999; margin-top: 6px; }
+
+        .form-group { margin-bottom: 20px; }
+
+        label {
+            display: block; font-size: 13px; font-weight: 500;
+            color: #555; margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%; height: 44px; padding: 0 14px;
+            border: 1.5px solid #e8e8e8; border-radius: 10px;
+            font-size: 15px; color: #1a1a1a; background: #fafafa;
+            transition: all 0.2s; outline: none;
+        }
+
+        input:focus {
+            border-color: #6366f1; background: #fff;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+        }
+
+        input::placeholder { color: #ccc; }
+
+        .btn {
+            width: 100%; height: 44px;
+            background: #1a1a1a; color: #fff;
+            border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #333; transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .searchable-select { position: relative; }
+        .searchable-select .dropdown {
+            display: none; position: absolute; top: 100%; left: 0; right: 0;
+            max-height: 200px; overflow-y: auto;
+            background: #fff; border: 1px solid #e8e8e8; border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1); z-index: 10;
+        }
+        .searchable-select .dropdown.show { display: block; }
+        .searchable-select .dropdown .item {
+            padding: 10px 14px; font-size: 14px; color: #1a1a1a; cursor: pointer;
+            transition: background 0.1s;
+        }
+        .searchable-select .dropdown .item:hover { background: #f5f5f5; }
+        .searchable-select .dropdown .item.selected { background: #eef2ff; color: #6366f1; }
+        .searchable-select .dropdown .no-result {
+            padding: 10px 14px; font-size: 13px; color: #999; text-align: center;
+        }
+
+        .form-hint { font-size: 12px; color: #bbb; margin-top: 2px; }
+
+        .error {
+            background: #fef2f2; border: 1px solid #fecaca;
+            color: #dc2626; padding: 10px 14px; border-radius: 10px;
+            font-size: 13px; margin-bottom: 20px; display: none;
+        }
+
+        .footer-link { text-align: center; margin-top: 24px; font-size: 14px; color: #999; }
+        .footer-link a { color: #6366f1; text-decoration: none; font-weight: 500; }
+        .footer-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <h1>创建账户</h1>
+            <p class="subtitle">注册报价系统账户</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" placeholder="至少6位" autocomplete="new-password" required>
+            </div>
+            <div class="form-group">
+                <label>确认密码</label>
+                <input type="password" id="confirmPassword" placeholder="再次输入密码" autocomplete="new-password" required>
+            </div>
+
+            <div class="form-group">
+                <label>姓名</label>
+                <input type="text" id="displayName" placeholder="您的姓名" autocomplete="name" required>
+            </div>
+
+            <div class="form-group">
+                <label>国家/地区</label>
+                <div class="searchable-select" id="countrySelect">
+                    <input type="text" id="countryInput" placeholder="输入搜索国家..." autocomplete="off" required>
+                    <input type="hidden" id="country" value="">
+                    <div class="dropdown" id="countryDropdown"></div>
+                </div>
+                <div class="form-hint">输入关键词搜索选择</div>
+            </div>
+
+            <div class="form-group">
+                <label>联系邮箱</label>
+                <input type="email" id="contactEmail" placeholder="您的联系邮箱" autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label>公司名称 <span style="color:#999;font-weight:400;">（选填）</span></label>
+                <input type="text" id="company" placeholder="公司名称（选填）" autocomplete="organization">
+            </div>
+
+            <button type="submit" class="btn">注册</button>
+        </form>
+
+        <p class="footer-link">
+            已有账户？<a href="login.html">去登录</a>
+        </p>
+    </div>
+
+    <script type="module">
+        import { auth, db } from "./firebase-init.js";
+        import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const COUNTRIES = [
+            '中国','美国','日本','韩国','英国','法国','德国','意大利','西班牙','葡萄牙',
+            '俄罗斯','加拿大','澳大利亚','新西兰','巴西','阿根廷','墨西哥','印度','印度尼西亚',
+            '泰国','越南','马来西亚','新加坡','菲律宾','缅甸','柬埔寨','老挝','文莱','东帝汶',
+            '巴基斯坦','孟加拉国','斯里兰卡','尼泊尔','阿富汗','伊朗','伊拉克','沙特阿拉伯',
+            '阿联酋','卡塔尔','科威特','阿曼','巴林','也门','约旦','黎巴嫩','以色列','巴勒斯坦',
+            '土耳其','埃及','南非','尼日利亚','肯尼亚','埃塞俄比亚','坦桑尼亚','加纳','摩洛哥',
+            '阿尔及利亚','突尼斯','利比亚','苏丹','安哥拉','刚果','喀麦隆','科特迪瓦','塞内加尔',
+            '乌克兰','波兰','罗马尼亚','捷克','匈牙利','奥地利','瑞士','荷兰','比利时','卢森堡',
+            '丹麦','瑞典','挪威','芬兰','冰岛','爱尔兰','希腊','保加利亚','克罗地亚','塞尔维亚',
+            '斯洛伐克','斯洛文尼亚','立陶宛','拉脱维亚','爱沙尼亚','白俄罗斯','摩尔多瓦','格鲁吉亚',
+            '亚美尼亚','阿塞拜疆','哈萨克斯坦','乌兹别克斯坦','土库曼斯坦','吉尔吉斯斯坦','塔吉克斯坦',
+            '蒙古','朝鲜','智利','秘鲁','哥伦比亚','委内瑞拉','古巴','巴拿马','哥斯达黎加','牙买加',
+            '中国香港','中国澳门','中国台湾','波多黎各','关岛','斐济','巴布亚新几内亚','马尔代夫',
+            '毛里求斯','塞舌尔','冰岛','马耳他','塞浦路斯','巴哈马','百慕大','开曼群岛','英属维尔京群岛',
+            '洪都拉斯','危地马拉','萨尔瓦多','尼加拉瓜','玻利维亚','乌拉圭','巴拉圭','厄瓜多尔',
+            '多米尼加','海地','巴林','特立尼达和多巴哥','苏里南','圭亚那','法属圭亚那','留尼汪',
+            '毛里塔尼亚','马里','尼日尔','乍得','索马里','吉布提','厄立特里亚','布基纳法索',
+            '贝宁','多哥','加蓬','赤道几内亚','中非','南苏丹','卢旺达','布隆迪','乌干达',
+            '马拉维','赞比亚','津巴布韦','博茨瓦纳','纳米比亚','莫桑比克','马达加斯加','科摩罗',
+            '莱索托','斯威士兰','冈比亚','几内亚','几内亚比绍','塞拉利昂','利比里亚','佛得角'
+        ];
+
+        // ---- country searchable select ----
+        const countryInput = document.getElementById('countryInput');
+        const countryHidden = document.getElementById('country');
+        const countryDropdown = document.getElementById('countryDropdown');
+
+        function filterCountries(query) {
+            const q = query.toLowerCase();
+            return COUNTRIES.filter(c => c.toLowerCase().includes(q));
+        }
+
+        function renderCountryList(filtered) {
+            if (filtered.length === 0) {
+                countryDropdown.innerHTML = '<div class="no-result">未找到匹配国家</div>';
+            } else {
+                countryDropdown.innerHTML = filtered.map(c =>
+                    '<div class="item' + (c === countryHidden.value ? ' selected' : '') + '" data-val="' + c + '">' + c + '</div>'
+                ).join('');
+            }
+            countryDropdown.classList.add('show');
+        }
+
+        countryInput.addEventListener('input', function() {
+            renderCountryList(filterCountries(this.value));
+        });
+
+        countryInput.addEventListener('focus', function() {
+            const q = this.value.trim();
+            renderCountryList(q ? filterCountries(q) : COUNTRIES);
+        });
+
+        countryInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                countryDropdown.classList.remove('show');
+                if (countryHidden.value) countryInput.value = countryHidden.value;
+                else countryInput.value = '';
+            }, 150);
+        });
+
+        countryInput.addEventListener('keydown', function(e) {
+            const items = countryDropdown.querySelectorAll('.item');
+            let idx = -1;
+            items.forEach((it, i) => { if (it.classList.contains('selected')) idx = i; });
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                idx = Math.min(idx + 1, items.length - 1);
+                items.forEach(it => it.classList.remove('selected'));
+                if (items[idx]) { items[idx].classList.add('selected'); items[idx].scrollIntoView({block:'nearest'}); }
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                idx = Math.max(idx - 1, 0);
+                items.forEach(it => it.classList.remove('selected'));
+                if (items[idx]) { items[idx].classList.add('selected'); items[idx].scrollIntoView({block:'nearest'}); }
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (items[idx]) {
+                    countryHidden.value = items[idx].dataset.val;
+                    countryInput.value = items[idx].dataset.val;
+                    countryDropdown.classList.remove('show');
+                }
+            }
+        });
+
+        countryDropdown.addEventListener('mousedown', function(e) {
+            const item = e.target.closest('.item');
+            if (item) {
+                countryHidden.value = item.dataset.val;
+                countryInput.value = item.dataset.val;
+                countryDropdown.classList.remove('show');
+            }
+        });
+
+        // ---- form submit ----
+        const form = document.getElementById('registerForm');
+        const error = document.getElementById('error');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirmPassword').value;
+            const name = document.getElementById('displayName').value.trim();
+            const country = document.getElementById('country').value;
+            const contactEmail = document.getElementById('contactEmail').value.trim();
+            const company = document.getElementById('company').value.trim();
+
+            if (!email || !password) { showError('请输入邮箱和密码'); return; }
+            if (password.length < 6) { showError('密码至少需要6位'); return; }
+            if (password !== confirm) { showError('两次输入的密码不一致'); return; }
+            if (!name) { showError('请输入姓名'); return; }
+            if (!country) { showError('请选择国家/地区'); return; }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '注册中...';
+            error.style.display = 'none';
+
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await setDoc(doc(db, 'clientProfiles', cred.user.uid), {
+                    name,
+                    country,
+                    contactEmail: contactEmail || email,
+                    company,
+                    registeredAt: serverTimestamp()
+                });
+                window.location.href = 'user.html';
+            } catch (err) {
+                showError(errMsg(err.code));
+                submitBtn.disabled = false;
+                submitBtn.textContent = '注册';
+            }
+        });
+
+        function showError(msg) { error.textContent = msg; error.style.display = 'block'; }
+
+        function errMsg(code) {
+            const map = {
+                'auth/email-already-in-use': '该邮箱已被注册',
+                'auth/invalid-email': '邮箱格式不正确',
+                'auth/weak-password': '密码强度不够（至少6位）',
+                'auth/too-many-requests': '操作太频繁，请稍后再试'
+            };
+            return map[code] || '注册失败，请重试';
+        }
+    </script>
+</body>
+</html>

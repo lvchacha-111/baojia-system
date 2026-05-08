@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作台 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.04) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1; flex-shrink: 0;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .header-logo {
+            width: 30px; height: 30px;
+            background: #1a1a1a; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .header-logo svg {
+            width: 16px; height: 16px;
+            fill: none; stroke: #fff; stroke-width: 2;
+        }
+
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+
+        .header-right { display: flex; align-items: center; gap: 16px; }
+
+        .user-email { font-size: 13px; color: #999; }
+
+        .btn-logout {
+            font-size: 13px; color: #999;
+            background: none; border: none; cursor: pointer;
+            padding: 6px 12px; border-radius: 6px; transition: all 0.15s;
+        }
+
+        .btn-logout:hover { color: #dc2626; background: #fef2f2; }
+
+        .layout {
+            position: relative; z-index: 1;
+            display: flex; flex: 1; min-height: 0;
+        }
+
+        /* ---- sidebar ---- */
+        .sidebar {
+            width: 280px; flex-shrink: 0;
+            background: #fff; border-right: 1px solid #eee;
+            display: flex; flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px 20px 12px;
+            font-size: 15px; font-weight: 600; color: #1a1a1a;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .sidebar-search {
+            padding: 12px 20px;
+        }
+
+        .sidebar-search input {
+            width: 100%; height: 34px; padding: 0 12px;
+            border: 1px solid #e8e8e8; border-radius: 8px;
+            font-size: 13px; color: #1a1a1a; background: #fafafa;
+            outline: none; transition: border-color 0.15s;
+        }
+
+        .sidebar-search input:focus { border-color: #6366f1; }
+
+        .sidebar-list {
+            flex: 1; overflow-y: auto; padding: 0 12px 12px;
+        }
+
+        .sidebar-list .client-item {
+            padding: 12px 12px; border-radius: 10px; cursor: pointer;
+            transition: background 0.15s; margin-bottom: 2px;
+        }
+
+        .client-item:hover { background: #f5f5f5; }
+        .client-item.active { background: #eef2ff; }
+
+        .client-item .client-name {
+            font-size: 14px; font-weight: 500; color: #1a1a1a;
+        }
+
+        .client-item .client-country {
+            font-size: 12px; color: #999; margin-top: 2px;
+        }
+
+        .sidebar-list .no-clients {
+            text-align: center; padding: 40px 20px; color: #999; font-size: 13px;
+        }
+
+        .sidebar-list .loading {
+            text-align: center; padding: 40px 20px; color: #bbb; font-size: 13px;
+        }
+
+        /* ---- main area ---- */
+        .main {
+            flex: 1; padding: 48px 40px; overflow-y: auto;
+        }
+
+        .greeting { margin-bottom: 40px; }
+
+        .greeting h2 {
+            font-size: 26px; font-weight: 600; color: #1a1a1a;
+            letter-spacing: -0.5px;
+        }
+
+        .greeting p { font-size: 15px; color: #999; margin-top: 6px; }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            max-width: 800px;
+        }
+
+        .card {
+            background: #fff; border-radius: 14px; border: 1px solid #eee;
+            padding: 32px 28px; cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none; display: block;
+            position: relative; overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border-color: #ddd;
+        }
+
+        .card-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .card-icon.quote  { background: #eef2ff; color: #6366f1; }
+        .card-icon.factory { background: #f0fdf4; color: #22c55e; }
+        .card-icon.client  { background: #fefce8; color: #eab308; }
+
+        .card-icon svg {
+            width: 24px; height: 24px;
+            fill: none; stroke: currentColor; stroke-width: 2;
+        }
+
+        .card h3 {
+            font-size: 17px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 6px; letter-spacing: -0.3px;
+        }
+
+        .card p { font-size: 13px; color: #999; line-height: 1.5; }
+
+        .card .badge {
+            display: inline-block; font-size: 11px; padding: 3px 8px;
+            border-radius: 4px; margin-top: 12px; font-weight: 500;
+        }
+
+        .badge-ready { background: #eef2ff; color: #6366f1; }
+        .badge-soon  { background: #f5f5f5; color: #999; }
+
+        /* ---- detail overlay ---- */
+        .detail-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100; overflow-y: auto;
+        }
+        .detail-overlay.show { display: block; }
+
+        .detail-container {
+            background: #fff; border-radius: 16px;
+            max-width: 680px; margin: 40px auto;
+            padding: 40px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .detail-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 36px; height: 36px; border-radius: 10px;
+            border: none; background: #f5f5f5;
+            font-size: 20px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .detail-close:hover { background: #eee; color: #1a1a1a; }
+
+        .detail-header {
+            text-align: center; margin-bottom: 24px;
+            padding: 20px; background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .detail-header .name {
+            font-size: 22px; font-weight: 700; color: #1a1a1a;
+        }
+        .detail-header .meta {
+            font-size: 13px; color: #999; margin-top: 6px;
+        }
+
+        .detail-section {
+            background: #fafafa; border-radius: 10px;
+            padding: 16px 20px; margin-bottom: 12px;
+        }
+        .detail-section h4 {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 10px; padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-row {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; font-size: 14px;
+        }
+        .detail-row .label { color: #888; }
+        .detail-row .value { color: #1a1a1a; font-weight: 500; }
+
+        .order-item {
+            background: #fff; border: 1px solid #eee; border-radius: 8px;
+            padding: 12px 16px; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: default; transition: all 0.15s;
+        }
+        .order-item:hover { border-color: #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .order-item .order-left .order-number {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+        }
+        .order-item .order-left .order-meta {
+            font-size: 12px; color: #999; margin-top: 2px;
+        }
+        .order-item .order-price {
+            font-size: 16px; font-weight: 700; color: #1a1a1a;
+        }
+        .no-orders {
+            text-align: center; padding: 20px; color: #999; font-size: 13px;
+        }
+
+        .order-publisher {
+            display: inline-block; font-size: 11px; font-weight: 500;
+            padding: 2px 8px; border-radius: 4px;
+            background: #eef2ff; color: #6366f1;
+            margin-left: 8px; vertical-align: middle;
+        }
+
+        .svg-hover-preview {
+            display: none; position: fixed;
+            z-index: 200; pointer-events: none;
+            background: #fff; border: 1px solid #e0e0e0;
+            border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+            padding: 12px; max-width: 360px; max-height: 320px;
+            overflow: auto;
+        }
+        .svg-hover-preview svg { max-width: 100%; max-height: 290px; }
+        .svg-hover-preview .no-svg { font-size: 13px; color: #999; padding: 20px; text-align: center; }
+
+        /* ---- editable detail ---- */
+        .order-item { cursor: pointer; }
+        .detail-input {
+            width: 100px; text-align: right;
+            border: 1px solid #ddd; border-radius: 6px;
+            padding: 4px 8px; font-size: 14px; font-weight: 500;
+            color: #1a1a1a; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .detail-input:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+        .detail-select {
+            border: 1px solid #ddd; border-radius: 6px;
+            padding: 4px 8px; font-size: 14px; font-weight: 500;
+            color: #1a1a1a; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .detail-select:focus { border-color: #6366f1; outline: none; box-shadow: 0 0 0 2px rgba(99,102,241,0.1); }
+        .detail-total {
+            text-align: right; margin-top: 16px; padding-top: 16px;
+            border-top: 2px solid #eee;
+            font-size: 24px; font-weight: 700; color: #1a1a1a;
+        }
+        .detail-total small { font-size: 13px; color: #999; font-weight: 400; margin-right: 8px; }
+        .svg-preview-box {
+            background: #fff; border: 1px solid #eee;
+            border-radius: 10px; padding: 16px;
+            text-align: center; margin-top: 8px;
+            max-height: 300px; overflow: auto;
+        }
+        .svg-preview-box svg { max-width: 100%; max-height: 260px; }
+        .btn-save-detail {
+            padding: 10px 32px; background: #1a1a1a; color: #fff;
+            border: none; border-radius: 10px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-save-detail:hover { background: #333; }
+        .btn-save-detail:disabled { opacity: 0.6; cursor: default; }
+        .btn-delete-detail {
+            padding: 10px 20px; background: none; color: #dc2626;
+            border: 1px solid #fecaca; border-radius: 10px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-delete-detail:hover { background: #fef2f2; }
+        .btn-back-detail {
+            font-size: 13px; color: #666; background: none; border: none;
+            cursor: pointer; padding: 6px 0; margin-bottom: 16px;
+        }
+        .btn-back-detail:hover { color: #1a1a1a; }
+        .btn-row-detail { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .btn-row-detail .right { display: flex; gap: 10px; }
+        .status-badge {
+            display: inline-block; font-size: 11px; font-weight: 500;
+            padding: 2px 8px; border-radius: 4px;
+        }
+        .status-pending { background: #fefce8; color: #a16207; }
+        .status-in_production { background: #eff6ff; color: #2563eb; }
+        .status-completed { background: #f0fdf4; color: #16a34a; }
+        .status-shipped { background: #faf5ff; color: #9333ea; }
+        .status-signed { background: #f0fdf4; color: #15803d; }
+        .status-confirmed { background: #fef3c7; color: #b45309; }
+
+        .locked-badge {
+            display: inline-block; font-size: 10px; font-weight: 600;
+            padding: 2px 6px; border-radius: 3px;
+            background: #fef2f2; color: #dc2626;
+            margin-left: 6px; vertical-align: middle;
+        }
+
+        .double-confirm-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 300;
+            align-items: center; justify-content: center;
+        }
+        .double-confirm-overlay.show { display: flex; }
+
+        .double-confirm-dialog {
+            background: #fff; border-radius: 16px;
+            padding: 32px 36px; max-width: 420px; width: 90%;
+            text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .double-confirm-dialog h3 {
+            font-size: 18px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        .double-confirm-dialog p {
+            font-size: 14px; color: #666; margin-bottom: 24px; line-height: 1.5;
+        }
+        .double-confirm-dialog .btn-row {
+            display: flex; gap: 12px; justify-content: center;
+        }
+        .btn-dc-cancel {
+            padding: 10px 24px; background: #f5f5f5; color: #666;
+            border: 1px solid #e8e8e8; border-radius: 10px;
+            font-size: 14px; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-dc-cancel:hover { background: #eee; }
+        .btn-dc-confirm {
+            padding: 10px 24px; background: #dc2626; color: #fff;
+            border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-dc-confirm:hover { background: #b91c1c; }
+
+        .client-item { position: relative; }
+
+        .unread-dot {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #dc2626;
+        }
+
+        .btn-chat {
+            display: inline-block; padding: 6px 14px;
+            background: #6366f1; color: #fff;
+            border: none; border-radius: 6px;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            transition: all 0.15s; margin-left: 12px;
+            vertical-align: middle;
+        }
+        .btn-chat:hover { background: #4f46e5; }
+
+        /* Chat overlay */
+        .chat-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 250; align-items: center; justify-content: center;
+        }
+        .chat-overlay.show { display: flex; }
+
+        .chat-dialog {
+            background: #fff; border-radius: 16px;
+            width: 460px; max-height: 600px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+        }
+        .chat-header h3 { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+        .chat-close {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #f5f5f5;
+            font-size: 18px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .chat-close:hover { background: #eee; color: #1a1a1a; }
+
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px 20px;
+            display: flex; flex-direction: column; gap: 12px;
+            min-height: 200px; max-height: 380px;
+        }
+        .chat-messages .empty { text-align: center; color: #ccc; font-size: 13px; padding: 60px 0; }
+
+        .chat-bubble {
+            max-width: 72%; padding: 10px 14px;
+            border-radius: 18px; font-size: 14px; line-height: 1.5;
+            word-break: break-word; position: relative;
+        }
+        .chat-bubble.left {
+            align-self: flex-start;
+            background: #f0f0f0; color: #1a1a1a;
+            border-top-left-radius: 4px;
+        }
+        .chat-bubble.right {
+            align-self: flex-end;
+            background: #95ec69; color: #1a1a1a;
+            border-top-right-radius: 4px;
+        }
+        .chat-bubble .time {
+            display: block; font-size: 11px; color: #999;
+            margin-top: 4px; text-align: right;
+        }
+
+        .chat-input-area {
+            display: flex; gap: 8px; padding: 12px 16px;
+            border-top: 1px solid #eee; flex-shrink: 0;
+        }
+        .chat-input-area textarea {
+            flex: 1; height: 38px; max-height: 80px;
+            padding: 9px 12px; border: 1px solid #e8e8e8;
+            border-radius: 10px; font-size: 14px; color: #1a1a1a;
+            background: #fafafa; outline: none; resize: none;
+            font-family: inherit;
+            transition: border-color 0.15s;
+        }
+        .chat-input-area textarea:focus { border-color: #6366f1; background: #fff; }
+        .chat-send {
+            width: 56px; flex-shrink: 0;
+            background: #6366f1; color: #fff;
+            border: none; border-radius: 10px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chat-send:hover { background: #4f46e5; }
+        .chat-send:disabled { opacity: 0.5; cursor: default; }
+
+        @media (max-width: 800px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 300px; border-right: none; border-bottom: 1px solid #eee; }
+            .main { padding: 32px 20px; }
+            .card-grid { grid-template-columns: 1fr; }
+            .header { padding: 0 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <span class="header-title">报价系统</span>
+        </div>
+        <div class="header-right">
+            <span class="user-email" id="userEmail"></span>
+            <button class="btn-logout" onclick="logout()">退出</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">现有客户</div>
+            <div class="sidebar-search">
+                <input type="text" id="clientSearch" placeholder="搜索客户...">
+            </div>
+            <div class="sidebar-list" id="clientList">
+                <div class="loading">加载中...</div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <div class="greeting">
+                <h2>工作台</h2>
+                <p>选择您需要的功能</p>
+            </div>
+
+            <div class="card-grid">
+                <a href="quote.html" class="card">
+                    <div class="card-icon quote">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                        </svg>
+                    </div>
+                    <h3>报价</h3>
+                    <p>产品报价、运费计算、报价单生成</p>
+                    <span class="badge badge-ready">可用</span>
+                </a>
+
+                <a href="factory.html" class="card">
+                    <div class="card-icon factory">
+                        <svg viewBox="0 0 24 24">
+                            <rect x="2" y="7" width="20" height="15" rx="2"/>
+                            <path d="M8 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/>
+                        </svg>
+                    </div>
+                    <h3>厂内工序</h3>
+                    <p>工序跟踪、生产管理、进度查询</p>
+                    <span class="badge badge-ready">可用</span>
+                </a>
+
+                <a href="customers.html" class="card">
+                    <div class="card-icon client">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <h3>我的客户</h3>
+                    <p>客户管理、历史报价、删除记录</p>
+                    <span class="badge badge-ready">可用</span>
+                </a>
+            </div>
+        </main>
+    </div>
+
+    <div class="detail-overlay" id="detailOverlay">
+        <div class="detail-container" id="detailContainer"></div>
+    </div>
+
+    <div class="svg-hover-preview" id="svgHoverPreview"></div>
+
+    <div class="double-confirm-overlay" id="doubleConfirmOverlay">
+        <div class="double-confirm-dialog">
+            <h3>确认标记为已完成</h3>
+            <p>此操作会将订单状态更改为"已完成"，并同步到客户端。是否继续？</p>
+            <div class="btn-row">
+                <button class="btn-dc-cancel" onclick="closeDoubleConfirm()">取消</button>
+                <button class="btn-dc-confirm" id="btnDcConfirm" onclick="executeDoubleConfirm()">确认完成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat overlay -->
+    <div class="chat-overlay" id="chatOverlay">
+        <div class="chat-dialog">
+            <div class="chat-header">
+                <h3 id="chatTitle">对话</h3>
+                <button class="chat-close" onclick="closeChat()">×</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="empty">暂无消息</div>
+            </div>
+            <div class="chat-input-area" id="chatInputArea">
+                <textarea id="chatInput" rows="1" placeholder="输入消息..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSalesMessage()}"></textarea>
+                <button class="chat-send" id="btnChatSend" onclick="sendSalesMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "./firebase-init.js";
+        import { collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc, onSnapshot, setDoc, addDoc, serverTimestamp, where, limit } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('userEmail').textContent = user.email;
+
+        const isAdmin = user.email === 'sales01@test.com';
+
+        // Preload customer names for quote page (only pool clients assigned to this sales, or all for admin)
+        try {
+            const nameSet = new Set();
+            const profileSnap = await getDocs(collection(db, 'clientProfiles'));
+            profileSnap.forEach(d => {
+                const data = d.data();
+                if (!data.name) return;
+                if (isAdmin || data.assignedTo === user.email) nameSet.add(data.name);
+            });
+            const names = Array.from(nameSet).sort((a, b) => a.localeCompare(b, 'zh'));
+            sessionStorage.setItem('_customerList', JSON.stringify(names));
+            sessionStorage.setItem('_customerListV4', '1');
+        } catch (e) {
+            console.error('预加载客户列表失败:', e);
+        }
+
+        // ---- Load registered clients ----
+        let allClients = [];
+        let unreadUids = new Set();
+
+        async function loadClients() {
+            const listEl = document.getElementById('clientList');
+            try {
+                const snapshot = await getDocs(collection(db, 'clientProfiles'));
+                allClients = [];
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    if (!isAdmin && data.assignedTo !== user.email) return;
+                    allClients.push({ uid: d.id, ...data });
+                });
+                allClients.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
+
+                // Start conversation listener for unread dots
+                startConversationListener();
+
+                renderClientList(allClients);
+            } catch (e) {
+                console.error('加载客户列表失败:', e);
+                listEl.innerHTML = '<div class="no-clients">加载失败</div>';
+            }
+        }
+
+        function startConversationListener() {
+            let q;
+            if (isAdmin) {
+                q = query(collection(db, 'conversations'));
+            } else {
+                q = query(collection(db, 'conversations'), where('salesEmail', '==', user.email));
+            }
+            onSnapshot(q, (snap) => {
+                unreadUids.clear();
+                snap.forEach(d => {
+                    if (d.data().unreadForSales) unreadUids.add(d.id);
+                });
+                renderClientList(allClients);
+            }, (err) => {
+                console.error('Conversation listener error:', err);
+            });
+        }
+
+        function renderClientList(clients) {
+            const listEl = document.getElementById('clientList');
+            if (clients.length === 0) {
+                listEl.innerHTML = '<div class="no-clients">暂无注册客户</div>';
+                return;
+            }
+            listEl.innerHTML = clients.map(c => {
+                const name = c.name || '未命名';
+                const country = c.country || '-';
+                let nameHtml = escHTML(name);
+                if (isAdmin && c.assignedTo) {
+                    nameHtml += ' <span style="font-size:11px;color:#999;font-weight:400">(' + escHTML(c.assignedTo.split('@')[0]) + ')</span>';
+                }
+                const dotHtml = unreadUids.has(c.uid) ? '<span class="unread-dot"></span>' : '';
+                return '<div class="client-item" data-uid="' + c.uid + '" onclick="showClientDetail(\'' + c.uid + '\')">' +
+                    '<div class="client-name">' + nameHtml + dotHtml + '</div>' +
+                    '<div class="client-country">' + escHTML(country) + '</div></div>';
+            }).join('');
+        }
+
+        document.getElementById('clientSearch').addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            if (!q) { renderClientList(allClients); return; }
+            const filtered = allClients.filter(c =>
+                (c.name || '').toLowerCase().includes(q) ||
+                (c.country || '').toLowerCase().includes(q)
+            );
+            renderClientList(filtered);
+        });
+
+        // ---- Client detail ----
+        window.showClientDetail = async function(uid) {
+            // Highlight active item
+            document.querySelectorAll('.client-item').forEach(el => el.classList.remove('active'));
+            const item = document.querySelector('.client-item[data-uid="' + uid + '"]');
+            if (item) item.classList.add('active');
+
+            const container = document.getElementById('detailContainer');
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">加载中...</div>';
+            document.getElementById('detailOverlay').classList.add('show');
+
+            const client = allClients.find(c => c.uid === uid);
+            if (!client) {
+                container.innerHTML = '<button class="detail-close" onclick="closeDetail()">×</button><p style="text-align:center;padding:40px;color:#999;">未找到客户信息</p>';
+                return;
+            }
+
+            let orders = [];
+            try {
+                const q = query(collection(db, 'users', uid, 'quotes'), orderBy('createdAt', 'desc'));
+                const snap = await getDocs(q);
+                snap.forEach(d => { orders.push({ id: d.id, ...d.data() }); });
+            } catch (e) {
+                console.error('加载订单失败:', e);
+            }
+
+            const date = client.registeredAt
+                ? new Date(client.registeredAt.seconds * 1000).toLocaleDateString('zh-CN')
+                : '-';
+
+            let html = '<button class="detail-close" onclick="closeDetail()">×</button>';
+
+            html += '<div class="detail-header">';
+            html += '<div class="name">' + escHTML(client.name || '-');
+            html += '<button class="btn-chat" onclick="event.stopPropagation();openChatForClient(\'' + uid + '\',\'' + escHTML(client.name || '客户') + '\')">查看对话</button>';
+            html += '</div>';
+            html += '<div class="meta">' + escHTML(client.country || '-') + ' · 注册于 ' + date + '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>联系信息</h4>';
+            html += '<div class="detail-row"><span class="label">联系邮箱</span><span class="value">' + escHTML(client.contactEmail || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">公司名称</span><span class="value">' + escHTML(client.company || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">负责销售</span>';
+            if (isAdmin) {
+                html += '<select class="detail-select" onchange="changeAssignment(\'' + uid + '\', this.value)" style="font-size:13px">';
+                html += '<option value="">未分配</option>';
+                for (let i = 1; i <= 15; i++) {
+                    const email = 'sales' + String(i).padStart(2, '0') + '@test.com';
+                    html += '<option value="' + email + '"' + (client.assignedTo === email ? ' selected' : '') + '>' + email + '</option>';
+                }
+                html += '</select>';
+            } else {
+                html += '<span class="value">' + escHTML(client.assignedTo || '未分配') + '</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>订单记录 (' + orders.length + ')</h4>';
+            if (orders.length === 0) {
+                html += '<div class="no-orders">暂无订单</div>';
+            } else {
+                orders.forEach(o => {
+                    const d = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const pubLabel = o.publishedBy
+                        ? '<span class="order-publisher">' + escHTML(o.publishedBy.split('@')[0]) + '</span>'
+                        : '';
+                    const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                    const s = o.status || 'pending';
+                    html += '<div class="order-item" data-qid="' + o.id + '">';
+                    html += '<div class="order-left"><div class="order-number">' + escHTML(o.quoteNumber || '-') + pubLabel + ' <span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span></div>';
+                    html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + d + '</div></div>';
+                    html += '<div class="order-price">¥' + (o.totalPrice || 0).toFixed(2) + '</div>';
+                    html += '</div>';
+                });
+            }
+            html += '</div>';
+
+            container.innerHTML = html;
+
+            // Attach SVG hover preview + click handler to order items
+            const preview = document.getElementById('svgHoverPreview');
+            let hoverTimer = null;
+            let lastMX = 0, lastMY = 0;
+            const isSales = user.email.match(/^sales\d+@test\.com$/);
+            function hidePreview() {
+                clearTimeout(hoverTimer);
+                preview.style.display = 'none';
+                preview.innerHTML = '';
+            }
+            container.querySelectorAll('.order-item').forEach(item => {
+                item.addEventListener('mouseenter', function(e) {
+                    const qid = this.dataset.qid;
+                    lastMX = e.clientX; lastMY = e.clientY;
+                    hoverTimer = setTimeout(() => {
+                        const o = orders.find(x => x.id === qid);
+                        let x = lastMX + 16, y = lastMY + 16;
+                        if (x + 376 > window.innerWidth) x = lastMX - 376;
+                        if (y + 340 > window.innerHeight) y = lastMY - 340;
+                        preview.style.left = x + 'px';
+                        preview.style.top = y + 'px';
+                        if (o && o.svgContent) {
+                            preview.innerHTML = o.svgContent;
+                        } else {
+                            preview.innerHTML = '<div class="no-svg">无矢量图</div>';
+                        }
+                        preview.style.display = 'block';
+                    }, 2000);
+                });
+                item.addEventListener('mousemove', function(e) {
+                    lastMX = e.clientX; lastMY = e.clientY;
+                    if (preview.style.display === 'block') {
+                        let x = e.clientX + 16;
+                        let y = e.clientY + 16;
+                        if (x + 376 > window.innerWidth) x = e.clientX - 376;
+                        if (y + 340 > window.innerHeight) y = e.clientY - 340;
+                        preview.style.left = x + 'px';
+                        preview.style.top = y + 'px';
+                    }
+                });
+                item.addEventListener('mouseleave', hidePreview);
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    hidePreview();
+                    const qid = this.dataset.qid;
+                    const o = orders.find(x => x.id === qid);
+                    if (o) showOrderEdit(uid, o, !!isSales);
+                });
+            });
+        };
+
+        let _activeClientUid = null;
+        let _activeOrder = null;
+
+        function showOrderEdit(clientUid, o, editable) {
+            _activeClientUid = clientUid;
+            _activeOrder = o;
+            window._activeOrder = o;
+            const container = document.getElementById('detailContainer');
+            const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const total = editable
+                ? (Number(o.totalLetterPrice||0) + Number(o.surfacePrice||0) + Number(o.paintPrice||0) + Number(o.powerPrice||0) + Number(o.laborFee||0) + Number(o.freight?.price||0)).toFixed(2)
+                : (o.totalPrice||0).toFixed(2);
+
+            const lockPrices = editable && (o.status && o.status !== 'pending') && !isAdmin;
+            const effEditable = editable && !lockPrices;
+
+            let html = '<button class="detail-close" onclick="closeDetail()">×</button>';
+            html += '<button class="btn-back-detail" onclick="showClientDetail(\'' + clientUid + '\')">← 返回客户详情</button>';
+
+            html += '<div class="detail-header">';
+            html += '<div style="font-size:20px;font-weight:700">' + escHTML(o.quoteNumber || '-') + '</div>';
+            html += '<div class="meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
+            if (o.publishedBy) {
+                html += '<div class="meta" style="margin-top:4px">发布者: <span class="order-publisher">' + escHTML(o.publishedBy.split('@')[0]) + '</span></div>';
+            }
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>产品信息</h4>';
+            html += '<div class="detail-row"><span class="label">产品ID</span><span class="value">' + escHTML(o.productId || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">产品名称</span><span class="value">' + escHTML(o.productName || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">使用区域</span><span class="value">' + escHTML(o.usageArea || '-') + '</span></div>';
+            html += '</div>';
+
+            if (o.fontPrices && o.fontPrices.length > 0) {
+                html += '<div class="detail-section"><h4>字体明细</h4>';
+                o.fontPrices.forEach(f => {
+                    html += '<div class="detail-row"><span class="label">长' + (f.length||0).toFixed(2) + '×宽' + (f.width||0).toFixed(2) + '×厚' + (f.thickness||0) + 'mm × ' + (f.quantity||0) + '个</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
+                });
+                html += '</div>';
+            }
+
+            html += '<div class="detail-section"><h4>配置</h4>';
+            html += '<div class="detail-row"><span class="label">表面颜色</span>';
+            html += editable
+                ? '<input class="detail-input" style="width:140px;text-align:left" id="editSurfaceColor" value="' + escHTML(o.surfaceColor||'') + '">'
+                : '<span class="value">' + escHTML(o.surfaceColor||'-') + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">喷漆标准</span>';
+            html += editable
+                ? '<input class="detail-input" style="width:140px;text-align:left" id="editPaint" value="' + escHTML(o.paint||'') + '">'
+                : '<span class="value">' + escHTML(o.paint||'-') + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">开关电源</span>';
+            html += editable
+                ? '<input class="detail-input" style="width:140px;text-align:left" id="editPower" value="' + escHTML(o.power||'') + '">'
+                : '<span class="value">' + escHTML(o.power||'-') + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">固定方式</span>';
+            html += editable
+                ? '<input class="detail-input" style="width:140px;text-align:left" id="editFixing" value="' + escHTML(o.fixing||'') + '">'
+                : '<span class="value">' + escHTML(o.fixing||'-') + '</span>';
+            html += '</div>';
+            html += '</div>';
+
+            const statusOptions = [
+                { v: 'pending', l: '待确认' },
+                { v: 'confirmed', l: '已确认' },
+                { v: 'in_production', l: '生产中' },
+                { v: 'completed', l: '已完成' },
+                { v: 'shipped', l: '已发货' },
+                { v: 'signed', l: '已签收' }
+            ];
+            const currentStatus = o.status || 'pending';
+            html += '<div class="detail-section"><h4>订单状态</h4>';
+            html += '<div class="detail-row"><span class="label">当前状态</span>';
+            if (editable) {
+                html += '<select class="detail-select" id="editStatus">';
+                statusOptions.forEach(s => {
+                    html += '<option value="' + s.v + '"' + (currentStatus === s.v ? ' selected' : '') + '>' + s.l + '</option>';
+                });
+                html += '</select>';
+            } else {
+                const s = statusOptions.find(x => x.v === currentStatus);
+                html += '<span class="value">' + (s ? s.l : '待确认') + '</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>价格明细' + (lockPrices ? ' <span class="locked-badge">已锁定</span>' : '') + '</h4>';
+            html += '<div class="detail-row"><span class="label">产品总价</span>';
+            html += effEditable
+                ? '<input class="detail-input" type="number" step="0.01" id="editTotalLetterPrice" value="' + (o.totalLetterPrice||0) + '" oninput="recalcEditTotal()">'
+                : '<span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">表面处理</span>';
+            html += effEditable
+                ? '<input class="detail-input" type="number" step="0.01" id="editSurfacePrice" value="' + (o.surfacePrice||0) + '" oninput="recalcEditTotal()">'
+                : '<span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">喷漆费用</span>';
+            html += effEditable
+                ? '<input class="detail-input" type="number" step="0.01" id="editPaintPrice" value="' + (o.paintPrice||0) + '" oninput="recalcEditTotal()">'
+                : '<span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span>';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">开关电源</span>';
+            html += effEditable
+                ? '<input class="detail-input" type="number" step="0.01" id="editPowerPrice" value="' + (o.powerPrice||0) + '" oninput="recalcEditTotal()">'
+                : '<span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span>';
+            html += '</div>';
+            if (effEditable || o.laborFee > 0) {
+                html += '<div class="detail-row"><span class="label">人工费</span>';
+                html += effEditable
+                    ? '<input class="detail-input" type="number" step="0.01" id="editLaborFee" value="' + (o.laborFee||0) + '" oninput="recalcEditTotal()">'
+                    : '<span class="value">¥' + (o.laborFee||0).toFixed(2) + '</span>';
+                html += '</div>';
+            }
+            html += '</div>';
+
+            if (o.freight || effEditable) {
+                html += '<div class="detail-section"><h4>运费</h4>';
+                html += '<div class="detail-row"><span class="label">目的地</span>';
+                html += effEditable
+                    ? '<input class="detail-input" style="width:180px;text-align:left" id="editFreightDest" value="' + escHTML(o.freight?.destination||'') + '">'
+                    : '<span class="value">' + escHTML(o.freight?.destination||'-') + '</span>';
+                html += '</div>';
+                html += '<div class="detail-row"><span class="label">运费金额</span>';
+                html += effEditable
+                    ? '<input class="detail-input" type="number" step="0.01" id="editFreightPrice" value="' + (o.freight?.price||0) + '" oninput="recalcEditTotal()">'
+                    : '<span class="value">¥' + (o.freight?.price||0).toFixed(2) + '</span>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            if (o.svgContent) {
+                html += '<div class="detail-section"><h4>矢量图</h4>';
+                html += '<div class="svg-preview-box">' + o.svgContent + '</div>';
+                html += '</div>';
+            }
+
+            // Factory process
+            html += '<div class="detail-section"><h4>厂内工序</h4>';
+            if (o.process && o.process.steps && o.process.steps.length > 0) {
+                const allSteps = [...o.process.steps, ...(o.process.surfaceTreatments || [])];
+                const doneCount = allSteps.filter(s => s.done).length;
+                const pct = allSteps.length > 0 ? Math.round(doneCount / allSteps.length * 100) : 0;
+                html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+                html += '<div style="flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#22c55e;width:' + pct + '%"></div></div>';
+                html += '<span style="font-size:13px;font-weight:600;color:#22c55e">' + pct + '%</span>';
+                html += '</div>';
+                html += '<div style="font-size:13px">';
+                o.process.steps.forEach(s => {
+                    html += '<div style="padding:5px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
+                });
+                if (o.process.surfaceTreatments && o.process.surfaceTreatments.length > 0) {
+                    o.process.surfaceTreatments.forEach(s => {
+                        html += '<div style="padding:5px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
+                    });
+                }
+                html += '</div>';
+            } else {
+                const st = o.status || 'pending';
+                if (st === 'pending') {
+                    html += '<div style="text-align:center;padding:20px;color:#999;font-size:13px">客户暂未确认</div>';
+                } else {
+                    html += '<div style="text-align:center;padding:20px;color:#b45309;font-size:13px">客户已确认，暂未排工序</div>';
+                }
+            }
+            html += '</div>';
+
+            html += '<div class="detail-total" id="editTotalDisplay"><small>总价</small>¥' + total + '</div>';
+
+            if (editable) {
+                html += '<div class="btn-row-detail">';
+                html += '<button class="btn-delete-detail" onclick="deleteOrder(\'' + clientUid + '\',\'' + o.id + '\')">删除订单</button>';
+                html += '<div class="right">';
+                html += '<button class="btn-save-detail" id="btnSaveEdit" onclick="saveOrderEdit(\'' + clientUid + '\',\'' + o.id + '\', window._activeOrder)">保存修改</button>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        window.showOrderEdit = showOrderEdit;
+
+        window.recalcEditTotal = function() {
+            const vals = ['editTotalLetterPrice','editSurfacePrice','editPaintPrice','editPowerPrice','editLaborFee','editFreightPrice'];
+            let sum = 0;
+            vals.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) sum += parseFloat(el.value) || 0;
+            });
+            document.getElementById('editTotalDisplay').innerHTML = '<small>总价</small>¥' + sum.toFixed(2);
+        };
+
+        let _pendingSave = null;
+
+        async function performSave(clientUid, orderId, updateData, originalOrder) {
+            try {
+                await updateDoc(doc(db, 'users', clientUid, 'quotes', orderId), updateData);
+
+                // Sync status to client copy if publishedByUid exists
+                if (updateData.status && originalOrder.publishedByUid) {
+                    try {
+                        await updateDoc(doc(db, 'users', originalOrder.publishedByUid, 'quotes', orderId), {
+                            status: updateData.status
+                        });
+                    } catch (syncErr) {
+                        console.error('同步到客户端失败:', syncErr);
+                    }
+                }
+
+                const btn = document.getElementById('btnSaveEdit');
+                if (btn) {
+                    btn.textContent = '已保存';
+                    setTimeout(() => showClientDetail(clientUid), 600);
+                }
+            } catch (e) {
+                console.error('保存失败:', e);
+                alert('保存失败: ' + e.message);
+                const btn = document.getElementById('btnSaveEdit');
+                if (btn) { btn.disabled = false; btn.textContent = '保存修改'; }
+            }
+        }
+
+        window.saveOrderEdit = async function(clientUid, orderId, originalOrder) {
+            const btn = document.getElementById('btnSaveEdit');
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            const freightDest = document.getElementById('editFreightDest');
+            const freightPrice = document.getElementById('editFreightPrice');
+
+            const freightData = freightDest && freightPrice
+                ? { destination: freightDest.value.trim(), price: parseFloat(freightPrice.value) || 0 }
+                : null;
+
+            const totalLetterPrice = parseFloat(document.getElementById('editTotalLetterPrice')?.value) || 0;
+            const surfacePrice = parseFloat(document.getElementById('editSurfacePrice')?.value) || 0;
+            const paintPrice = parseFloat(document.getElementById('editPaintPrice')?.value) || 0;
+            const powerPrice = parseFloat(document.getElementById('editPowerPrice')?.value) || 0;
+            const laborFee = parseFloat(document.getElementById('editLaborFee')?.value) || 0;
+            const fPrice = freightData ? freightData.price : 0;
+            const totalPrice = totalLetterPrice + surfacePrice + paintPrice + powerPrice + laborFee + fPrice;
+
+            const newStatus = document.getElementById('editStatus')?.value || 'pending';
+
+            const updateData = {
+                surfaceColor: document.getElementById('editSurfaceColor')?.value || '',
+                paint: document.getElementById('editPaint')?.value || '',
+                power: document.getElementById('editPower')?.value || '',
+                fixing: document.getElementById('editFixing')?.value || '',
+                status: newStatus,
+                totalLetterPrice, surfacePrice, paintPrice, powerPrice, laborFee,
+                totalPrice
+            };
+            if (freightData) updateData.freight = freightData;
+
+            // Double confirm for completed status
+            if (newStatus === 'completed') {
+                _pendingSave = { clientUid, orderId, updateData, originalOrder };
+                document.getElementById('doubleConfirmOverlay').classList.add('show');
+                btn.disabled = false;
+                btn.textContent = '保存修改';
+                return;
+            }
+
+            await performSave(clientUid, orderId, updateData, originalOrder);
+        };
+
+        window.closeDoubleConfirm = function() {
+            document.getElementById('doubleConfirmOverlay').classList.remove('show');
+            _pendingSave = null;
+        };
+
+        window.executeDoubleConfirm = async function() {
+            document.getElementById('doubleConfirmOverlay').classList.remove('show');
+            if (!_pendingSave) return;
+            const btn = document.getElementById('btnSaveEdit');
+            if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+            const { clientUid, orderId, updateData, originalOrder } = _pendingSave;
+            _pendingSave = null;
+            await performSave(clientUid, orderId, updateData, originalOrder);
+        };
+
+        window.deleteOrder = async function(clientUid, orderId) {
+            if (!confirm('确定要删除这个订单吗？此操作不可恢复。')) return;
+            try {
+                await deleteDoc(doc(db, 'users', clientUid, 'quotes', orderId));
+                showClientDetail(clientUid);
+            } catch (e) {
+                console.error('删除失败:', e);
+                alert('删除失败: ' + e.message);
+            }
+        };
+
+        window.changeAssignment = async function(uid, newSales) {
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), { assignedTo: newSales || null });
+                const client = allClients.find(c => c.uid === uid);
+                if (client) client.assignedTo = newSales || null;
+                // Reload sidebar if non-admin (assignment change might remove client from view)
+                if (!isAdmin && newSales && newSales !== user.email) {
+                    allClients = allClients.filter(c => c.uid !== uid);
+                    renderClientList(allClients);
+                }
+            } catch (e) {
+                console.error('修改分配失败:', e);
+            }
+        };
+
+        window.closeDetail = function() {
+            document.getElementById('detailOverlay').classList.remove('show');
+        };
+
+        document.getElementById('detailOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeDetail();
+        });
+
+        function escHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // ---- Chat ----
+        let _chatUid = null;
+        let _chatUnsub = null;
+
+        function formatChatTime(ts) {
+            if (!ts || !ts.seconds) return '';
+            const d = new Date(ts.seconds * 1000);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            if (isToday) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderChatMessages(msgs) {
+            const container = document.getElementById('chatMessages');
+            if (!msgs || msgs.length === 0) {
+                container.innerHTML = '<div class="empty">暂无消息</div>';
+                return;
+            }
+            container.innerHTML = msgs.map(m => {
+                const isMe = m.from === user.email;
+                const cls = isMe ? 'right' : 'left';
+                const timeStr = formatChatTime(m.timestamp);
+                return '<div class="chat-bubble ' + cls + '">' +
+                    escHTML(m.text || '') +
+                    (timeStr ? '<span class="time">' + timeStr + '</span>' : '') +
+                    '</div>';
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        window.openChatForClient = function(uid, name) {
+            _chatUid = uid;
+            document.getElementById('chatTitle').textContent = (name || '对话') + (isAdmin ? ' (只读)' : '');
+            document.getElementById('chatMessages').innerHTML = '<div class="empty">加载中...</div>';
+            document.getElementById('chatInputArea').style.display = isAdmin ? 'none' : 'flex';
+            document.getElementById('chatOverlay').classList.add('show');
+
+            // Mark unread as false
+            setDoc(doc(db, 'conversations', uid), { unreadForSales: false }, { merge: true }).catch(() => {});
+
+            // Real-time message listener
+            if (_chatUnsub) _chatUnsub();
+            const q = query(collection(db, 'conversations', uid, 'messages'), orderBy('timestamp', 'asc'));
+            _chatUnsub = onSnapshot(q, (snap) => {
+                const msgs = [];
+                snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+                renderChatMessages(msgs);
+            }, (err) => {
+                console.error('Chat listener error:', err);
+                document.getElementById('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626">加载失败</div>';
+            });
+        };
+
+        window.closeChat = function() {
+            document.getElementById('chatOverlay').classList.remove('show');
+            _chatUid = null;
+            if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+        };
+
+        window.sendSalesMessage = async function() {
+            const input = document.getElementById('chatInput');
+            const btn = document.getElementById('btnChatSend');
+            const text = input.value.trim();
+            if (!text || !_chatUid) return;
+
+            btn.disabled = true;
+            input.disabled = true;
+
+            try {
+                await setDoc(doc(db, 'conversations', _chatUid), {
+                    salesEmail: user.email,
+                    lastMessage: text,
+                    lastTimestamp: serverTimestamp(),
+                    unreadForSales: false,
+                    unreadForCustomer: true
+                }, { merge: true });
+
+                await addDoc(collection(db, 'conversations', _chatUid, 'messages'), {
+                    from: user.email,
+                    text,
+                    timestamp: serverTimestamp()
+                });
+
+                input.value = '';
+                input.style.height = '38px';
+            } catch (err) {
+                console.error('发送失败:', err);
+                alert('发送失败，请重试');
+            } finally {
+                btn.disabled = false;
+                input.disabled = false;
+                input.focus();
+            }
+        };
+
+        document.getElementById('chatOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeChat();
+        });
+
+        document.getElementById('chatInput').addEventListener('input', function() {
+            this.style.height = '38px';
+            this.style.height = Math.min(this.scrollHeight, 80) + 'px';
+        });
+
+        // Initial load
+        loadClients();
+
+        window.logout = async function() {
+            await firebaseLogout();
+            window.location.href = 'login.html';
+        };
+    </script>
+</body>
+</html>

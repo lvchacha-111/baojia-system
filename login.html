@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .bg-gradient {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            width: 400px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 40px rgba(0,0,0,0.06);
+            padding: 48px 40px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: #1a1a1a;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: none;
+            stroke: #fff;
+            stroke-width: 2;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            letter-spacing: -0.3px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 6px;
+            letter-spacing: -0.2px;
+        }
+
+        input {
+            width: 100%;
+            height: 44px;
+            padding: 0 14px;
+            border: 1.5px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 15px;
+            color: #1a1a1a;
+            background: #fafafa;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #6366f1;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+        }
+
+        input::placeholder { color: #ccc; }
+
+        .btn {
+            width: 100%;
+            height: 44px;
+            background: #1a1a1a;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: -0.2px;
+        }
+
+        .btn:hover {
+            background: #333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:active { transform: translateY(0); }
+
+        .btn-outline {
+            background: #fff;
+            color: #1a1a1a;
+            border: 1.5px solid #e8e8e8;
+        }
+
+        .btn-outline:hover {
+            background: #fafafa;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .divider {
+            text-align: center;
+            margin: 28px 0;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: #eee;
+        }
+
+        .divider span {
+            position: relative;
+            background: #fff;
+            padding: 0 12px;
+            font-size: 13px;
+            color: #bbb;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 12px;
+            color: #bbb;
+            margin-top: 24px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <div class="container">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <h1>报价系统</h1>
+            <p class="subtitle">登录您的账户</p>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label>邮箱</label>
+                <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="password" placeholder="输入密码" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn">登录</button>
+        </form>
+
+        <div class="divider"><span>OR</span></div>
+
+        <button class="btn btn-outline" onclick="googleLogin()">
+            Google 账号登录
+        </button>
+
+        <p class="footer-note">
+            后续将接入 Firebase Authentication<br>
+            当前输入任意邮箱密码即可进入
+        </p>
+
+        <p style="text-align:center;margin-top:16px;font-size:14px;color:#999;">
+            没有账户？<a href="register.html" style="color:#6366f1;text-decoration:none;font-weight:500;">去注册</a>
+        </p>
+    </div>
+
+    <script type="module">
+        import { auth } from "./firebase-init.js";
+        import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+
+        const form = document.getElementById('loginForm');
+        const error = document.getElementById('error');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        function isSalesAccount(email) {
+            const local = email.split('@')[0].toLowerCase();
+            return /^sales(0[1-9]|1[0-5])$/.test(local);
+        }
+
+        function redirectByRole(email) {
+            window.location.href = isSalesAccount(email) ? 'myorders.html' : 'user.html';
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showError('请输入邮箱和密码');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '登录中...';
+            error.style.display = 'none';
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                redirectByRole(email);
+            } catch (err) {
+                console.error('登录错误码:', err.code, '完整错误:', err);
+                showError(firebaseErrorMessage(err.code));
+                submitBtn.disabled = false;
+                submitBtn.textContent = '登录';
+            }
+        });
+
+        window.googleLogin = async function() {
+            error.style.display = 'none';
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                redirectByRole(result.user.email);
+            } catch (err) {
+                if (err.code !== 'auth/popup-closed-by-user') {
+                    showError(firebaseErrorMessage(err.code));
+                }
+            }
+        };
+
+        function showError(msg) {
+            error.textContent = msg;
+            error.style.display = 'block';
+        }
+
+        function firebaseErrorMessage(code) {
+            const map = {
+                'auth/user-not-found': '该邮箱未注册',
+                'auth/wrong-password': '密码错误',
+                'auth/invalid-email': '邮箱格式不正确',
+                'auth/invalid-credential': '邮箱或密码错误',
+                'auth/too-many-requests': '登录尝试次数过多，请稍后再试',
+                'auth/email-already-in-use': '该邮箱已被注册',
+                'auth/weak-password': '密码强度不够（至少6位）',
+                'auth/popup-blocked': '浏览器拦截了弹窗，请允许弹窗后重试'
+            };
+            return map[code] || '登录失败，请重试';
+        }
+    </script>
+</body>
+</html>
