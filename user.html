@@ -218,15 +218,6 @@
         .status-shipped { background: #faf5ff; color: #9333ea; }
         .status-signed { background: #f0fdf4; color: #15803d; }
         .status-confirmed { background: #fefce8; color: #ca8a04; }
-        .btn-confirm-quote {
-            display: inline-block; padding: 8px 20px;
-            background: #16a34a; color: #fff;
-            border: none; border-radius: 8px;
-            font-size: 13px; font-weight: 500; cursor: pointer;
-            transition: all 0.2s; margin-top: 8px;
-        }
-        .btn-confirm-quote:hover { background: #15803d; }
-        .btn-confirm-quote:disabled { opacity: 0.6; cursor: default; }
         .progress-wrap { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
         .progress-bar { flex: 1; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; }
         .progress-fill { height: 100%; border-radius: 3px; background: #22c55e; transition: width 0.4s; }
@@ -325,17 +316,13 @@
                 html += '<div class="order-left">';
                 html += '<div class="order-number">' + escHTML(o.quoteNumber || '-') + '<span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span></div>';
                 html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
-                // Confirm button for pending orders
-                if (s === 'pending') {
-                    html += '<button class="btn-confirm-quote" data-oid="' + o.id + '" onclick="event.stopPropagation();confirmQuote(\'' + o.id + '\')">确认报价</button>';
-                }
                 // Confirmed hint
                 if (s === 'confirmed') {
                     html += '<div class="order-sales" style="color:#b45309">已确认 · 等待工厂排工序</div>';
                 }
                 // Progress bar for in_production orders
                 if (s === 'in_production' && o.process) {
-                    const pct = calcProgress(o.process);
+                    const pct = calcProgress(o.process, o.status);
                     html += '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
                 }
                 html += '</div>';
@@ -407,7 +394,7 @@
             }
 
             if (o.process && o.process.steps && o.process.steps.length > 0) {
-                const pct = calcProgress(o.process);
+                const pct = calcProgress(o.process, o.status);
                 html += '<div class="detail-section"><h4>生产进度</h4>';
                 html += '<div class="progress-wrap" style="margin-bottom:12px"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
                 html += '<div style="font-size:13px">';
@@ -437,61 +424,13 @@
             if (e.target === this) this.classList.remove('show');
         });
 
-        function calcProgress(proc) {
+        function calcProgress(proc, status) {
+            if (status === 'completed') return 100;
             if (!proc || !proc.steps || proc.steps.length === 0) return 0;
             const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
             const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
             return total > 0 ? Math.round(done / total * 100) : 0;
         }
-
-        window.confirmQuote = async function(orderId) {
-            const o = allOrders.find(x => x.id === orderId);
-            if (!o || o.status !== 'pending') return;
-
-            // Find and update the button to show loading state
-            const card = document.querySelector('.order-card[data-oid="' + orderId + '"]');
-            let btn = null;
-            if (card) {
-                btn = card.querySelector('.btn-confirm-quote');
-                if (btn) { btn.disabled = true; btn.textContent = '确认中...'; }
-            }
-
-            try {
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'confirmed' });
-                o.status = 'confirmed';
-
-                // Sync to sales copy
-                if (o.publishedByUid) {
-                    try {
-                        await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { status: 'confirmed' });
-                    } catch (e) {
-                        console.error('同步确认状态到销售端失败:', e);
-                    }
-                }
-
-                // Update UI in place instead of reload
-                if (btn) {
-                    btn.textContent = '已确认 ✓';
-                    btn.style.background = '#16a34a';
-                    btn.style.color = '#fff';
-                    btn.style.border = 'none';
-                    btn.style.cursor = 'default';
-                    btn.disabled = false;
-                }
-                // Update status badge
-                if (card) {
-                    const badge = card.querySelector('.status-badge');
-                    if (badge) {
-                        badge.textContent = '已确认';
-                        badge.className = 'status-badge status-confirmed';
-                    }
-                }
-            } catch (err) {
-                console.error('确认报价失败:', err);
-                if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
-                alert('确认失败，请重试: ' + (err.message || '未知错误'));
-            }
-        };
 
         function escHTML(str) {
             const div = document.createElement('div');

@@ -332,11 +332,18 @@
             padding: 2px 8px; border-radius: 4px;
         }
         .status-pending { background: #fefce8; color: #a16207; }
+        .status-published { background: #e8f4fd; color: #0369a1; }
         .status-in_production { background: #eff6ff; color: #2563eb; }
         .status-completed { background: #f0fdf4; color: #16a34a; }
         .status-shipped { background: #faf5ff; color: #9333ea; }
         .status-signed { background: #f0fdf4; color: #15803d; }
         .status-confirmed { background: #fef3c7; color: #b45309; }
+
+        .client-status {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 1px 6px; border-radius: 3px; margin-left: 6px;
+            vertical-align: middle;
+        }
 
         .locked-badge {
             display: inline-block; font-size: 10px; font-weight: 600;
@@ -618,6 +625,28 @@
 
         const isAdmin = user.email === 'sales01@test.com';
 
+        // Admin tool: clear all quotes
+        window.clearAllQuotes = async function() {
+            if (!isAdmin) { alert('仅管理员可操作'); return; }
+            if (!confirm('确定要删除所有报价吗？此操作不可恢复！')) return;
+            if (!confirm('再次确认：删除所有客户的报价？')) return;
+            let deleted = 0;
+            for (const client of allClients) {
+                try {
+                    const snap = await getDocs(collection(db, 'users', client.uid, 'quotes'));
+                    for (const d of snap.docs) {
+                        await deleteDoc(doc(db, 'users', client.uid, 'quotes', d.id));
+                        const data = d.data();
+                        if (data.publishedByUid) {
+                            try { await deleteDoc(doc(db, 'users', data.publishedByUid, 'quotes', d.id)); } catch(e){}
+                        }
+                        deleted++;
+                    }
+                } catch (e) { console.error('清空失败:', e); }
+            }
+            alert('已删除 ' + deleted + ' 条报价');
+        };
+
         // Preload customer names for quote page (only pool clients assigned to this sales, or all for admin)
         try {
             const nameSet = new Set();
@@ -654,6 +683,8 @@
                 startConversationListener();
 
                 renderClientList(allClients);
+                loadClientStatuses();
+                setInterval(loadClientStatuses, 10000);
             } catch (e) {
                 console.error('加载客户列表失败:', e);
                 listEl.innerHTML = '<div class="no-clients">加载失败</div>';
@@ -661,21 +692,47 @@
         }
 
         function startConversationListener() {
-            let q;
-            if (isAdmin) {
-                q = query(collection(db, 'conversations'));
-            } else {
-                q = query(collection(db, 'conversations'), where('salesEmail', '==', user.email));
+            const pollConversations = async () => {
+                try {
+                    unreadUids.clear();
+                    for (const client of allClients) {
+                        try {
+                            const convSnap = await getDoc(doc(db, 'users', client.uid, 'conversations', 'main'));
+                            if (convSnap.exists() && convSnap.data().unreadForSales) {
+                                unreadUids.add(client.uid);
+                            }
+                        } catch (e) { /* skip */ }
+                    }
+                    renderClientList(allClients);
+                } catch (err) {
+                    console.error('ConvListener error:', err);
+                }
+            };
+            pollConversations();
+            setInterval(pollConversations, 3000);
+        }
+
+        async function loadClientStatuses() {
+            const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中', completed:'生产结束' };
+            for (const client of allClients) {
+                try {
+                    const q = query(collection(db, 'users', client.uid, 'quotes'), orderBy('createdAt', 'desc'), limit(1));
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        const latest = snap.docs[0].data();
+                        const st = latest.status || 'pending';
+                        client.latestStatus = st;
+                        client.latestStatusLabel = statusLabels[st] || '已发布';
+                    } else {
+                        client.latestStatus = null;
+                        client.latestStatusLabel = null;
+                    }
+                } catch (e) {
+                    client.latestStatus = null;
+                    client.latestStatusLabel = null;
+                }
             }
-            onSnapshot(q, (snap) => {
-                unreadUids.clear();
-                snap.forEach(d => {
-                    if (d.data().unreadForSales) unreadUids.add(d.id);
-                });
-                renderClientList(allClients);
-            }, (err) => {
-                console.error('Conversation listener error:', err);
-            });
+            renderClientList(allClients);
         }
 
         function renderClientList(clients) {
@@ -692,8 +749,11 @@
                     nameHtml += ' <span style="font-size:11px;color:#999;font-weight:400">(' + escHTML(c.assignedTo.split('@')[0]) + ')</span>';
                 }
                 const dotHtml = unreadUids.has(c.uid) ? '<span class="unread-dot"></span>' : '';
+                const statusHtml = c.latestStatus
+                    ? '<span class="client-status status-' + c.latestStatus + '">' + c.latestStatusLabel + '</span>'
+                    : '';
                 return '<div class="client-item" data-uid="' + c.uid + '" onclick="showClientDetail(\'' + c.uid + '\')">' +
-                    '<div class="client-name">' + nameHtml + dotHtml + '</div>' +
+                    '<div class="client-name">' + nameHtml + dotHtml + statusHtml + '</div>' +
                     '<div class="client-country">' + escHTML(country) + '</div></div>';
             }).join('');
         }
@@ -730,6 +790,13 @@
                 const q = query(collection(db, 'users', uid, 'quotes'), orderBy('createdAt', 'desc'));
                 const snap = await getDocs(q);
                 snap.forEach(d => { orders.push({ id: d.id, ...d.data() }); });
+                // Update client status from latest order
+                if (orders.length > 0) {
+                    const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中', completed:'生产结束' };
+                    const st = orders[0].status || 'pending';
+                    client.latestStatus = st;
+                    client.latestStatusLabel = statusLabels[st] || '已发布';
+                }
             } catch (e) {
                 console.error('加载订单失败:', e);
             }
@@ -982,7 +1049,7 @@
             if (o.process && o.process.steps && o.process.steps.length > 0) {
                 const allSteps = [...o.process.steps, ...(o.process.surfaceTreatments || [])];
                 const doneCount = allSteps.filter(s => s.done).length;
-                const pct = allSteps.length > 0 ? Math.round(doneCount / allSteps.length * 100) : 0;
+                const pct = o.status === 'completed' ? 100 : (allSteps.length > 0 ? Math.round(doneCount / allSteps.length * 100) : 0);
                 html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
                 html += '<div style="flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#22c55e;width:' + pct + '%"></div></div>';
                 html += '<span style="font-size:13px;font-weight:600;color:#22c55e">' + pct + '%</span>';
@@ -1010,8 +1077,14 @@
             html += '<div class="detail-total" id="editTotalDisplay"><small>总价</small>¥' + total + '</div>';
 
             if (editable) {
+                // Non-admin sales can only delete unpublished orders
+                const canDelete = isAdmin || !o.published;
                 html += '<div class="btn-row-detail">';
-                html += '<button class="btn-delete-detail" onclick="deleteOrder(\'' + clientUid + '\',\'' + o.id + '\')">删除订单</button>';
+                if (canDelete) {
+                    html += '<button class="btn-delete-detail" onclick="deleteOrder(\'' + clientUid + '\',\'' + o.id + '\',\'' + (o.publishedByUid||'') + '\',\'' + escHTML(o.quoteNumber||'') + '\')">删除订单</button>';
+                } else {
+                    html += '<span style="font-size:12px;color:#999">已发布，不可删除</span>';
+                }
                 html += '<div class="right">';
                 html += '<button class="btn-save-detail" id="btnSaveEdit" onclick="saveOrderEdit(\'' + clientUid + '\',\'' + o.id + '\', window._activeOrder)">保存修改</button>';
                 html += '</div>';
@@ -1123,10 +1196,18 @@
             await performSave(clientUid, orderId, updateData, originalOrder);
         };
 
-        window.deleteOrder = async function(clientUid, orderId) {
-            if (!confirm('确定要删除这个订单吗？此操作不可恢复。')) return;
+        window.deleteOrder = async function(clientUid, orderId, pubUid, qNum) {
+            const label = qNum || orderId;
+            if (!confirm('确定要删除订单 ' + label + ' 吗？此操作不可恢复，将从业务员端和客户端同步删除。')) return;
             try {
+                // 1. Delete from current view (client's copy)
                 await deleteDoc(doc(db, 'users', clientUid, 'quotes', orderId));
+                // 2. Delete from sales person's copy if published
+                if (pubUid) {
+                    try {
+                        await deleteDoc(doc(db, 'users', pubUid, 'quotes', orderId));
+                    } catch (e) { console.error('同步删除业务员端失败:', e); }
+                }
                 showClientDetail(clientUid);
             } catch (e) {
                 console.error('删除失败:', e);
@@ -1165,7 +1246,7 @@
 
         // ---- Chat ----
         let _chatUid = null;
-        let _chatUnsub = null;
+        let _chatPollInterval = null;
 
         function formatChatTime(ts) {
             if (!ts || !ts.seconds) return '';
@@ -1202,25 +1283,29 @@
             document.getElementById('chatOverlay').classList.add('show');
 
             // Mark unread as false
-            setDoc(doc(db, 'conversations', uid), { unreadForSales: false }, { merge: true }).catch(() => {});
+            setDoc(doc(db, 'users', uid, 'conversations', 'main'), { unreadForSales: false }, { merge: true }).catch(() => {});
 
-            // Real-time message listener
-            if (_chatUnsub) _chatUnsub();
-            const q = query(collection(db, 'conversations', uid, 'messages'), orderBy('timestamp', 'asc'));
-            _chatUnsub = onSnapshot(q, (snap) => {
-                const msgs = [];
-                snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
-                renderChatMessages(msgs);
-            }, (err) => {
-                console.error('Chat listener error:', err);
-                document.getElementById('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626">加载失败</div>';
-            });
+            // Poll messages every 2 seconds
+            const pollMessages = async () => {
+                if (!_chatUid || _chatUid !== uid) return;
+                try {
+                    const q = query(collection(db, 'users', uid, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
+                    const snap = await getDocs(q);
+                    const msgs = [];
+                    snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+                    renderChatMessages(msgs);
+                } catch (err) {
+                    console.error('Chat poll error:', err);
+                }
+            };
+            pollMessages();
+            _chatPollInterval = setInterval(pollMessages, 1000);
         };
 
         window.closeChat = function() {
             document.getElementById('chatOverlay').classList.remove('show');
             _chatUid = null;
-            if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+            if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
         };
 
         window.sendSalesMessage = async function() {
@@ -1233,7 +1318,7 @@
             input.disabled = true;
 
             try {
-                await setDoc(doc(db, 'conversations', _chatUid), {
+                await setDoc(doc(db, 'users', _chatUid, 'conversations', 'main'), {
                     salesEmail: user.email,
                     lastMessage: text,
                     lastTimestamp: serverTimestamp(),
@@ -1241,7 +1326,7 @@
                     unreadForCustomer: true
                 }, { merge: true });
 
-                await addDoc(collection(db, 'conversations', _chatUid, 'messages'), {
+                await addDoc(collection(db, 'users', _chatUid, 'conversations', 'main', 'messages'), {
                     from: user.email,
                     text,
                     timestamp: serverTimestamp()

@@ -190,7 +190,15 @@
         .confused-link:hover { color: #6366f1; border-color: #6366f1; background: #eef2ff; }
         .confused-link .dot {
             width: 7px; height: 7px; border-radius: 50%;
-            background: #6366f1; flex-shrink: 0;
+            background: #6366f1; flex-shrink: 0; transition: all 0.3s;
+        }
+        .confused-link.has-unread { color: #e03131; border-color: #fecaca; background: #fff5f5; }
+        .confused-link.has-unread .dot {
+            background: #e03131; animation: pulse-dot 1.2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.8); opacity: 0.4; }
         }
 
         .detail-header-top {
@@ -337,7 +345,7 @@
 
     <script type="module">
         import { auth, getCurrentUser, db } from "./firebase-init.js";
-        import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = 'login.html'; }
@@ -408,7 +416,7 @@
                 html += '<button class="btn-confirm-inline confirmed" disabled>已确认 ✓</button>';
             }
             html += '</div>';
-            html += '<div class="confused-link" onclick="openChat()"><span class="dot"></span>Questions? Contact us</div>';
+            html += '<div class="confused-link" id="confusedLink" onclick="openChat()"><span class="dot"></span>Questions? Contact us</div>';
             html += '</div>';
             html += '</div>';
 
@@ -469,7 +477,8 @@
         }
 
         // ---- Render process tab ----
-        function calcProgress(proc) {
+        function calcProgress(proc, status) {
+            if (status === 'completed') return 100;
             if (!proc || !proc.steps || proc.steps.length === 0) return 0;
             const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
             const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
@@ -486,7 +495,7 @@
                 return;
             }
 
-            const pct = calcProgress(proc);
+            const pct = calcProgress(proc, order.status);
             let html = '';
 
             html += '<div class="section"><h4>整体进度</h4>';
@@ -522,9 +531,59 @@
             document.getElementById('tab-process').innerHTML = html;
         }
 
+        let _chatPollInterval = null;
+        let _bgPollInterval = null;
+
         // Initial render
         renderDetail();
         renderProcess();
+        startBackgroundChatPoll();
+
+        // Background poll for order status changes (from factory/completed etc.)
+        let _lastStatus = order.status || 'pending';
+        function startStatusPoll() {
+            setInterval(async () => {
+                try {
+                    if (!order || !order.id) return;
+                    // Check customer's own copy first, fall back to sales copy
+                    let newStatus = null;
+                    const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', order.id));
+                    if (snap.exists()) {
+                        newStatus = snap.data().status || 'pending';
+                    } else if (order.publishedByUid) {
+                        const salesSnap = await getDoc(doc(db, 'users', order.publishedByUid, 'quotes', order.id));
+                        if (salesSnap.exists()) newStatus = salesSnap.data().status || 'pending';
+                    }
+                    if (!newStatus || newStatus === _lastStatus) return;
+                    _lastStatus = newStatus;
+                    order.status = newStatus;
+
+                    // Update status badge
+                    const badge = document.querySelector('.status-badge');
+                    const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                    if (badge) {
+                        badge.textContent = statusLabels[newStatus] || '待确认';
+                        badge.className = 'status-badge status-' + newStatus;
+                    }
+
+                    // Update confirm button
+                    const btn = document.getElementById('btnConfirmInline');
+                    const btnArea = btn ? btn.parentElement : null;
+                    if (newStatus !== 'pending' && btn) {
+                        btn.remove();
+                    }
+                    if (newStatus === 'confirmed' && btnArea && !document.getElementById('btnConfirmInline')) {
+                        const newBtn = document.createElement('button');
+                        newBtn.className = 'btn-confirm-inline confirmed';
+                        newBtn.id = 'btnConfirmInline';
+                        newBtn.disabled = true;
+                        newBtn.textContent = '已确认 ✓';
+                        btnArea.appendChild(newBtn);
+                    }
+                } catch (e) { /* ignore */ }
+            }, 5000);
+        }
+        startStatusPoll();
 
         // ---- Confirm quote ----
         window.confirmQuote = async function() {
@@ -551,8 +610,6 @@
         };
 
         // ---- Chat ----
-        let _chatUnsub = null;
-
         function formatChatTime(ts) {
             if (!ts || !ts.seconds) return '';
             const d = new Date(ts.seconds * 1000);
@@ -585,25 +642,51 @@
             document.getElementById('chatMessages').innerHTML = '<div class="empty">Loading...</div>';
 
             // Mark unread for customer as false
-            setDoc(doc(db, 'conversations', user.uid), { unreadForCustomer: false }, { merge: true }).catch(() => {});
+            setDoc(doc(db, 'users', user.uid, 'conversations', 'main'), { unreadForCustomer: false }, { merge: true }).catch(() => {});
 
-            // Real-time listener
-            if (_chatUnsub) _chatUnsub();
-            const q = query(collection(db, 'conversations', user.uid, 'messages'), orderBy('timestamp', 'asc'));
-            _chatUnsub = onSnapshot(q, (snap) => {
-                const msgs = [];
-                snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
-                renderChatMessages(msgs);
-            }, (err) => {
-                console.error('Chat listener error:', err);
-                document.getElementById('chatMessages').innerHTML = '<div class="empty" style="color:#dc2626">Failed to load messages</div>';
-            });
+            // Poll messages every 2 seconds
+            const pollMessages = async () => {
+                if (!document.getElementById('chatOverlay').classList.contains('show')) return;
+                try {
+                    const q = query(collection(db, 'users', user.uid, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
+                    const snap = await getDocs(q);
+                    const msgs = [];
+                    snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+                    renderChatMessages(msgs);
+                } catch (err) {
+                    console.error('Chat poll error:', err);
+                }
+            };
+            pollMessages();
+            if (_chatPollInterval) clearInterval(_chatPollInterval);
+            _chatPollInterval = setInterval(pollMessages, 1000);
         };
 
         window.closeChat = function() {
             document.getElementById('chatOverlay').classList.remove('show');
-            if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
+            if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
         };
+
+        // Background poll for unread messages from sales (shows indicator on button)
+        function startBackgroundChatPoll() {
+            if (_bgPollInterval) clearInterval(_bgPollInterval);
+            const checkUnread = async () => {
+                try {
+                    const convSnap = await getDoc(doc(db, 'users', user.uid, 'conversations', 'main'));
+                    const link = document.getElementById('confusedLink');
+                    if (!link) return;
+                    if (convSnap.exists() && convSnap.data().unreadForCustomer) {
+                        link.classList.add('has-unread');
+                        link.title = 'You have a new reply!';
+                    } else {
+                        link.classList.remove('has-unread');
+                        link.title = '';
+                    }
+                } catch (e) { /* ignore */ }
+            };
+            checkUnread();
+            _bgPollInterval = setInterval(checkUnread, 3000);
+        }
 
         window.sendChatMessage = async function() {
             const input = document.getElementById('chatInput');
@@ -615,19 +698,51 @@
             input.disabled = true;
 
             try {
-                // Update conversation doc
-                await setDoc(doc(db, 'conversations', user.uid), {
+                // Determine sales email: from order, or look up from clientProfiles
+                let salesEmail = order.publishedBy || '';
+                if (!salesEmail && order.customerName) {
+                    try {
+                        const q = query(collection(db, 'clientProfiles'), where('name', '==', order.customerName));
+                        const snap = await getDocs(q);
+                        snap.forEach(d => {
+                            if (!salesEmail && d.data().assignedTo) salesEmail = d.data().assignedTo;
+                        });
+                    } catch (e) { console.error('查找销售失败:', e); }
+                }
+
+                // Find sales UID from clientProfiles
+                let salesUid = order.publishedByUid || '';
+                if (!salesUid) {
+                    try {
+                        const q = query(collection(db, 'clientProfiles'), where('name', '==', order.customerName));
+                        const snap = await getDocs(q);
+                        snap.forEach(d => { if (!salesUid) salesUid = d.id; });
+                    } catch (e) {}
+                }
+                // Use sales email prefix to find sales UID
+                if (!salesUid && salesEmail) {
+                    try {
+                        const usersSnap = await getDocs(collection(db, 'clientProfiles'));
+                        usersSnap.forEach(d => {
+                            if (d.data().name === salesEmail.split('@')[0]) salesUid = d.id;
+                        });
+                    } catch (e) {}
+                }
+
+                // Store conversation under user's own doc space (guaranteed writable)
+                const convData = {
+                    salesEmail: salesEmail,
+                    salesUid: salesUid || salesEmail.replace(/[@.]/g, '_'),
                     customerEmail: user.email,
                     customerName: order.customerName || '',
-                    salesEmail: order.publishedBy || '',
                     lastMessage: text,
                     lastTimestamp: serverTimestamp(),
-                    unreadForSales: true,
-                    unreadForCustomer: false
-                }, { merge: true });
+                    unreadForSales: true
+                };
 
-                // Add message
-                await addDoc(collection(db, 'conversations', user.uid, 'messages'), {
+                // Write to customer's own space
+                await setDoc(doc(db, 'users', user.uid, 'conversations', 'main'), convData, { merge: true });
+                await addDoc(collection(db, 'users', user.uid, 'conversations', 'main', 'messages'), {
                     from: user.email,
                     text,
                     timestamp: serverTimestamp()
@@ -635,9 +750,10 @@
 
                 input.value = '';
                 input.style.height = '38px';
+                console.log('消息发送成功, salesEmail=' + salesEmail);
             } catch (err) {
                 console.error('发送消息失败:', err);
-                alert('发送失败，请重试');
+                alert('发送失败，请重试: ' + (err.message || '未知错误'));
             } finally {
                 btn.disabled = false;
                 input.disabled = false;

@@ -1,6 +1,6 @@
 // Firebase 共享初始化模块
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, browserSessionPersistence, setPersistence } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, serverTimestamp, getDocs, query, where, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -15,6 +15,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+setPersistence(auth, browserSessionPersistence).catch(() => {});
 export const db = getFirestore(app);
 
 // 获取当前用户，未登录返回 null
