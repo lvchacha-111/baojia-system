@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>厂内工序 - 报价系统</title>
+    <title>作业流程 - 报价系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -43,7 +43,35 @@
 
         .page-title {
             font-size: 24px; font-weight: 600; color: #1a1a1a;
-            margin-bottom: 32px;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            position: relative; margin-bottom: 28px;
+        }
+        .search-box input {
+            width: 100%; height: 44px;
+            border: 1px solid #ddd; border-radius: 10px;
+            padding: 0 44px 0 16px; font-size: 14px;
+            outline: none; transition: border-color 0.15s;
+        }
+        .search-box input:focus { border-color: #6366f1; }
+        .search-box .search-icon {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            width: 18px; height: 18px;
+            fill: none; stroke: #ccc; stroke-width: 2;
+        }
+        .search-box .search-clear {
+            display: none; position: absolute; right: 40px; top: 50%;
+            transform: translateY(-50%); width: 20px; height: 20px;
+            border-radius: 50%; background: #ddd; border: none;
+            color: #fff; font-size: 12px; cursor: pointer; line-height: 20px; text-align: center;
+        }
+        .search-box .search-clear.show { display: block; }
+
+        .no-search-result {
+            text-align: center; padding: 40px 0; color: #bbb;
         }
 
         .customer-group { margin-bottom: 32px; }
@@ -111,213 +139,11 @@
         .state-msg { text-align: center; padding: 60px 0; color: #999; }
         .state-msg h3 { font-size: 18px; color: #666; margin-bottom: 8px; }
 
-        /* Modal */
-        .modal-overlay {
-            display: none;
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 100; overflow-y: auto;
-        }
-        .modal-overlay.show { display: block; }
-
-        .modal-container {
-            background: #fff; border-radius: 16px;
-            max-width: 640px; margin: 40px auto;
-            padding: 32px;
-            position: relative;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .modal-close {
-            position: absolute; top: 16px; right: 16px;
-            width: 36px; height: 36px; border-radius: 10px;
-            border: none; background: #f5f5f5;
-            font-size: 20px; color: #666; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.15s;
-        }
-        .modal-close:hover { background: #eee; color: #1a1a1a; }
-
-        .modal-header {
-            text-align: center; margin-bottom: 24px;
-            padding: 16px; background: #f8f9fa;
-            border-radius: 10px;
-        }
-
-        .modal-header .qnum {
-            font-size: 13px; color: #999; margin-bottom: 4px;
-        }
-        .modal-header .qnum span {
-            font-size: 20px; font-weight: 700; color: #1a1a1a;
-            letter-spacing: 1px;
-        }
-        .modal-header .cust {
-            font-size: 14px; color: #666; margin-top: 6px;
-        }
-
-        .modal-progress {
-            margin-bottom: 24px;
-        }
-
-        .modal-progress-label {
-            display: flex; justify-content: space-between;
-            font-size: 13px; color: #888; margin-bottom: 6px;
-        }
-
-        .section-title {
-            font-size: 15px; font-weight: 600; color: #1a1a1a;
-            margin-bottom: 10px; padding-bottom: 8px;
-            border-bottom: 1px solid #eee;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-
-        /* Drag & Drop */
-        .drag-columns {
-            display: flex; gap: 12px; margin-bottom: 20px;
-        }
-
-        .drag-column {
-            flex: 1; min-width: 0;
-            background: #fafafa; border-radius: 10px;
-            padding: 12px;
-        }
-
-        .drag-column-header {
-            font-size: 12px; font-weight: 600; color: #999;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-
-        .drag-drop-zone {
-            min-height: 60px;
-            border: 2px dashed transparent;
-            border-radius: 8px;
-            transition: all 0.2s;
-            display: flex; flex-direction: column; gap: 4px;
-        }
-
-        .drag-drop-zone.drag-over {
-            border-color: #6366f1;
-            background: rgba(99,102,241,0.04);
-        }
-
-        .drag-drop-zone:empty::after {
-            content: '拖拽工序到此处';
-            display: block; text-align: center;
-            font-size: 12px; color: #ccc;
-            padding: 20px 0;
-        }
-
-        .drag-item {
-            display: flex; align-items: center;
-            padding: 8px 12px;
-            background: #fff; border: 1px solid #eee;
-            border-radius: 8px; cursor: grab;
-            transition: all 0.15s;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        .drag-item:hover { border-color: #ddd; }
-        .drag-item:active { cursor: grabbing; }
-        .drag-item.dragging { opacity: 0.4; }
-
-        .drag-item .item-num {
-            width: 22px; height: 22px; border-radius: 50%;
-            background: #6366f1; color: #fff;
-            font-size: 11px; font-weight: 600;
-            display: flex; align-items: center; justify-content: center;
-            margin-right: 10px; flex-shrink: 0;
-        }
-
-        .drag-item .item-name { flex: 1; font-size: 14px; color: #1a1a1a; }
-
-        .drag-item .item-remove {
-            width: 20px; height: 20px; border-radius: 50%;
-            border: none; background: transparent;
-            color: #ccc; font-size: 14px; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: all 0.1s; flex-shrink: 0;
-        }
-        .drag-item .item-remove:hover { color: #dc2626; background: #fef2f2; }
-
-        /* Confirmed view - checkable steps */
-        .step-list-confirmed { margin-bottom: 20px; }
-
-        .step-item-done {
-            display: flex; align-items: center;
-            padding: 10px 12px; margin-bottom: 4px;
-            background: #fafafa; border-radius: 8px;
-            transition: all 0.15s;
-        }
-
-        .step-item-done.done { background: #f0fdf4; }
-
-        .step-item-done .step-name { flex: 1; font-size: 14px; color: #1a1a1a; }
-        .step-item-done.done .step-name { color: #22c55e; }
-
-        .step-check {
-            width: 28px; height: 28px;
-            border-radius: 50%; border: 2px solid #ddd;
-            background: #fff; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px; color: transparent;
-            transition: all 0.15s; flex-shrink: 0;
-        }
-        .step-item-done.done .step-check {
-            background: #22c55e; border-color: #22c55e; color: #fff;
-        }
-
-        .btn-confirm-order {
-            display: block; width: 100%;
-            height: 44px; border-radius: 10px;
-            border: none; background: #22c55e;
-            color: #fff; font-size: 15px; font-weight: 500;
-            cursor: pointer; transition: all 0.15s;
-        }
-        .btn-confirm-order:hover { background: #16a34a; }
-        .btn-confirm-order:disabled {
-            background: #ddd; color: #999; cursor: not-allowed;
-        }
-
-        .btn-back-edit {
-            display: block; width: 100%;
-            height: 44px; border-radius: 10px;
-            border: 1px solid #ddd; background: #fff;
-            color: #666; font-size: 14px; font-weight: 500;
-            cursor: pointer; transition: all 0.15s;
-            margin-top: 8px;
-        }
-        .btn-back-edit:hover { background: #f5f5f5; color: #1a1a1a; }
-
         .section-badge {
             font-size: 11px; padding: 3px 8px; border-radius: 4px;
             font-weight: 500;
         }
-        .badge-editing { background: #fefce8; color: #eab308; }
-        .badge-done { background: #f0fdf4; color: #22c55e; }
         .badge-published { background: #eef2ff; color: #6366f1; }
-
-        .modal-header-inner {
-            display: flex; align-items: flex-start; justify-content: space-between;
-        }
-
-        .modal-header-left { text-align: left; }
-
-        .btn-publish {
-            height: 36px; padding: 0 16px;
-            border-radius: 8px; border: 1px solid #6366f1;
-            background: #fff; color: #6366f1;
-            font-size: 13px; font-weight: 500; cursor: pointer;
-            transition: all 0.15s; white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .btn-publish:hover { background: #eef2ff; }
-
-        .btn-publish.published {
-            background: #eef2ff; border-color: #c7d2fe;
-            color: #6366f1; cursor: default;
-        }
 
         .status-badge {
             display: inline-block; font-size: 11px; font-weight: 500;
@@ -327,25 +153,20 @@
         .status-in_production { background: #eff6ff; color: #2563eb; }
         .status-completed { background: #f0fdf4; color: #16a34a; }
 
-        .btn-mark-complete {
-            display: block; width: 100%;
-            height: 44px; border-radius: 10px;
-            border: 1px solid #dc2626; background: #fff;
-            color: #dc2626; font-size: 14px; font-weight: 500;
-            cursor: pointer; transition: all 0.15s;
-            margin-top: 8px;
+        .payment-tag {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px;
         }
-        .btn-mark-complete:hover { background: #fef2f2; }
-        .btn-mark-complete.confirming {
-            background: #dc2626; color: #fff; border-color: #dc2626;
-        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
 
         @media (max-width: 600px) {
             .main { padding: 24px 16px; }
             .header { padding: 0 16px; }
             .modal-container { margin: 20px 10px; padding: 24px 16px; }
             .quote-card-meta { flex-wrap: wrap; gap: 8px; }
-            .drag-columns { flex-direction: column; }
         }
     </style>
 </head>
@@ -354,18 +175,20 @@
 
     <header class="header">
         <a href="myorders.html" class="btn-back">← 返回</a>
-        <span class="header-title">厂内工序</span>
+        <span class="header-title">作业流程</span>
     </header>
 
     <main class="main">
+        <h1 class="page-title">作业流程</h1>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="搜索客户名称...">
+            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <button class="search-clear" id="searchClear">×</button>
+        </div>
         <div id="content">
             <div class="state-msg"><p>加载中...</p></div>
         </div>
     </main>
-
-    <div class="modal-overlay" id="modalOverlay">
-        <div class="modal-container" id="modalContainer"></div>
-    </div>
 
     <script type="module">
         import { auth, db, getCurrentUser } from "./firebase-init.js";
@@ -374,14 +197,22 @@
         const user = await getCurrentUser();
         if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
 
-        const DEFAULT_STEPS = ['雕刻', '切割', '折弯', '焊接', '打磨', '喷漆', '排灯', '组装', '包装'];
-        const DEFAULT_SURFACE = ['喷塑', '镀钛', '做旧', '拉丝', '抛光'];
+        const DEFAULT_STEPS = ['作图', '厂内工作', '包装', '发货'];
 
         let allQuotes = [];
+        let clientPoolMap = {}; // name → { paymentMethod, creditLimit, creditUsed }
 
         async function loadQuotes() {
             const content = document.getElementById('content');
             try {
+                // Load client profiles for payment method tags
+                const poolSnap = await getDocs(collection(db, 'clientProfiles'));
+                clientPoolMap = {};
+                poolSnap.forEach(d => {
+                    const data = d.data();
+                    if (data.name) clientPoolMap[data.name] = { paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
+                });
+
                 const ref = collection(db, 'users', user.uid, 'quotes');
                 const q = query(ref, orderBy('createdAt', 'desc'));
                 const snapshot = await getDocs(q);
@@ -408,8 +239,8 @@
         function calcProgress(proc, status) {
             if (status === 'completed') return 100;
             if (!proc || !proc.steps || proc.steps.length === 0) return 0;
-            const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
-            const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
+            const total = proc.steps.length;
+            const done = proc.steps.filter(s => s.done).length;
             return total > 0 ? Math.round(done / total * 100) : 0;
         }
 
@@ -419,16 +250,36 @@
             return d.innerHTML;
         }
 
-        function renderQuotes() {
+        function renderQuotes(filterKeyword) {
             const content = document.getElementById('content');
+            const kw = (filterKeyword || '').toLowerCase();
+
+            // Filter by keyword
+            let filtered = allQuotes;
+            if (kw) {
+                filtered = allQuotes.filter(q => {
+                    const name = (q.customerName || '').toLowerCase();
+                    const qnum = (q.quoteNumber || '').toLowerCase();
+                    const prod = (q.productName || '').toLowerCase();
+                    return name.includes(kw) || qnum.includes(kw) || prod.includes(kw);
+                });
+            }
+
+            if (filtered.length === 0) {
+                content.innerHTML = kw
+                    ? '<div class="no-search-result"><p>未找到匹配的结果</p></div>'
+                    : '<div class="state-msg"><h3>暂无待处理订单</h3><p>客户确认报价后可在此查看工序</p></div>';
+                return;
+            }
+
             const groups = {};
-            allQuotes.forEach(q => {
+            filtered.forEach(q => {
                 const name = q.customerName || '未命名客户';
                 if (!groups[name]) groups[name] = [];
                 groups[name].push(q);
             });
 
-            let html = '<h1 class="page-title">厂内工序</h1>';
+            let html = '';
             for (const [name, quotes] of Object.entries(groups)) {
                 html += '<div class="customer-group">';
                 html += '<div class="customer-group-header">';
@@ -448,6 +299,12 @@
                     const s = q.status || 'confirmed';
                     html += '<span class="status-badge status-' + s + '">' + (statusLabels[s] || '已确认') + '</span>';
                     if (q.processPublished) html += '<span class="section-badge badge-published">已发布</span>';
+                    // Payment method tag
+                    const poolInfo = clientPoolMap[q.customerName];
+                    if (poolInfo && poolInfo.paymentMethod) {
+                        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                        html += '<span class="payment-tag ' + poolInfo.paymentMethod + '">' + (pmLabels[poolInfo.paymentMethod] || poolInfo.paymentMethod) + '</span>';
+                    }
                     html += '<span class="quote-date">' + date + '</span></span>';
                     html += '</div>';
                     html += '<div class="quote-card-meta">';
@@ -468,530 +325,27 @@
 
             content.querySelectorAll('.quote-card').forEach(card => {
                 card.addEventListener('click', function() {
-                    const q = allQuotes.find(q => q.id === this.dataset.qid);
-                    if (q) showModal(q);
+                    window.location.href = 'factory-detail.html?id=' + this.dataset.qid;
                 });
             });
         }
 
-        function showModal(q) {
-            const proc = q.process || { steps: [], surfaceTreatments: [], confirmed: false };
-            if (!q.process) {
-                proc.confirmed = false;
-            }
-
-            const container = document.getElementById('modalContainer');
-            container.dataset.currentQid = q.id;
-            renderModal(container, q, proc);
-            document.getElementById('modalOverlay').classList.add('show');
-
-            document.getElementById('modalOverlay').addEventListener('click', function(e) {
-                if (e.target === this) closeModal();
-            });
-        }
-
-        function closeModal() {
-            document.getElementById('modalOverlay').classList.remove('show');
-            loadQuotes();
-        }
-
-        async function saveProcess(quoteId, proc, syncToClient) {
-            try {
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', quoteId), { process: proc });
-                if (syncToClient) {
-                    const q = allQuotes.find(x => x.id === quoteId);
-                    if (q && q.publishedTo) {
-                        try {
-                            await updateDoc(doc(db, 'users', q.publishedTo, 'quotes', quoteId), { process: proc });
-                        } catch (syncErr) {
-                            console.error('同步工序到客户端失败:', syncErr);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error('保存失败:', err);
-                alert('保存失败，请重试');
-            }
-        }
-
-        function syncCardProgress(quoteId, proc, status) {
-            const pct = calcProgress(proc, status);
-            const card = document.querySelector('.quote-card[data-qid="' + quoteId + '"]');
-            if (card) {
-                const fill = card.querySelector('.progress-fill');
-                const pctEl = card.querySelector('.progress-pct');
-                if (fill) fill.style.width = pct + '%';
-                if (pctEl) pctEl.textContent = pct + '%';
-            }
-        }
-
-        function updateModalProgress(container, pct) {
-            const label = container.querySelector('.modal-progress-label span:last-child');
-            const fill = container.querySelector('.modal-progress .progress-fill');
-            if (label) label.textContent = pct + '%';
-            if (fill) fill.style.width = pct + '%';
-        }
-
-        function syncCardPublishBadge(quoteId) {
-            const card = document.querySelector('.quote-card[data-qid="' + quoteId + '"]');
-            if (card) {
-                const top = card.querySelector('.quote-card-top span:last-child');
-                if (top && !top.querySelector('.badge-published')) {
-                    const badge = document.createElement('span');
-                    badge.className = 'section-badge badge-published';
-                    badge.textContent = '已发布';
-                    top.insertBefore(badge, top.firstChild);
-                }
-            }
-        }
-
-        function getPoolAndSelected(defaultList, currentList) {
-            const list = currentList || [];
-            const currentNames = new Set(list.map(s => s.name));
-            const pool = defaultList.filter(name => !currentNames.has(name));
-            const selected = list.map(s => ({ ...s }));
-            return { pool, selected };
-        }
-
-        function renderDragSection(label, badgeText, type, poolItems, selectedItems, confirmed) {
-            let html = '<div class="section-title">';
-            html += '<span>' + label + '</span>';
-            if (!confirmed) {
-                html += '<span class="section-badge badge-editing">' + badgeText + '</span>';
-            }
-            html += '</div>';
-
-            if (confirmed) {
-                // Show checkable list
-                html += '<div class="step-list-confirmed">';
-                selectedItems.forEach((s, i) => {
-                    html += '<div class="step-item-done' + (s.done ? ' done' : '') + '" data-type="' + type + '" data-idx="' + i + '">';
-                    html += '<span class="step-name">' + esc(s.name) + '</span>';
-                    html += '<button class="step-check" data-type="' + type + '" data-idx="' + i + '">✓</button>';
-                    html += '</div>';
-                });
-                html += '</div>';
-            } else {
-                // Drag and drop columns
-                html += '<div class="drag-columns">';
-                // Left: pool
-                html += '<div class="drag-column">';
-                html += '<div class="drag-column-header">可选工序</div>';
-                html += '<div class="drag-drop-zone" id="pool-' + type + '">';
-                poolItems.forEach(name => {
-                    html += '<div class="drag-item" draggable="true" data-name="' + esc(name) + '" data-from="pool" data-type="' + type + '">';
-                    html += '<span class="item-name">' + esc(name) + '</span>';
-                    html += '</div>';
-                });
-                html += '</div></div>';
-
-                // Right: selected
-                html += '<div class="drag-column">';
-                html += '<div class="drag-column-header">已排工序</div>';
-                html += '<div class="drag-drop-zone" id="selected-' + type + '">';
-                selectedItems.forEach((s, i) => {
-                    html += '<div class="drag-item" draggable="true" data-name="' + esc(s.name) + '" data-from="selected" data-type="' + type + '" data-idx="' + i + '">';
-                    html += '<span class="item-num">' + (i + 1) + '</span>';
-                    html += '<span class="item-name">' + esc(s.name) + '</span>';
-                    html += '<button class="item-remove" data-type="' + type + '" data-name="' + esc(s.name) + '" title="移回可选">×</button>';
-                    html += '</div>';
-                });
-                html += '</div></div>';
-                html += '</div>';
-            }
-
-            return html;
-        }
-
-        function renderModal(container, q, proc) {
-            const pct = calcProgress(proc, q.status);
-            const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
-
-            let html = '<button class="modal-close" onclick="document.getElementById(\'modalOverlay\').classList.remove(\'show\')">×</button>';
-
-            html += '<div class="modal-header">';
-            html += '<div class="modal-header-inner">';
-            html += '<div class="modal-header-left">';
-            html += '<div class="qnum">报价编号<br><span>' + esc(q.quoteNumber || '-') + '</span></div>';
-            html += '</div>';
-            if (q.processPublished) {
-                html += '<span class="btn-publish published">已发布</span>';
-            } else if (proc.confirmed) {
-                html += '<button class="btn-publish" id="btnPublish">确认发布工序</button>';
-            }
-            html += '</div>';
-            html += '<div class="cust">客户：' + esc(q.customerName || '-') + ' · ' + date + '</div>';
-            html += '</div>';
-
-            html += '<div class="modal-progress">';
-            html += '<div class="modal-progress-label"><span>整体进度</span><span>' + pct + '%</span></div>';
-            html += '<div class="progress-bar" style="height:10px"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
-            html += '</div>';
-
-            const stepsData = getPoolAndSelected(DEFAULT_STEPS, proc.steps);
-            const surfaceData = getPoolAndSelected(DEFAULT_SURFACE, proc.surfaceTreatments);
-
-            html += renderDragSection('主要工序', '拖拽排序', 'step', stepsData.pool, stepsData.selected, proc.confirmed);
-            html += renderDragSection('表面处理', '拖拽排序', 'surface', surfaceData.pool, surfaceData.selected, proc.confirmed);
-
-            if (!proc.confirmed) {
-                const canConfirm = stepsData.selected.length > 0 || surfaceData.selected.length > 0;
-                html += '<button class="btn-confirm-order" id="btnConfirm"' + (canConfirm ? '' : ' disabled') + '>确认顺序</button>';
-            } else if (q.processPublished) {
-                html += '<button class="btn-back-edit" id="btnBackEdit">← 返回编辑工序顺序</button>';
-                html += '<button class="btn-mark-complete" id="btnMarkComplete">标记为已完成</button>';
-            } else {
-                html += '<button class="btn-back-edit" id="btnBackEdit">← 返回编辑工序顺序</button>';
-            }
-
-            container.innerHTML = html;
-
-            bindEvents(container, q, proc);
-        }
-
-        function bindEvents(container, q, proc) {
-            if (proc.confirmed) {
-                // Toggle step done - optimistic update (instant UI, background save)
-                container.querySelectorAll('.step-check').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const type = this.dataset.type;
-                        const idx = parseInt(this.dataset.idx);
-                        const arr = type === 'step' ? proc.steps : proc.surfaceTreatments;
-                        arr[idx].done = !arr[idx].done;
-
-                        // Update DOM instantly
-                        const item = this.parentElement;
-                        if (arr[idx].done) {
-                            item.classList.add('done');
-                            this.style.background = '#22c55e';
-                            this.style.borderColor = '#22c55e';
-                            this.style.color = '#fff';
-                        } else {
-                            item.classList.remove('done');
-                            this.style.background = '#fff';
-                            this.style.borderColor = '#ddd';
-                            this.style.color = 'transparent';
-                        }
-
-                        // Update progress bars (modal + card)
-                        const pct = calcProgress(proc, q.status);
-                        updateModalProgress(container, pct);
-                        syncCardProgress(q.id, proc, q.status);
-
-                        // Update local data + save in background
-                        const qi = allQuotes.findIndex(x => x.id === q.id);
-                        if (qi >= 0) allQuotes[qi].process = proc;
-                        saveProcess(q.id, proc, q.processPublished);
-                    });
-                });
-
-                // Publish button
-                const btnPublish = container.querySelector('#btnPublish');
-                if (btnPublish) {
-                    btnPublish.addEventListener('click', async function() {
-                        try {
-                            await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), {
-                                processPublished: true,
-                                status: 'in_production'
-                            });
-                            q.processPublished = true;
-                            q.status = 'in_production';
-                            const qi = allQuotes.findIndex(x => x.id === q.id);
-                            if (qi >= 0) {
-                                allQuotes[qi].processPublished = true;
-                                allQuotes[qi].status = 'in_production';
-                            }
-                            // Sync process + status to client
-                            if (q.publishedTo) {
-                                try {
-                                    await updateDoc(doc(db, 'users', q.publishedTo, 'quotes', q.id), {
-                                        process: proc,
-                                        status: 'in_production'
-                                    });
-                                } catch (syncErr) {
-                                    console.error('同步到客户端失败:', syncErr);
-                                    alert('发布成功，但同步到客户端失败: ' + (syncErr.message || '未知错误'));
-                                }
-                            } else {
-                                console.warn('缺少 publishedTo，无法同步到客户端');
-                            }
-                            syncCardPublishBadge(q.id);
-                            renderModal(container, q, proc);
-                            bindEvents(container, q, proc);
-                        } catch (err) {
-                            console.error('发布失败:', err);
-                            alert('发布失败，请重试');
-                        }
-                    });
-                }
-
-                // Mark complete button (double-click confirm)
-                const btnMarkComplete = container.querySelector('#btnMarkComplete');
-                if (btnMarkComplete) {
-                    let markTimer = null;
-                    btnMarkComplete.addEventListener('click', async function() {
-                        if (this.classList.contains('confirming')) {
-                            // Second click - execute
-                            clearTimeout(markTimer);
-                            this.textContent = '处理中...';
-                            this.disabled = true;
-                            try {
-                                await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), {
-                                    status: 'completed'
-                                });
-                                // Sync to client
-                                if (q.publishedTo) {
-                                    try {
-                                        await updateDoc(doc(db, 'users', q.publishedTo, 'quotes', q.id), {
-                                            status: 'completed'
-                                        });
-                                    } catch (syncErr) {
-                                        console.error('同步完成状态到客户端失败:', syncErr);
-                                    }
-                                }
-                                closeModal();
-                            } catch (err) {
-                                console.error('标记完成失败:', err);
-                                alert('操作失败，请重试');
-                                this.classList.remove('confirming');
-                                this.textContent = '标记为已完成';
-                                this.disabled = false;
-                            }
-                        } else {
-                            // First click - confirm
-                            this.classList.add('confirming');
-                            this.textContent = '再次点击确认完成';
-                            markTimer = setTimeout(() => {
-                                this.classList.remove('confirming');
-                                this.textContent = '标记为已完成';
-                            }, 5000);
-                        }
-                    });
-                }
-
-                // Back to edit button
-                const btnBack = container.querySelector('#btnBackEdit');
-                if (btnBack) {
-                    btnBack.addEventListener('click', function() {
-                        proc.confirmed = false;
-                        const qi = allQuotes.findIndex(x => x.id === q.id);
-                        if (qi >= 0) allQuotes[qi].process = proc;
-                        renderModal(container, q, proc);
-                        bindEvents(container, q, proc);
-                        saveProcess(q.id, proc, q.processPublished);
-                    });
-                }
-                return;
-            }
-
-            // Drag & drop bindings
-            const dragItems = container.querySelectorAll('.drag-item[draggable]');
-            const dropZones = container.querySelectorAll('.drag-drop-zone');
-
-            dragItems.forEach(item => {
-                item.addEventListener('dragstart', function(e) {
-                    this.classList.add('dragging');
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', JSON.stringify({
-                        name: this.dataset.name,
-                        from: this.dataset.from,
-                        type: this.dataset.type,
-                        idx: this.dataset.idx || -1
-                    }));
-                });
-
-                item.addEventListener('dragend', function() {
-                    this.classList.remove('dragging');
-                });
-
-                // Touch support
-                item.addEventListener('touchstart', touchStart, { passive: false });
-                item.addEventListener('touchmove', touchMove, { passive: false });
-                item.addEventListener('touchend', touchEnd);
-            });
-
-            dropZones.forEach(zone => {
-                zone.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    this.classList.add('drag-over');
-                    // Track insertion index within selected zones
-                    if (this.id.startsWith('selected-')) {
-                        const items = Array.from(this.querySelectorAll('.drag-item'));
-                        if (items.length === 0) {
-                            window._dropInsertIdx = 0;
-                        } else {
-                            // Find the closest item by Y position
-                            let bestIdx = items.length;
-                            let bestDist = Infinity;
-                            items.forEach((item, i) => {
-                                const rect = item.getBoundingClientRect();
-                                const midY = rect.top + rect.height / 2;
-                                const dist = Math.abs(e.clientY - midY);
-                                if (dist < bestDist) {
-                                    bestDist = dist;
-                                    bestIdx = e.clientY < midY ? i : i + 1;
-                                }
-                            });
-                            window._dropInsertIdx = bestIdx;
-                        }
-                    }
-                });
-
-                zone.addEventListener('dragleave', function() {
-                    this.classList.remove('drag-over');
-                });
-
-                zone.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    this.classList.remove('drag-over');
-                    const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-                    handleDrop(data, this.id, q.id, proc, container, q);
-                });
-            });
-
-            // Remove buttons (click to move back to pool)
-            container.querySelectorAll('.item-remove').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const type = this.dataset.type;
-                    const name = this.dataset.name;
-                    const arr = type === 'step' ? proc.steps : proc.surfaceTreatments;
-                    const idx = arr.findIndex(s => s.name === name);
-                    if (idx >= 0) {
-                        arr.splice(idx, 1);
-                        saveProcess(q.id, proc);
-                        renderModal(container, q, proc);
-                        bindEvents(container, q, proc);
-                    }
-                });
-            });
-
-            // Confirm button
-            const btnConfirm = container.querySelector('#btnConfirm');
-            if (btnConfirm) {
-                btnConfirm.addEventListener('click', async function() {
-                    // proc.steps is already updated by drag/drop handlers — use directly
-                    proc.confirmed = true;
-                    console.log('确认顺序 - steps:', proc.steps.map(s => s.name), 'surface:', proc.surfaceTreatments.map(s => s.name));
-                    const qi = allQuotes.findIndex(x => x.id === q.id);
-                    if (qi >= 0) allQuotes[qi].process = proc;
-                    renderModal(container, q, proc);
-                    bindEvents(container, q, proc);
-                    saveProcess(q.id, proc);
-                });
-            }
-        }
-
-        function handleDrop(data, zoneId, quoteId, proc, container, q) {
-            const arr = data.type === 'step' ? proc.steps : proc.surfaceTreatments;
-            const isPool = zoneId.startsWith('pool-');
-            const isSelected = zoneId.startsWith('selected-');
-
-            if (data.from === 'pool' && isSelected) {
-                // Add from pool to end of selected
-                if (!arr.find(s => s.name === data.name)) {
-                    const insertIdx = window._dropInsertIdx != null ? window._dropInsertIdx : arr.length;
-                    arr.splice(insertIdx, 0, { name: data.name, done: false });
-                    window._dropInsertIdx = null;
-                }
-            } else if (data.from === 'selected' && isPool) {
-                // Remove from selected (move back to pool)
-                const idx = arr.findIndex(s => s.name === data.name);
-                if (idx >= 0) arr.splice(idx, 1);
-                window._dropInsertIdx = null;
-            } else if (data.from === 'selected' && isSelected) {
-                // Reorder within selected
-                const fromIdx = arr.findIndex(s => s.name === data.name);
-                if (fromIdx >= 0) {
-                    const [item] = arr.splice(fromIdx, 1);
-                    const insertIdx = window._dropInsertIdx != null ? window._dropInsertIdx : arr.length;
-                    const adjusted = insertIdx > fromIdx ? insertIdx - 1 : insertIdx;
-                    arr.splice(Math.min(adjusted, arr.length), 0, item);
-                    window._dropInsertIdx = null;
-                }
-            }
-
-            const qi = allQuotes.findIndex(x => x.id === quoteId);
-            if (qi >= 0) allQuotes[qi].process = proc;
-            renderModal(container, q, proc);
-            bindEvents(container, q, proc);
-            saveProcess(quoteId, proc);
-        }
-
-        // Touch drag support
-        let touchDragEl = null;
-        let touchClone = null;
-        let touchStartX, touchStartY;
-        let touchOffsetX, touchOffsetY;
-
-        function touchStart(e) {
-            touchDragEl = this;
-            const touch = e.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-            touchOffsetX = touch.clientX - this.getBoundingClientRect().left;
-            touchOffsetY = touch.clientY - this.getBoundingClientRect().top;
-            window._lastDropX = touch.clientX;
-            window._lastDropY = touch.clientY;
-        }
-
-        function touchMove(e) {
-            if (!touchDragEl) return;
-            e.preventDefault();
-            const touch = e.touches[0];
-            window._lastDropX = touch.clientX;
-            window._lastDropY = touch.clientY;
-            const dx = touch.clientX - touchStartX;
-            const dy = touch.clientY - touchStartY;
-            if (!touchClone && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-                touchClone = touchDragEl.cloneNode(true);
-                touchClone.style.position = 'fixed';
-                touchClone.style.zIndex = '9999';
-                touchClone.style.opacity = '0.85';
-                touchClone.style.pointerEvents = 'none';
-                touchClone.style.width = touchDragEl.offsetWidth + 'px';
-                document.body.appendChild(touchClone);
-                touchDragEl.classList.add('dragging');
-            }
-            if (touchClone) {
-                touchClone.style.left = (touch.clientX - touchOffsetX) + 'px';
-                touchClone.style.top = (touch.clientY - touchOffsetY) + 'px';
-            }
-        }
-
-        function touchEnd(e) {
-            if (!touchDragEl) return;
-            if (touchClone) {
-                touchClone.remove();
-                touchClone = null;
-                touchDragEl.classList.remove('dragging');
-
-                // Find drop target
-                const touch = e.changedTouches[0];
-                window._lastDropX = touch.clientX;
-                window._lastDropY = touch.clientY;
-                const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                const zone = el ? el.closest('.drag-drop-zone') : null;
-                if (zone && zone !== touchDragEl.parentElement) {
-                    const data = {
-                        name: touchDragEl.dataset.name,
-                        from: touchDragEl.dataset.from,
-                        type: touchDragEl.dataset.type,
-                        idx: touchDragEl.dataset.idx || -1
-                    };
-                    // Find the quote/proc context
-                    const container = document.getElementById('modalContainer');
-                    const qid = container.dataset.currentQid;
-                    const q = allQuotes.find(x => x.id === qid);
-                    if (q) {
-                        handleDrop(data, zone.id, qid, q.process || { steps: [], surfaceTreatments: [], confirmed: false }, container, q);
-                    }
-                }
-            }
-            touchDragEl = null;
-        }
+        // Search
+        const searchInput = document.getElementById('searchInput');
+        const searchClear = document.getElementById('searchClear');
+        let searchTimer = null;
+        searchInput.addEventListener('input', function() {
+            const val = this.value.trim();
+            searchClear.classList.toggle('show', val.length > 0);
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => renderQuotes(val), 150);
+        });
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            this.classList.remove('show');
+            renderQuotes();
+            searchInput.focus();
+        });
 
         loadQuotes();
     </script>

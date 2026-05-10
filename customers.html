@@ -401,6 +401,38 @@
         }
         .btn-add-to-pool:hover { background: #f0fdf4; }
 
+        .payment-tag {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 8px; border-radius: 3px;
+            margin-left: 6px; vertical-align: middle;
+            cursor: default;
+        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-tag.unset { background: #f5f5f5; color: #999; }
+        .payment-tag.admin { cursor: pointer; }
+        .payment-tag.admin:hover { opacity: 0.7; }
+        .payment-select {
+            font-size: 11px; padding: 3px 6px; border-radius: 4px;
+            border: 1px solid #6366f1; outline: none;
+            margin-left: 6px; vertical-align: middle;
+        }
+        .credit-info {
+            font-size: 11px; color: #7c3aed; margin-left: 6px;
+            vertical-align: middle;
+        }
+        .credit-info.admin {
+            cursor: pointer; text-decoration: underline dotted;
+        }
+        .credit-info.admin:hover { color: #5b21b6; }
+        .credit-limit-edit {
+            font-size: 11px; width: 100px; padding: 2px 6px;
+            border: 1px solid #6366f1; border-radius: 4px; outline: none;
+            margin-left: 6px; vertical-align: middle;
+        }
+
         @media (max-width: 600px) {
             .main { padding: 24px 16px; }
             .header { padding: 0 16px; }
@@ -498,7 +530,8 @@
         let allQuotes = [];
         let deleteTarget = null;
         let deleteCustomerTarget = null;
-        let clientPoolMap = {}; // name → { uid, assignedTo, country, company }
+        let clientPoolMap = {}; // name → { uid, assignedTo, country, company, paymentMethod, creditLimit, creditUsed }
+        const isAdmin = user.email === 'sales01@test.com';
 
         async function loadData() {
             const content = document.getElementById('content');
@@ -508,7 +541,7 @@
                 clientPoolMap = {};
                 poolSnap.forEach(d => {
                     const data = d.data();
-                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company };
+                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
                 });
 
                 const custRef = collection(db, 'users', user.uid, 'customers');
@@ -516,10 +549,10 @@
                 allCustomers = [];
                 custSnapshot.forEach(d => { allCustomers.push({ id: d.id, ...d.data() }); });
 
-                // Also include pool clients assigned to current user (not already in private list)
+                // Pool clients: admin sees all, sales see only assigned
                 const existingNames = new Set(allCustomers.map(c => c.name));
                 for (const [name, info] of Object.entries(clientPoolMap)) {
-                    if (info.assignedTo === user.email && !existingNames.has(name)) {
+                    if ((isAdmin || info.assignedTo === user.email) && !existingNames.has(name)) {
                         allCustomers.push({ id: 'pool_' + info.uid, name, _fromPool: true, poolUid: info.uid });
                     }
                 }
@@ -588,6 +621,22 @@
                     html += '<span class="pool-badge">客户池</span>';
                     if (poolInfo.assignedTo) {
                         html += '<span class="pool-sales">负责: ' + esc(poolInfo.assignedTo.split('@')[0]) + '</span>';
+                    }
+                    // Payment method tag
+                    const pm = poolInfo.paymentMethod || 'unset';
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', unset: '未设置' };
+                    const pmClass = 'payment-tag ' + pm + (isAdmin ? ' admin' : '');
+                    html += '<span class="' + pmClass + '" data-cust-name="' + esc(cust.name) + '" data-pm="' + pm + '">' + pmLabels[pm] + '</span>';
+                    // Credit limit info for credit customers
+                    if (pm === 'credit') {
+                        const limit = poolInfo.creditLimit || 0;
+                        const used = poolInfo.creditUsed || 0;
+                        const remain = Math.max(0, limit - used);
+                        if (isAdmin) {
+                            html += '<span class="credit-info admin" data-cust-name="' + esc(cust.name) + '" data-credit-limit="' + limit + '">额度: $' + used.toLocaleString() + ' / $' + (limit || '未设').toString() + '</span>';
+                        } else if (limit > 0) {
+                            html += '<span class="credit-info">额度: 剩余 $' + remain.toLocaleString() + '</span>';
+                        }
                     }
                 } else {
                     html += '<span class="temp-badge">临时</span>';
@@ -767,6 +816,97 @@
                     preview.innerHTML = '';
                 });
             });
+
+            // ---- Payment method inline edit (admin only) ----
+            if (isAdmin) {
+                function makePaymentTag(custName, pm) {
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', unset: '未设置' };
+                    const span = document.createElement('span');
+                    span.className = 'payment-tag ' + pm + ' admin';
+                    span.dataset.custName = custName;
+                    span.dataset.pm = pm;
+                    span.textContent = pmLabels[pm];
+                    span.addEventListener('click', onPaymentTagClick);
+                    return span;
+                }
+
+                async function onPaymentTagClick(e) {
+                    e.stopPropagation();
+                    const tag = e.currentTarget;
+                    const custName = tag.dataset.custName;
+                    const currentPm = tag.dataset.pm;
+                    const poolInfo = clientPoolMap[custName];
+                    if (!poolInfo || !poolInfo.uid) return;
+
+                    const options = [
+                        { value: 'monthly', label: '月付' },
+                        { value: 'credit', label: '信用额度' },
+                        { value: 'pay_before_ship', label: '款到发货' },
+                        { value: 'prepaid', label: '预付款' }
+                    ];
+                    let selHtml = '<select class="payment-select">';
+                    selHtml += '<option value="">未设置</option>';
+                    options.forEach(o => {
+                        selHtml += '<option value="' + o.value + '"' + (currentPm === o.value ? ' selected' : '') + '>' + o.label + '</option>';
+                    });
+                    selHtml += '</select>';
+
+                    const wrapper = document.createElement('span');
+                    wrapper.innerHTML = selHtml;
+                    const selectEl = wrapper.firstChild;
+                    tag.replaceWith(selectEl);
+                    selectEl.focus();
+
+                    async function savePm() {
+                        const newPm = selectEl.value;
+                        try {
+                            await updateDoc(doc(db, 'clientProfiles', poolInfo.uid), { paymentMethod: newPm || null });
+                            clientPoolMap[custName].paymentMethod = newPm || null;
+                        } catch (err) { console.error('保存付款方式失败:', err); }
+                        const newTag = makePaymentTag(custName, newPm || 'unset');
+                        selectEl.replaceWith(newTag);
+                    }
+
+                    selectEl.addEventListener('change', savePm);
+                    selectEl.addEventListener('blur', savePm);
+                }
+
+                content.querySelectorAll('.payment-tag.admin').forEach(tag => {
+                    tag.addEventListener('click', onPaymentTagClick);
+                });
+
+                // Credit limit editing (admin clicks credit info)
+                content.querySelectorAll('.credit-info.admin').forEach(el => {
+                    el.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const custName = this.dataset.custName;
+                        const poolInfo = clientPoolMap[custName];
+                        if (!poolInfo || !poolInfo.uid) return;
+                        const currentLimit = poolInfo.creditLimit || '';
+
+                        const wrapper = document.createElement('span');
+                        wrapper.innerHTML = '<input class="credit-limit-edit" type="number" placeholder="额度 USD" value="' + currentLimit + '">';
+                        const inputEl = wrapper.firstChild;
+                        this.replaceWith(inputEl);
+                        inputEl.focus();
+
+                        async function saveLimit() {
+                            const newLimit = parseFloat(inputEl.value) || 0;
+                            try {
+                                await updateDoc(doc(db, 'clientProfiles', poolInfo.uid), { creditLimit: newLimit });
+                                clientPoolMap[custName].creditLimit = newLimit;
+                            } catch (err) { console.error('保存额度失败:', err); }
+                            loadData();
+                        }
+
+                        inputEl.addEventListener('change', saveLimit);
+                        inputEl.addEventListener('blur', saveLimit);
+                        inputEl.addEventListener('keydown', function(ev) {
+                            if (ev.key === 'Enter') { inputEl.blur(); }
+                        });
+                    });
+                });
+            }
         }
 
         // ---- Client select list from registered users ----
@@ -782,7 +922,7 @@
                 snap.forEach(d => {
                     const data = d.data();
                     allClientProfiles.push({ uid: d.id, ...data });
-                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company };
+                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
                 });
                 allClientProfiles.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
                 renderClientSelectList(allClientProfiles, existingNames);

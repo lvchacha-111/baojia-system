@@ -56,6 +56,29 @@
 
         .btn-logout:hover { color: #dc2626; background: #fef2f2; }
 
+        .account-input {
+            width: 200px; padding: 6px 10px;
+            border: 1px solid #ddd; border-radius: 6px;
+            font-size: 13px; color: #1a1a1a; outline: none;
+            transition: border-color 0.15s;
+        }
+        .account-input:focus { border-color: #6366f1; }
+        .btn-save-account {
+            padding: 10px 28px; background: #1a1a1a; color: #fff;
+            border: none; border-radius: 10px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-save-account:hover { background: #333; }
+        .btn-save-account:disabled { opacity: 0.6; cursor: default; }
+        .payment-tag {
+            display: inline-block; font-size: 11px; font-weight: 500;
+            padding: 2px 8px; border-radius: 4px;
+        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+
         .main {
             position: relative; z-index: 1;
             max-width: 720px; margin: 0 auto; padding: 60px 32px;
@@ -282,9 +305,14 @@
         <div class="detail-container" id="detailContainer"></div>
     </div>
 
+    <!-- Account overlay -->
+    <div class="detail-overlay" id="accountOverlay">
+        <div class="detail-container" id="accountContainer"></div>
+    </div>
+
     <script type="module">
         import { auth, getCurrentUser, logout as firebaseLogout, db } from "./firebase-init.js";
-        import { collection, getDocs, query, orderBy, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { collection, getDocs, query, orderBy, updateDoc, doc, where, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
         if (!user) {
@@ -292,7 +320,32 @@
         }
 
         document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('userEmail').style.cursor = 'pointer';
+        document.getElementById('userEmail').title = '点击查看账户信息';
+
         let allOrders = [];
+        let clientProfile = null;
+
+        async function loadClientProfile() {
+            try {
+                const q = query(collection(db, 'clientProfiles'), where('name', '==', user.email.split('@')[0]));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    clientProfile = { uid: d.id, ...d.data() };
+                });
+                if (!clientProfile) {
+                    // Try matching by email prefix variations
+                    const allSnap = await getDocs(collection(db, 'clientProfiles'));
+                    allSnap.forEach(d => {
+                        const data = d.data();
+                        if (data.contactEmail === user.email) {
+                            clientProfile = { uid: d.id, ...data };
+                        }
+                    });
+                }
+            } catch (e) { console.warn('加载账户信息失败:', e); }
+        }
+        loadClientProfile();
 
         try {
             const q = query(collection(db, 'users', user.uid, 'quotes'), orderBy('publishedAt', 'desc'));
@@ -318,12 +371,20 @@
                 html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
                 // Confirmed hint
                 if (s === 'confirmed') {
-                    html += '<div class="order-sales" style="color:#b45309">已确认 · 等待工厂排工序</div>';
+                    html += '<div class="order-sales" style="color:#b45309">已确认 · 等待工厂排流程</div>';
                 }
                 // Progress bar for in_production orders
                 if (s === 'in_production' && o.process) {
                     const pct = calcProgress(o.process, o.status);
                     html += '<div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
+                }
+                // Tracking status
+                if (o.shipments && o.shipments.length > 0) {
+                    const latestShip = o.shipments[o.shipments.length - 1];
+                    if (latestShip.publishedToClient) {
+                        const ts = latestShip.trackingData ? (latestShip.trackingData.statusText || '运输中') : '已发货';
+                        html += '<div class="order-sales" style="color:#6366f1">快递：' + escHTML(ts) + '</div>';
+                    }
                 }
                 html += '</div>';
                 if (o.publishedBy) {
@@ -395,17 +456,12 @@
 
             if (o.process && o.process.steps && o.process.steps.length > 0) {
                 const pct = calcProgress(o.process, o.status);
-                html += '<div class="detail-section"><h4>生产进度</h4>';
+                html += '<div class="detail-section"><h4>作业流程</h4>';
                 html += '<div class="progress-wrap" style="margin-bottom:12px"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
                 html += '<div style="font-size:13px">';
                 o.process.steps.forEach(s => {
                     html += '<div style="padding:4px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
                 });
-                if (o.process.surfaceTreatments && o.process.surfaceTreatments.length > 0) {
-                    o.process.surfaceTreatments.forEach(s => {
-                        html += '<div style="padding:4px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
-                    });
-                }
                 html += '</div></div>';
             }
 
@@ -414,6 +470,33 @@
                 html += '<div class="svg-preview-box">' + o.svgContent + '</div>';
                 html += '</div>';
             }
+
+            // Tracking info
+            if (o.shipments && o.shipments.length > 0) {
+                o.shipments.forEach(ship => {
+                    if (!ship.publishedToClient) return;
+                    html += '<div class="detail-section"><h4>快递进度</h4>';
+                    html += '<div class="detail-row"><span class="label">快递单号</span><span class="value">' + escHTML(ship.trackingNumber) + '</span></div>';
+                    if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
+                        html += '<div class="detail-row"><span class="label">合并发货</span><span class="value" style="color:#6366f1">' + escHTML(ship.mergedOrderNumbers.join('、')) + '</span></div>';
+                    }
+                    html += '<div class="detail-row"><span class="label">承运商</span><span class="value">' + escHTML(ship.carrier || 'DHL') + '</span></div>';
+                    html += '<div class="detail-row"><span class="label">发货时间</span><span class="value">' + escHTML(ship.shipDate || '-') + '</span></div>';
+                    if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
+                        html += '<div style="margin-top:10px;font-size:13px">';
+                        ship.trackingData.events.forEach(ev => {
+                            html += '<div style="padding:4px 0;border-bottom:1px solid #f5f5f5">';
+                            html += '<span style="color:#999;font-size:11px">' + escHTML(ev.time || '') + '</span> ';
+                            html += escHTML(ev.location || '') + ' ';
+                            html += '<span style="color:#1a1a1a">' + escHTML(ev.description || ev.status || '') + '</span>';
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                });
+            }
+
             html += '<div class="detail-total"><small>总价</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
 
             container.innerHTML = html;
@@ -423,12 +506,15 @@
         document.getElementById('detailOverlay').addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('show');
         });
+        document.getElementById('accountOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeAccount();
+        });
 
         function calcProgress(proc, status) {
             if (status === 'completed') return 100;
             if (!proc || !proc.steps || proc.steps.length === 0) return 0;
-            const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
-            const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
+            const total = proc.steps.length;
+            const done = proc.steps.filter(s => s.done).length;
             return total > 0 ? Math.round(done / total * 100) : 0;
         }
 
@@ -437,6 +523,96 @@
             div.textContent = str;
             return div.innerHTML;
         }
+
+        window.openAccount = function() {
+            const overlay = document.getElementById('accountOverlay');
+            const container = document.getElementById('accountContainer');
+            const p = clientProfile || {};
+            const pm = p.paymentMethod || '';
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+
+            let html = '<button class="detail-close" onclick="closeAccount()">×</button>';
+            html += '<div class="detail-header">';
+            html += '<div class="name">' + escHTML(p.name || user.email) + '</div>';
+            html += '<div class="meta">' + escHTML(user.email) + '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>账户信息</h4>';
+            html += '<div class="detail-row"><span class="label">客户名称</span><span class="value">' + escHTML(p.name || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">公司名称</span>';
+            html += '<input class="account-input" id="acctCompany" value="' + escHTML(p.company || '') + '" placeholder="公司名称">';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">联系邮箱</span>';
+            html += '<input class="account-input" id="acctEmail" value="' + escHTML(p.contactEmail || '') + '" placeholder="联系邮箱">';
+            html += '</div>';
+            html += '<div class="detail-row"><span class="label">国家/地区</span>';
+            html += '<input class="account-input" id="acctCountry" value="' + escHTML(p.country || '') + '" placeholder="国家">';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="detail-section"><h4>付款信息</h4>';
+            html += '<div class="detail-row"><span class="label">付款方式</span><span class="value">';
+            html += pm ? '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>' : '未设置';
+            html += '</span></div>';
+            if (pm === 'credit') {
+                const limit = p.creditLimit || 0;
+                const used = p.creditUsed || 0;
+                const remain = Math.max(0, limit - used);
+                html += '<div class="detail-row"><span class="label">信用额度</span><span class="value">总额 $' + limit.toLocaleString() + '</span></div>';
+                html += '<div class="detail-row"><span class="label">已用额度</span><span class="value">$' + used.toLocaleString() + '</span></div>';
+                html += '<div class="detail-row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + remain.toLocaleString() + '</span></div>';
+            }
+            html += '</div>';
+
+            html += '<div style="text-align:right;margin-top:16px">';
+            html += '<button class="btn-save-account" id="btnSaveAccount" onclick="saveAccount()">保存修改</button>';
+            html += '</div>';
+
+            container.innerHTML = html;
+            overlay.classList.add('show');
+        };
+
+        window.closeAccount = function() {
+            document.getElementById('accountOverlay').classList.remove('show');
+        };
+
+        document.getElementById('userEmail').addEventListener('click', function() { openAccount(); });
+
+        window.saveAccount = async function() {
+            const btn = document.getElementById('btnSaveAccount');
+            btn.textContent = '保存中...';
+            btn.disabled = true;
+            try {
+                const company = document.getElementById('acctCompany').value.trim();
+                const contactEmail = document.getElementById('acctEmail').value.trim();
+                const country = document.getElementById('acctCountry').value.trim();
+
+                if (clientProfile && clientProfile.uid) {
+                    await updateDoc(doc(db, 'clientProfiles', clientProfile.uid), {
+                        company, contactEmail, country
+                    });
+                } else {
+                    // No profile yet - create one
+                    const { setDoc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                    await setDoc(doc(db, 'clientProfiles', user.uid), {
+                        name: user.email.split('@')[0],
+                        company, contactEmail, country,
+                        registeredAt: new Date()
+                    });
+                    clientProfile = { uid: user.uid, name: user.email.split('@')[0], company, contactEmail, country };
+                }
+                clientProfile.company = company;
+                clientProfile.contactEmail = contactEmail;
+                clientProfile.country = country;
+                btn.textContent = '已保存';
+                setTimeout(() => { btn.textContent = '保存修改'; btn.disabled = false; }, 1500);
+            } catch (e) {
+                console.error('保存失败:', e);
+                alert('保存失败: ' + (e.message || ''));
+                btn.textContent = '保存修改';
+                btn.disabled = false;
+            }
+        };
 
         window.logout = async function() {
             await firebaseLogout();

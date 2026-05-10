@@ -490,6 +490,29 @@
         .chat-send:hover { background: #4f46e5; }
         .chat-send:disabled { opacity: 0.5; cursor: default; }
 
+        .payment-tag {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px; margin-left: 4px; vertical-align: middle;
+        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-status-tag {
+            font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
+            margin-left: 2px; vertical-align: middle;
+        }
+        .payment-status-tag.paid { background: #f0fdf4; color: #16a34a; }
+        .payment-status-tag.unpaid { background: #fef2f2; color: #dc2626; }
+        .btn-mark-paid-inline {
+            height: 24px; padding: 0 10px; border-radius: 4px;
+            border: none; background: #16a34a; color: #fff;
+            font-size: 11px; font-weight: 500; cursor: pointer;
+            vertical-align: middle;
+        }
+        .btn-mark-paid-inline:hover { background: #15803d; }
+        .btn-mark-paid-inline:disabled { opacity: 0.6; cursor: default; }
+
         @media (max-width: 800px) {
             .layout { flex-direction: column; }
             .sidebar { width: 100%; max-height: 300px; border-right: none; border-bottom: 1px solid #eee; }
@@ -556,7 +579,7 @@
                             <path d="M8 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/>
                         </svg>
                     </div>
-                    <h3>厂内工序</h3>
+                    <h3>作业流程</h3>
                     <p>工序跟踪、生产管理、进度查询</p>
                     <span class="badge badge-ready">可用</span>
                 </a>
@@ -666,6 +689,23 @@
         // ---- Load registered clients ----
         let allClients = [];
         let unreadUids = new Set();
+        let clientPaymentMap = {};
+
+        async function loadPaymentMethods() {
+            try {
+                const snap = await getDocs(collection(db, 'clientProfiles'));
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (data.name) {
+                        clientPaymentMap[data.name] = {
+                            paymentMethod: data.paymentMethod || null,
+                            creditLimit: data.creditLimit || null,
+                            creditUsed: data.creditUsed || 0
+                        };
+                    }
+                });
+            } catch (e) { console.warn('加载付款方式失败:', e); }
+        }
 
         async function loadClients() {
             const listEl = document.getElementById('clientList');
@@ -713,7 +753,7 @@
         }
 
         async function loadClientStatuses() {
-            const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中', completed:'生产结束' };
+            const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中' };
             for (const client of allClients) {
                 try {
                     const q = query(collection(db, 'users', client.uid, 'quotes'), orderBy('createdAt', 'desc'), limit(1));
@@ -721,8 +761,8 @@
                     if (!snap.empty) {
                         const latest = snap.docs[0].data();
                         const st = latest.status || 'pending';
-                        client.latestStatus = st;
-                        client.latestStatusLabel = statusLabels[st] || '已发布';
+                        client.latestStatus = statusLabels[st] ? st : null;
+                        client.latestStatusLabel = statusLabels[st] || null;
                     } else {
                         client.latestStatus = null;
                         client.latestStatusLabel = null;
@@ -792,10 +832,10 @@
                 snap.forEach(d => { orders.push({ id: d.id, ...d.data() }); });
                 // Update client status from latest order
                 if (orders.length > 0) {
-                    const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中', completed:'生产结束' };
+                    const statusLabels = { pending:'已发布', confirmed:'已确认', in_production:'生产中' };
                     const st = orders[0].status || 'pending';
-                    client.latestStatus = st;
-                    client.latestStatusLabel = statusLabels[st] || '已发布';
+                    client.latestStatus = statusLabels[st] ? st : null;
+                    client.latestStatusLabel = statusLabels[st] || null;
                 }
             } catch (e) {
                 console.error('加载订单失败:', e);
@@ -830,6 +870,33 @@
                 html += '<span class="value">' + escHTML(client.assignedTo || '未分配') + '</span>';
             }
             html += '</div>';
+            // Payment method row
+            const pmInfo = clientPaymentMap[client.name] || {};
+            const currentPm = pmInfo.paymentMethod || '';
+            const pmLabels3 = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            html += '<div class="detail-row"><span class="label">付款方式</span>';
+            if (isAdmin) {
+                html += '<select class="detail-select" id="editPaymentMethod" onchange="onPmChange()" style="font-size:13px">';
+                html += '<option value="">未设置</option>';
+                html += '<option value="monthly"' + (currentPm === 'monthly' ? ' selected' : '') + '>月付</option>';
+                html += '<option value="credit"' + (currentPm === 'credit' ? ' selected' : '') + '>信用额度</option>';
+                html += '<option value="pay_before_ship"' + (currentPm === 'pay_before_ship' ? ' selected' : '') + '>款到发货</option>';
+                html += '<option value="prepaid"' + (currentPm === 'prepaid' ? ' selected' : '') + '>预付款</option>';
+                html += '</select>';
+                html += '<span id="creditLimitArea" style="display:' + (currentPm === 'credit' ? 'inline' : 'none') + ';margin-left:8px">';
+                html += '额度 $<input class="detail-input" type="number" id="editCreditLimit" value="' + (pmInfo.creditLimit || '') + '" placeholder="额度" style="width:100px;text-align:left;margin-left:4px">';
+                if (pmInfo.creditUsed) {
+                    html += ' <span style="font-size:11px;color:#999">已用 $' + pmInfo.creditUsed.toLocaleString() + '</span>';
+                }
+                html += '</span>';
+            } else {
+                const displayPm = currentPm ? '<span class="payment-tag ' + currentPm + '">' + (pmLabels3[currentPm] || currentPm) + '</span>' : '<span class="value">未设置</span>';
+                html += '<span class="value">' + displayPm + '</span>';
+                if (currentPm === 'credit' && pmInfo.creditLimit) {
+                    html += ' <span style="font-size:11px;color:#999">额度 $' + pmInfo.creditLimit.toLocaleString() + '</span>';
+                }
+            }
+            html += '</div>';
             html += '</div>';
 
             html += '<div class="detail-section"><h4>订单记录 (' + orders.length + ')</h4>';
@@ -844,7 +911,17 @@
                     const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
                     const s = o.status || 'pending';
                     html += '<div class="order-item" data-qid="' + o.id + '">';
-                    html += '<div class="order-left"><div class="order-number">' + escHTML(o.quoteNumber || '-') + pubLabel + ' <span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span></div>';
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                    const pmInfo = clientPaymentMap[o.customerName];
+                    let pmHtml = '';
+                    if (pmInfo && pmInfo.paymentMethod) {
+                        pmHtml += ' <span class="payment-tag ' + pmInfo.paymentMethod + '">' + (pmLabels[pmInfo.paymentMethod] || pmInfo.paymentMethod) + '</span>';
+                    }
+                    const paid = o.paymentStatus === 'paid';
+                    if (pmInfo && pmInfo.paymentMethod) {
+                        pmHtml += ' <span class="payment-status-tag ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收' : '待收') + '</span>';
+                    }
+                    html += '<div class="order-left"><div class="order-number">' + escHTML(o.quoteNumber || '-') + pubLabel + ' <span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span>' + pmHtml + '</div>';
                     html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + d + '</div></div>';
                     html += '<div class="order-price">¥' + (o.totalPrice || 0).toFixed(2) + '</div>';
                     html += '</div>';
@@ -853,6 +930,17 @@
             html += '</div>';
 
             container.innerHTML = html;
+
+            // Set payment save uid for admin editing
+            window._pmSaveUid = uid;
+
+            // Credit limit auto-save on input change
+            const clInput = document.getElementById('editCreditLimit');
+            if (clInput) {
+                clInput.addEventListener('input', function() {
+                    savePaymentMethod();
+                });
+            }
 
             // Attach SVG hover preview + click handler to order items
             const preview = document.getElementById('svgHoverPreview');
@@ -993,6 +1081,26 @@
             html += '</div>';
             html += '</div>';
 
+            // Payment info
+            const pmLabels2 = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            const pmInfo2 = clientPaymentMap[o.customerName];
+            if (pmInfo2 && pmInfo2.paymentMethod) {
+                const paid2 = o.paymentStatus === 'paid';
+                html += '<div class="detail-section"><h4>付款信息</h4>';
+                html += '<div class="detail-row"><span class="label">付款方式</span><span class="value"><span class="payment-tag ' + pmInfo2.paymentMethod + '">' + (pmLabels2[pmInfo2.paymentMethod] || pmInfo2.paymentMethod) + '</span></span></div>';
+                html += '<div class="detail-row"><span class="label">收款状态</span><span class="value"><span class="payment-status-tag ' + (paid2 ? 'paid' : 'unpaid') + '">' + (paid2 ? '已收款' : '待收款') + '</span>';
+                if (isAdmin && !paid2) {
+                    html += ' <button class="btn-mark-paid-inline" id="btnMarkPaidInline" data-order-id="' + o.id + '" data-cust-name="' + escHTML(o.customerName || '') + '">标记已收款</button>';
+                }
+                html += '</span></div>';
+                if (pmInfo2.paymentMethod === 'credit' && pmInfo2.creditLimit) {
+                    const used = pmInfo2.creditUsed || 0;
+                    const remain = Math.max(0, pmInfo2.creditLimit - used);
+                    html += '<div class="detail-row"><span class="label">信用额度</span><span class="value">总额 $' + pmInfo2.creditLimit.toLocaleString() + ' · 已用 $' + used.toLocaleString() + ' · 剩余 $' + remain.toLocaleString() + '</span></div>';
+                }
+                html += '</div>';
+            }
+
             html += '<div class="detail-section"><h4>价格明细' + (lockPrices ? ' <span class="locked-badge">已锁定</span>' : '') + '</h4>';
             html += '<div class="detail-row"><span class="label">产品总价</span>';
             html += effEditable
@@ -1045,11 +1153,11 @@
             }
 
             // Factory process
-            html += '<div class="detail-section"><h4>厂内工序</h4>';
+            html += '<div class="detail-section"><h4>作业流程</h4>';
             if (o.process && o.process.steps && o.process.steps.length > 0) {
-                const allSteps = [...o.process.steps, ...(o.process.surfaceTreatments || [])];
-                const doneCount = allSteps.filter(s => s.done).length;
-                const pct = o.status === 'completed' ? 100 : (allSteps.length > 0 ? Math.round(doneCount / allSteps.length * 100) : 0);
+                const steps = o.process.steps;
+                const doneCount = steps.filter(s => s.done).length;
+                const pct = o.status === 'completed' ? 100 : (steps.length > 0 ? Math.round(doneCount / steps.length * 100) : 0);
                 html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
                 html += '<div style="flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="height:100%;border-radius:3px;background:#22c55e;width:' + pct + '%"></div></div>';
                 html += '<span style="font-size:13px;font-weight:600;color:#22c55e">' + pct + '%</span>';
@@ -1058,11 +1166,6 @@
                 o.process.steps.forEach(s => {
                     html += '<div style="padding:5px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
                 });
-                if (o.process.surfaceTreatments && o.process.surfaceTreatments.length > 0) {
-                    o.process.surfaceTreatments.forEach(s => {
-                        html += '<div style="padding:5px 0;color:' + (s.done ? '#22c55e' : '#999') + '">' + (s.done ? '✓ ' : '○ ') + escHTML(s.name) + '</div>';
-                    });
-                }
                 html += '</div>';
             } else {
                 const st = o.status || 'pending';
@@ -1092,6 +1195,47 @@
             }
 
             container.innerHTML = html;
+
+            // Admin: mark as paid handler
+            const btnPaid = document.getElementById('btnMarkPaidInline');
+            if (btnPaid) {
+                btnPaid.addEventListener('click', async function() {
+                    const oid = this.dataset.orderId;
+                    const custName = this.dataset.custName;
+                    this.textContent = '处理中...';
+                    this.disabled = true;
+                    try {
+                        // Get uid for this customer
+                        const client = allClients.find(c => c.name === custName);
+                        const clientUid = client ? client.uid : _activeClientUid;
+
+                        // Update the order
+                        await updateDoc(doc(db, 'users', clientUid, 'quotes', oid), { paymentStatus: 'paid' });
+
+                        // Sync to sales copy if published
+                        const oref = doc(db, 'users', clientUid, 'quotes', oid);
+                        const osnap = await getDoc(oref);
+                        if (osnap.exists()) {
+                            const odata = osnap.data();
+                            if (odata.publishedByUid) {
+                                updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', oid), { paymentStatus: 'paid' }).catch(() => {});
+                            }
+                        }
+
+                        // For credit: reduce creditUsed
+                        if (pmInfo2 && pmInfo2.paymentMethod === 'credit') {
+                            const used = pmInfo2.creditUsed || 0;
+                            const orderTotal = o.totalPrice || 0;
+                            const newUsed = Math.max(0, used - orderTotal);
+                            await updateDoc(doc(db, 'clientProfiles', clientUid), { creditUsed: newUsed });
+                            clientPaymentMap[custName].creditUsed = newUsed;
+                        }
+
+                        o.paymentStatus = 'paid';
+                        showOrderEdit(_activeClientUid, o, true);
+                    } catch (e) { alert('操作失败: ' + (e.message || '')); this.textContent = '标记已收款'; this.disabled = false; }
+                });
+            }
         }
 
         window.showOrderEdit = showOrderEdit;
@@ -1230,6 +1374,37 @@
             }
         };
 
+        window._pmSaveUid = null;
+        window.onPmChange = function() {
+            const sel = document.getElementById('editPaymentMethod');
+            const creditArea = document.getElementById('creditLimitArea');
+            if (sel && creditArea) {
+                creditArea.style.display = sel.value === 'credit' ? 'inline' : 'none';
+            }
+            savePaymentMethod();
+        };
+        window.savePaymentMethod = async function() {
+            const uid = window._pmSaveUid;
+            if (!uid) return;
+            const sel = document.getElementById('editPaymentMethod');
+            const creditInput = document.getElementById('editCreditLimit');
+            if (!sel) return;
+            const pm = sel.value || null;
+            const update = { paymentMethod: pm };
+            if (pm === 'credit') {
+                update.creditLimit = parseFloat(creditInput?.value) || 0;
+            }
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), update);
+                const name = allClients.find(c => c.uid === uid)?.name;
+                if (name) {
+                    if (!clientPaymentMap[name]) clientPaymentMap[name] = {};
+                    clientPaymentMap[name].paymentMethod = pm;
+                    if (pm === 'credit') clientPaymentMap[name].creditLimit = update.creditLimit;
+                }
+            } catch (e) { console.error('保存付款方式失败:', e); }
+        };
+
         window.closeDetail = function() {
             document.getElementById('detailOverlay').classList.remove('show');
         };
@@ -1354,6 +1529,7 @@
         });
 
         // Initial load
+        loadPaymentMethods();
         loadClients();
 
         window.logout = async function() {

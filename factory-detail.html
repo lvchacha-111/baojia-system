@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单处理 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5; min-height: 100vh;
+        }
+
+        .bg-gradient {
+            position: fixed; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(34,197,94,0.05) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(99,102,241,0.03) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1;
+            background: #fff; border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .btn-back {
+            font-size: 13px; color: #666;
+            background: none; border: none; cursor: pointer;
+            padding: 6px 0; text-decoration: none;
+        }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+
+        .layout {
+            position: relative; z-index: 1;
+            display: flex; min-height: calc(100vh - 56px);
+            max-width: 1000px; margin: 0 auto;
+        }
+
+        .sidebar {
+            width: 180px; flex-shrink: 0;
+            background: #fff; border-right: 1px solid #eee;
+            padding: 20px 0;
+        }
+        .sidebar-nav { list-style: none; }
+        .sidebar-nav li {
+            padding: 12px 24px; font-size: 14px; color: #666;
+            cursor: pointer; transition: all 0.15s;
+            border-right: 2px solid transparent;
+        }
+        .sidebar-nav li:hover { color: #1a1a1a; background: #fafafa; }
+        .sidebar-nav li.active {
+            color: #22c55e; font-weight: 600;
+            background: #f0fdf4; border-right-color: #22c55e;
+        }
+
+        .main {
+            flex: 1; padding: 32px 40px; overflow-y: auto;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .status-badge {
+            display: inline-block; font-size: 11px; font-weight: 500;
+            padding: 2px 8px; border-radius: 4px;
+        }
+        .status-confirmed { background: #fef3c7; color: #b45309; }
+        .status-in_production { background: #eff6ff; color: #2563eb; }
+        .status-completed { background: #f0fdf4; color: #16a34a; }
+
+        .section-badge {
+            font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 500;
+        }
+        .badge-done { background: #f0fdf4; color: #22c55e; }
+        .badge-published { background: #eef2ff; color: #6366f1; }
+
+        .detail-header-block {
+            margin-bottom: 28px; padding: 20px;
+            background: #fff; border-radius: 12px;
+            border: 1px solid #eee;
+        }
+        .detail-header-block .quote-num {
+            font-size: 13px; color: #999; margin-bottom: 4px;
+        }
+        .detail-header-block .quote-num span {
+            font-size: 22px; font-weight: 700; color: #1a1a1a; letter-spacing: 1px;
+        }
+        .detail-header-block .meta {
+            font-size: 13px; color: #888; margin-top: 10px;
+            display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+        }
+
+        .section {
+            background: #fff; border-radius: 12px;
+            border: 1px solid #eee; padding: 20px 24px;
+            margin-bottom: 12px;
+        }
+        .section h4 {
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 12px; padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .progress-wrap { display: flex; align-items: center; gap: 10px; }
+        .progress-bar { flex: 1; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; background: #22c55e; transition: width 0.4s; }
+        .progress-pct { font-size: 12px; font-weight: 600; color: #22c55e; min-width: 36px; text-align: right; }
+
+        .step-list { margin-bottom: 20px; }
+        .step-item {
+            display: flex; align-items: center;
+            padding: 10px 12px; margin-bottom: 4px;
+            background: #fafafa; border-radius: 8px;
+            transition: all 0.15s;
+        }
+        .step-item.done { background: #f0fdf4; }
+        .step-item .step-name { flex: 1; font-size: 14px; color: #1a1a1a; }
+        .step-item.done .step-name { color: #22c55e; }
+        .step-check {
+            width: 28px; height: 28px;
+            border-radius: 50%; border: 2px solid #ddd;
+            background: #fff; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: transparent;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .step-item.done .step-check {
+            background: #22c55e; border-color: #22c55e; color: #fff;
+        }
+
+        .btn-mark-complete {
+            display: block; width: 100%;
+            height: 44px; border-radius: 10px;
+            border: 1px solid #dc2626; background: #fff;
+            color: #dc2626; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.15s;
+            margin-top: 8px;
+        }
+        .btn-mark-complete:hover { background: #fef2f2; }
+        .btn-mark-complete.confirming {
+            background: #dc2626; color: #fff; border-color: #dc2626;
+        }
+
+        .shipment-type-row {
+            display: flex; align-items: center; gap: 12px;
+            margin-top: 8px;
+        }
+        .shipment-type-row span.label { font-size: 13px; color: #888; }
+        .toggle-option {
+            font-size: 13px; padding: 4px 14px; border-radius: 20px;
+            border: 1px solid #ddd; background: #fff;
+            color: #888; cursor: pointer; transition: all 0.15s;
+        }
+        .toggle-option.active {
+            border-color: #6366f1; background: #eef2ff;
+            color: #6366f1; font-weight: 500;
+        }
+        .merged-orders-hint {
+            font-size: 12px; color: #999; margin-top: 6px;
+        }
+
+        .merge-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .merge-overlay.show { display: flex; }
+        .merge-dialog {
+            background: #fff; border-radius: 14px;
+            width: 500px; max-height: 70vh;
+            padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column;
+        }
+        .merge-dialog h4 { font-size: 16px; margin-bottom: 16px; }
+        .merge-search {
+            width: 100%; height: 40px; border: 1px solid #ddd;
+            border-radius: 8px; padding: 0 14px; font-size: 14px;
+            margin-bottom: 16px; outline: none;
+        }
+        .merge-search:focus { border-color: #6366f1; }
+        .merge-list { flex: 1; overflow-y: auto; margin-bottom: 16px; }
+        .merge-list-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: 8px;
+            border: 1px solid #eee; margin-bottom: 6px;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .merge-list-item:hover { background: #fafafa; }
+        .merge-list-item.selected { border-color: #6366f1; background: #eef2ff; }
+        .merge-list-item .info { flex: 1; }
+        .merge-list-item .info .qnum { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+        .merge-list-item .info .qmeta { font-size: 12px; color: #999; }
+        .merge-list-item .check-circle {
+            width: 22px; height: 22px; border-radius: 50%;
+            border: 2px solid #ddd; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; color: transparent;
+        }
+        .merge-list-item.selected .check-circle {
+            border-color: #6366f1; background: #6366f1; color: #fff;
+        }
+        .btn-merge-confirm {
+            width: 100%; height: 42px; border-radius: 10px;
+            border: none; background: #6366f1; color: #fff;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+        }
+        .btn-merge-confirm:hover { background: #4f46e5; }
+
+        .shipment-card {
+            background: #fafafa; border-radius: 10px;
+            padding: 16px; margin-bottom: 10px;
+            border: 1px solid #eee;
+        }
+        .shipment-card .ship-top {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .shipment-card .carrier-tag {
+            font-size: 12px; padding: 2px 8px; border-radius: 4px;
+            font-weight: 500;
+        }
+        .carrier-dhl { background: #fef3c7; color: #b45309; }
+        .carrier-fedex { background: #eff6ff; color: #2563eb; }
+        .shipment-card .tracking-num {
+            font-size: 16px; font-weight: 700; color: #1a1a1a;
+            letter-spacing: 0.5px;
+        }
+        .shipment-card .ship-meta {
+            font-size: 12px; color: #999; margin-bottom: 8px;
+        }
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline::before {
+            content: ''; position: absolute; left: 7px; top: 4px; bottom: 4px;
+            width: 2px; background: #e5e5e5;
+        }
+        .tl-item {
+            position: relative; padding: 4px 0 10px 16px;
+            font-size: 13px; color: #888;
+        }
+        .tl-item:last-child { color: #22c55e; font-weight: 500; }
+        .tl-item::before {
+            content: ''; position: absolute; left: -17px; top: 8px;
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #ddd;
+        }
+        .tl-item:last-child::before { background: #22c55e; }
+        .tl-item .tl-time { font-size: 11px; color: #bbb; display: block; }
+        .tl-item .tl-loc { color: #666; }
+
+        .btn-add-shipment {
+            display: block; width: 100%; height: 44px;
+            border-radius: 10px; border: 2px dashed #ddd;
+            background: #fafafa; color: #888;
+            font-size: 14px; cursor: pointer; margin-top: 12px;
+            transition: all 0.15s;
+        }
+        .btn-add-shipment:hover { border-color: #6366f1; color: #6366f1; background: #eef2ff; }
+        .btn-publish-shipment {
+            height: 32px; padding: 0 14px;
+            border-radius: 6px; border: 1px solid #22c55e;
+            background: #fff; color: #22c55e;
+            font-size: 12px; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-publish-shipment:hover { background: #f0fdf4; }
+        .btn-publish-shipment.published {
+            background: #f0fdf4; color: #16a34a; cursor: default; border-color: #86efac;
+        }
+        .btn-refresh-tracking {
+            height: 32px; padding: 0 14px;
+            border-radius: 6px; border: 1px solid #ddd;
+            background: #fff; color: #666;
+            font-size: 12px; cursor: pointer; transition: all 0.15s;
+        }
+        .btn-refresh-tracking:hover { border-color: #6366f1; color: #6366f1; }
+
+        .ship-form {
+            background: #fff; border: 2px solid #6366f1; border-radius: 10px;
+            padding: 20px; margin-bottom: 16px;
+        }
+        .ship-form .form-row {
+            display: flex; gap: 12px; margin-bottom: 10px;
+        }
+        .ship-form label {
+            font-size: 13px; color: #888; display: block; margin-bottom: 4px;
+        }
+        .ship-form input, .ship-form select {
+            height: 38px; border: 1px solid #ddd; border-radius: 6px;
+            padding: 0 10px; font-size: 14px; flex: 1; outline: none;
+        }
+        .ship-form input:focus, .ship-form select:focus { border-color: #6366f1; }
+        .btn-submit-shipment {
+            height: 38px; padding: 0 20px; border-radius: 8px;
+            border: none; background: #6366f1; color: #fff;
+            font-size: 14px; font-weight: 500; cursor: pointer;
+        }
+        .btn-submit-shipment:hover { background: #4f46e5; }
+        .btn-cancel-form {
+            height: 38px; padding: 0 16px; border-radius: 8px;
+            border: 1px solid #ddd; background: #fff;
+            color: #666; font-size: 14px; cursor: pointer;
+        }
+
+        .empty-tracking {
+            text-align: center; padding: 60px 20px; color: #bbb;
+        }
+        .empty-tracking .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-tracking p { font-size: 14px; }
+
+        .payment-tag {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px;
+        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-status {
+            font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
+        }
+        .payment-status.paid { background: #f0fdf4; color: #16a34a; }
+        .payment-status.unpaid { background: #fef2f2; color: #dc2626; }
+        .payment-warn {
+            background: #fef3c7; border: 1px solid #fcd34d;
+            border-radius: 10px; padding: 12px 16px;
+            font-size: 13px; color: #92400e; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .btn-mark-paid {
+            height: 30px; padding: 0 14px; border-radius: 6px;
+            border: none; background: #16a34a; color: #fff;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            white-space: nowrap; margin-left: auto;
+        }
+        .btn-mark-paid:hover { background: #15803d; }
+        .step-item.locked { opacity: 0.5; pointer-events: none; }
+        .step-item.locked .step-check {
+            border-color: #ddd; background: #f5f5f5; cursor: not-allowed;
+        }
+
+        @media (max-width: 600px) {
+            .layout { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; padding: 8px 16px; }
+            .sidebar-nav { display: flex; gap: 0; }
+            .sidebar-nav li { border-right: none; border-bottom: 2px solid transparent; padding: 10px 16px; }
+            .sidebar-nav li.active { border-right: none; border-bottom-color: #22c55e; }
+            .main { padding: 24px 16px; }
+            .ship-form .form-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="factory.html" class="btn-back">← 返回作业流程</a>
+        <span class="header-title">订单处理</span>
+    </header>
+
+    <div class="layout">
+        <nav class="sidebar">
+            <ul class="sidebar-nav">
+                <li data-tab="process" class="active">作业流程</li>
+                <li data-tab="tracking">快递进度</li>
+            </ul>
+        </nav>
+
+        <div class="main">
+            <div class="tab-content active" id="tab-process"></div>
+            <div class="tab-content" id="tab-tracking"></div>
+        </div>
+    </div>
+
+    <div class="merge-overlay" id="mergeOverlay">
+        <div class="merge-dialog" id="mergeDialog"></div>
+    </div>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('id');
+        if (!orderId) { document.getElementById('tab-process').innerHTML = '<p style="text-align:center;padding:60px;color:#999">缺少订单ID</p>'; throw new Error('缺少订单ID'); }
+
+        const DEFAULT_STEPS = ['作图', '厂内工作', '包装', '发货'];
+
+        let order = null;
+        let allCustomerQuotes = [];
+        try {
+            const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', orderId));
+            if (!snap.exists()) {
+                document.getElementById('tab-process').innerHTML = '<p style="text-align:center;padding:60px;color:#999">订单不存在</p>';
+                throw new Error('订单不存在');
+            }
+            order = { id: snap.id, ...snap.data() };
+        } catch (e) {
+            console.error('加载订单失败:', e);
+            if (!order) {
+                document.getElementById('tab-process').innerHTML = '<p style="text-align:center;padding:60px;color:#dc2626">加载失败，请刷新重试</p>';
+                throw e;
+            }
+        }
+
+        // Load customer payment method from clientProfiles
+        let customerPayment = null;
+        if (order.customerName) {
+            try {
+                const profSnap = await getDocs(query(collection(db, 'clientProfiles'), where('name', '==', order.customerName)));
+                profSnap.forEach(d => {
+                    const data = d.data();
+                    customerPayment = {
+                        uid: d.id,
+                        paymentMethod: data.paymentMethod || null,
+                        creditLimit: data.creditLimit || null,
+                        creditUsed: data.creditUsed || 0
+                    };
+                });
+            } catch (e) { console.warn('加载客户付款方式失败:', e); }
+        }
+
+        if (!order.process || !order.process.steps || order.process.steps.length === 0) {
+            order.process = { steps: DEFAULT_STEPS.map(name => ({ name, done: false })), confirmed: true };
+            if (!order.processPublished) {
+                updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), {
+                    process: order.process,
+                    processPublished: true,
+                    status: 'in_production'
+                });
+                order.processPublished = true;
+                order.status = 'in_production';
+                if (order.publishedTo) {
+                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), {
+                        process: order.process,
+                        status: 'in_production'
+                    }).catch(() => {});
+                }
+            } else {
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { process: order.process });
+            }
+        }
+
+        const custName = order.customerName;
+        if (custName) {
+            try {
+                const ref = collection(db, 'users', user.uid, 'quotes');
+                const q = query(ref, orderBy('createdAt', 'desc'));
+                const snap = await getDocs(q);
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (data.customerName === custName && d.id !== orderId &&
+                        (data.status === 'confirmed' || data.status === 'in_production' || data.status === 'completed')) {
+                        allCustomerQuotes.push({ id: d.id, ...data });
+                    }
+                });
+            } catch (e) { console.error('加载客户订单失败:', e); }
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        function calcProgress(proc, status) {
+            if (status === 'completed') return 100;
+            if (!proc || !proc.steps || proc.steps.length === 0) return 0;
+            const total = proc.steps.length;
+            const done = proc.steps.filter(s => s.done).length;
+            return total > 0 ? Math.round(done / total * 100) : 0;
+        }
+
+        async function saveProcess() {
+            try {
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { process: order.process });
+                if (order.publishedTo && order.processPublished) {
+                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), { process: order.process }).catch(() => {});
+                }
+            } catch (e) { console.error('保存失败:', e); alert('保存失败'); }
+        }
+
+        function renderProcessTab() {
+            const o = order;
+            const proc = o.process;
+            const pct = calcProgress(proc, o.status);
+            const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const statusLabels = { confirmed:'已确认', in_production:'生产中', completed:'已完成' };
+            const st = o.status || 'in_production';
+
+            let html = '';
+
+            // Payment method & status
+            const pm = customerPayment ? customerPayment.paymentMethod : null;
+            const paid = o.paymentStatus === 'paid';
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            const blockProcess = (pm === 'prepaid' && !paid); // prepaid blocks all production
+            const blockShip = (pm === 'pay_before_ship' && !paid && st !== 'completed'); // pay_before_ship blocks shipping
+
+            html += '<div class="detail-header-block">';
+            html += '<div class="quote-num">报价编号<br><span>' + esc(o.quoteNumber || '-') + '</span></div>';
+            html += '<div class="meta">';
+            html += '<span class="status-badge status-' + st + '">' + (statusLabels[st] || '生产中') + '</span>';
+            html += '<span class="section-badge badge-published">已发布</span>';
+            if (pm) {
+                html += '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>';
+                html += '<span class="payment-status ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收款' : '待收款') + '</span>';
+            }
+            html += '<span>' + date + '</span>';
+            html += '</div>';
+            html += '</div>';
+
+            // Payment blocker warning
+            if (pm === 'credit' && customerPayment) {
+                const limit = customerPayment.creditLimit || 0;
+                const used = customerPayment.creditUsed || 0;
+                const remain = Math.max(0, limit - used);
+                if (!paid && limit > 0) {
+                    html += '<div class="payment-warn"><strong>信用额度：</strong>总额 $' + limit.toLocaleString() + ' · 已用 $' + used.toLocaleString() + ' · 剩余 $' + remain.toLocaleString() + '</div>';
+                }
+            }
+            if (blockProcess && !paid) {
+                html += '<div class="payment-warn"><strong>预付款客户</strong> — 必须先收款才能开始生产</div>';
+            }
+            if (blockShip && !paid && !blockProcess) {
+                html += '<div class="payment-warn"><strong>款到发货客户</strong> — 必须先收款才能发货</div>';
+            }
+
+            html += '<div class="section">';
+            html += '<div class="progress-wrap">';
+            html += '<div style="font-size:13px;color:#888;margin-right:8px">整体进度</div>';
+            html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+            html += '<span class="progress-pct">' + pct + '%</span>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="section">';
+            html += '<h4><span>作业流程</span><span class="section-badge badge-done">固定流程</span></h4>';
+            html += '<div class="step-list" id="stepList">';
+            proc.steps.forEach((s, i) => {
+                const isShipStep = (s.name === '发货');
+                const disabled = blockProcess || (blockShip && isShipStep);
+                html += '<div class="step-item' + (s.done ? ' done' : '') + (disabled ? ' locked' : '') + '" data-idx="' + i + '">';
+                html += '<span class="step-name">' + esc(s.name) + (disabled ? ' 🔒' : '') + '</span>';
+                html += '<button class="step-check" data-idx="' + i + '"' + (disabled ? ' disabled' : '') + '>✓</button>';
+                html += '</div>';
+            });
+            html += '</div>';
+            html += '<button class="btn-mark-complete" id="btnMarkComplete">标记为已完成</button>';
+            html += '</div>';
+
+            document.getElementById('tab-process').innerHTML = html;
+
+            document.querySelectorAll('#stepList .step-check').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const idx = parseInt(this.dataset.idx);
+                    const stepName = order.process.steps[idx].name;
+                    order.process.steps[idx].done = !order.process.steps[idx].done;
+                    const item = this.parentElement;
+                    if (order.process.steps[idx].done) {
+                        item.classList.add('done');
+                    } else {
+                        item.classList.remove('done');
+                    }
+                    renderProcessProgress();
+                    saveProcess();
+                    if (order.process.steps[idx].done && stepName === '发货') {
+                        switchTab('tracking');
+                    }
+                });
+            });
+
+            let markTimer = null;
+            document.getElementById('btnMarkComplete').addEventListener('click', async function() {
+                if (this.classList.contains('confirming')) {
+                    clearTimeout(markTimer);
+                    this.textContent = '处理中...';
+                    this.disabled = true;
+                    try {
+                        await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'completed' });
+                        if (order.publishedTo) {
+                            updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), { status: 'completed' }).catch(() => {});
+                        }
+                        order.status = 'completed';
+                        renderProcessTab();
+                    } catch (err) {
+                        alert('操作失败');
+                        this.classList.remove('confirming');
+                        this.textContent = '标记为已完成';
+                        this.disabled = false;
+                    }
+                } else {
+                    this.classList.add('confirming');
+                    this.textContent = '再次点击确认完成';
+                    markTimer = setTimeout(() => {
+                        this.classList.remove('confirming');
+                        this.textContent = '标记为已完成';
+                    }, 5000);
+                }
+            });
+        }
+
+        function renderProcessProgress() {
+            const pct = calcProgress(order.process, order.status);
+            const fill = document.querySelector('#tab-process .progress-fill');
+            const pctEl = document.querySelector('#tab-process .progress-pct');
+            if (fill) fill.style.width = pct + '%';
+            if (pctEl) pctEl.textContent = pct + '%';
+        }
+
+
+        document.getElementById('mergeOverlay').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('show');
+        });
+
+        function renderTrackingTab() {
+            const shipments = order.shipments || [];
+            let html = '';
+
+            html += '<div class="detail-header-block">';
+            html += '<div class="quote-num">快递进度<br><span>' + esc(order.quoteNumber || '-') + '</span></div>';
+            html += '<div class="meta">客户：' + esc(order.customerName || '-') + '</div>';
+            html += '</div>';
+
+            if (shipments.length === 0) {
+                html += '<div class="empty-tracking">';
+                html += '<div class="icon">📦</div>';
+                html += '<p>请先点击发货</p>';
+                html += '</div>';
+                html += '<button class="btn-add-shipment" id="btnAddShipment">+ 录入快递单号</button>';
+            } else {
+                shipments.forEach(ship => {
+                    const statusText = ship.trackingData ? (ship.trackingData.statusText || '运输中') : '等待查询';
+                    html += '<div class="shipment-card">';
+                    html += '<div class="ship-top">';
+                    html += '<span class="carrier-tag carrier-' + (ship.carrier || 'dhl').toLowerCase() + '">' + esc(ship.carrier || 'DHL') + '</span>';
+                    html += '<span style="font-size:12px;color:#999">状态：' + statusText + '</span>';
+                    html += '<div style="display:flex;gap:8px">';
+                    html += '<button class="btn-refresh-tracking" data-ship-id="' + ship.id + '">刷新物流</button>';
+                    if (!ship.publishedToClient) {
+                        html += '<button class="btn-publish-shipment" data-ship-id="' + ship.id + '">发布到客户端</button>';
+                    } else {
+                        html += '<span class="btn-publish-shipment published">已发布</span>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                    html += '<div class="tracking-num">' + esc(ship.trackingNumber) + '</div>';
+                    if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
+                        html += '<div style="font-size:12px;color:#6366f1;margin:4px 0">合并发货：' + esc(ship.mergedOrderNumbers.join('、')) + '</div>';
+                    }
+                    html += '<div class="ship-meta">发货时间：' + esc(ship.shipDate || '-') + ' · 预计送达：' + (ship.trackingData ? esc(ship.trackingData.estimatedDelivery || '-') : '-') + '</div>';
+
+                    if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
+                        html += '<div class="timeline">';
+                        ship.trackingData.events.forEach(ev => {
+                            html += '<div class="tl-item">';
+                            html += '<span class="tl-time">' + esc(ev.time || '') + '</span>';
+                            html += '<span class="tl-loc">' + esc(ev.location || '') + '</span> ';
+                            html += esc(ev.description || ev.status || '');
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    } else {
+                        html += '<p style="text-align:center;color:#bbb;font-size:13px;padding:12px">暂无物流详情，点击"刷新物流"获取</p>';
+                    }
+                    html += '</div>';
+                });
+                html += '<button class="btn-add-shipment" id="btnAddShipment">+ 添加新快递</button>';
+            }
+
+            document.getElementById('tab-tracking').innerHTML = html;
+
+            const addBtn = document.getElementById('btnAddShipment');
+            if (addBtn) addBtn.addEventListener('click', showAddShipmentForm);
+
+            document.querySelectorAll('.btn-publish-shipment').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const shipId = this.dataset.shipId;
+                    if (!shipId || this.classList.contains('published')) return;
+                    this.textContent = '发布中...';
+                    this.disabled = true;
+                    try {
+                        const ship = order.shipments.find(s => s.id === shipId);
+                        const mergedIds = (ship && ship.mergedOrderIds) ? ship.mergedOrderIds : [];
+                        const allOrderIds = [orderId, ...mergedIds];
+                        for (const oid of allOrderIds) {
+                            const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                            const osnap = await getDoc(oref);
+                            if (osnap.exists()) {
+                                const odata = osnap.data();
+                                const existing = odata.shipments || [];
+                                const idx = existing.findIndex(s => s.id === shipId);
+                                if (idx >= 0) { existing[idx].publishedToClient = true; await updateDoc(oref, { shipments: existing }); }
+                            }
+                        }
+                        if (order.publishedTo) {
+                            for (const oid of allOrderIds) {
+                                try {
+                                    const oref = doc(db, 'users', order.publishedTo, 'quotes', oid);
+                                    const osnap = await getDoc(oref);
+                                    if (osnap.exists()) {
+                                        const odata = osnap.data();
+                                        const existing = odata.shipments || [];
+                                        const idx = existing.findIndex(s => s.id === shipId);
+                                        if (idx >= 0) { existing[idx].publishedToClient = true; }
+                                        else {
+                                            const salesSnap = await getDoc(doc(db, 'users', user.uid, 'quotes', oid));
+                                            if (salesSnap.exists()) {
+                                                const sdata = salesSnap.data();
+                                                if (sdata.shipments) {
+                                                    const sship = sdata.shipments.find(s => s.id === shipId);
+                                                    if (sship) { sship.publishedToClient = true; existing.push(sship); }
+                                                }
+                                            }
+                                        }
+                                        await updateDoc(oref, { shipments: existing });
+                                    }
+                                } catch (e) { console.error('同步快递到客户端失败:', oid, e); }
+                            }
+                        }
+                        this.textContent = '已发布';
+                        this.className = 'btn-publish-shipment published';
+                        this.disabled = false;
+                        if (!order.shipments) order.shipments = [];
+                        const si = order.shipments.findIndex(s => s.id === shipId);
+                        if (si >= 0) order.shipments[si].publishedToClient = true;
+                    } catch (e) { alert('发布失败'); this.textContent = '发布到客户端'; this.disabled = false; }
+                });
+            });
+
+            document.querySelectorAll('.btn-refresh-tracking').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const shipId = this.dataset.shipId;
+                    this.textContent = '刷新中...';
+                    this.disabled = true;
+                    await refreshTracking(shipId);
+                    this.textContent = '刷新物流';
+                    this.disabled = false;
+                });
+            });
+        }
+
+        let _shipMergeIds = [];
+        let _shipMergeNums = [];
+
+        function _renderShipmentForm() {
+            const isMerged = _shipMergeIds.length > 0;
+            const mergedNums = isMerged ? _shipMergeNums.join('、') : '';
+
+            let html = '<div class="ship-form">';
+            html += '<h4 style="margin-bottom:12px">录入快递信息</h4>';
+
+            // Shipment type toggle
+            html += '<div class="shipment-type-row" style="margin-bottom:12px">';
+            html += '<span class="label">发货类型：</span>';
+            html += '<span class="toggle-option' + (!isMerged ? ' active' : '') + '" id="shipTypeSingle">单个发货</span>';
+            html += '<span class="toggle-option' + (isMerged ? ' active' : '') + '" id="shipTypeMerged">合并发货</span>';
+            html += '</div>';
+
+            // Show merge info if merged
+            if (isMerged && mergedNums) {
+                html += '<div class="merged-orders-hint" style="margin-bottom:12px">已合并：' + esc(mergedNums) + ' <button id="btnChangeMergeOrder" style="font-size:12px;color:#6366f1;background:none;border:none;cursor:pointer;text-decoration:underline">修改</button></div>';
+            }
+
+            html += '<div class="form-row">';
+            html += '<div style="flex:2"><label>快递单号</label><input id="inputTrackingNum" placeholder="输入快递单号"></div>';
+            html += '<div style="flex:1"><label>承运商</label><select id="inputCarrier"><option value="DHL">DHL</option><option value="FedEx">FedEx</option></select></div>';
+            html += '</div>';
+            html += '<div class="form-row">';
+            html += '<div style="flex:1"><label>发货日期</label><input type="date" id="inputShipDate"></div>';
+            html += '</div>';
+            html += '<div style="display:flex;gap:10px;justify-content:flex-end">';
+            html += '<button class="btn-cancel-form" id="btnCancelShipForm">取消</button>';
+            html += '<button class="btn-submit-shipment" id="btnSubmitShipment">查询物流并保存</button>';
+            html += '</div>';
+            html += '</div>';
+
+            const formContainer = document.getElementById('shipFormContainer');
+            if (formContainer) formContainer.innerHTML = html;
+
+            document.getElementById('btnCancelShipForm').addEventListener('click', () => renderTrackingTab());
+
+            document.getElementById('shipTypeSingle').addEventListener('click', function() {
+                _shipMergeIds = [];
+                _shipMergeNums = [];
+                _renderShipmentForm();
+            });
+            document.getElementById('shipTypeMerged').addEventListener('click', function() {
+                showMergeDialogForShipment();
+            });
+
+            const changeBtn = document.getElementById('btnChangeMergeOrder');
+            if (changeBtn) {
+                changeBtn.addEventListener('click', function() {
+                    showMergeDialogForShipment();
+                });
+            }
+
+            document.getElementById('btnSubmitShipment').addEventListener('click', async function() {
+                const tn = document.getElementById('inputTrackingNum').value.trim();
+                const carrier = document.getElementById('inputCarrier').value;
+                const shipDate = document.getElementById('inputShipDate').value;
+                if (!tn) { alert('请输入快递单号'); return; }
+                if (!shipDate) { alert('请选择发货日期'); return; }
+
+                this.textContent = '查询中...';
+                this.disabled = true;
+
+                const td = await fetchTrackingFromAPI(tn, carrier);
+                const shipId = 'ship_' + Date.now();
+                const shipment = {
+                    id: shipId, trackingNumber: tn, carrier: carrier,
+                    shipDate: shipDate, trackingData: td,
+                    publishedToClient: false, createdAt: new Date().toISOString()
+                };
+                if (_shipMergeIds.length > 0) {
+                    shipment.shipmentType = 'merged';
+                    shipment.mergedOrderIds = _shipMergeIds;
+                    shipment.mergedOrderNumbers = [order.quoteNumber, ..._shipMergeNums];
+                }
+
+                if (!order.shipments) order.shipments = [];
+                order.shipments.push(shipment);
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { shipments: order.shipments });
+
+                if (_shipMergeIds.length > 0) {
+                    for (const oid of _shipMergeIds) {
+                        const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                        const osnap = await getDoc(oref);
+                        if (osnap.exists()) {
+                            const existing = osnap.data().shipments || [];
+                            existing.push(shipment);
+                            await updateDoc(oref, { shipments: existing });
+                        }
+                    }
+                }
+                renderTrackingTab();
+            });
+        }
+
+        function showAddShipmentForm() {
+            _shipMergeIds = [];
+            _shipMergeNums = [];
+            const header = document.querySelector('#tab-tracking .detail-header-block');
+            if (header) header.insertAdjacentHTML('afterend', '<div id="shipFormContainer"></div>');
+            _renderShipmentForm();
+        }
+
+        function showMergeDialogForShipment() {
+            const dialog = document.getElementById('mergeDialog');
+            let selectedIds = new Set(_shipMergeIds);
+
+            function renderMergeList(filter) {
+                const kw = (filter || '').toLowerCase();
+                const filtered = allCustomerQuotes.filter(q => {
+                    if (!kw) return true;
+                    const num = (q.quoteNumber || '').toLowerCase();
+                    const prod = (q.productName || '').toLowerCase();
+                    return num.includes(kw) || prod.includes(kw);
+                });
+
+                let h = '<h4>选择关联订单</h4>';
+                h += '<input class="merge-search" id="mergeSearch" placeholder="搜索订单编号或产品名..." value="' + esc(filter || '') + '">';
+                h += '<div class="merge-list">';
+                if (filtered.length === 0) {
+                    h += '<p style="text-align:center;color:#999;padding:20px">没有找到其他订单</p>';
+                }
+                filtered.forEach(q => {
+                    const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const sel = selectedIds.has(q.id);
+                    h += '<div class="merge-list-item' + (sel ? ' selected' : '') + '" data-merge-id="' + q.id + '">';
+                    h += '<div class="info">';
+                    h += '<div class="qnum">' + esc(q.quoteNumber || '-') + '</div>';
+                    h += '<div class="qmeta">' + esc(q.productName || '-') + ' · ' + date + '</div>';
+                    h += '</div>';
+                    h += '<div class="check-circle">✓</div>';
+                    h += '</div>';
+                });
+                h += '</div>';
+                h += '<button class="btn-merge-confirm" id="btnMergeConfirm" style="margin-top:8px"' + (selectedIds.size === 0 ? ' disabled style="opacity:0.5;cursor:default"' : '') + '>确认选择（已选 ' + selectedIds.size + ' 个订单）</button>';
+                dialog.innerHTML = h;
+
+                const si = document.getElementById('mergeSearch');
+                if (si) {
+                    si.addEventListener('input', function() { renderMergeList(this.value); });
+                    setTimeout(() => si.focus(), 100);
+                }
+
+                dialog.querySelectorAll('.merge-list-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const id = this.dataset.mergeId;
+                        if (selectedIds.has(id)) { selectedIds.delete(id); this.classList.remove('selected'); }
+                        else { selectedIds.add(id); this.classList.add('selected'); }
+                        const b = document.getElementById('btnMergeConfirm');
+                        if (b) { b.textContent = '确认选择（已选 ' + selectedIds.size + ' 个订单）'; b.disabled = selectedIds.size === 0; b.style.opacity = selectedIds.size === 0 ? '0.5' : '1'; b.style.cursor = selectedIds.size === 0 ? 'default' : 'pointer'; }
+                    });
+                });
+
+                const cb = document.getElementById('btnMergeConfirm');
+                if (cb) {
+                    cb.addEventListener('click', function() {
+                        _shipMergeIds = Array.from(selectedIds);
+                        _shipMergeNums = _shipMergeIds.map(id => {
+                            const q = allCustomerQuotes.find(x => x.id === id);
+                            return q ? (q.quoteNumber || id) : id;
+                        });
+                        document.getElementById('mergeOverlay').classList.remove('show');
+                        // Re-render form
+                        _renderShipmentForm();
+                    });
+                }
+            }
+
+            renderMergeList('');
+            document.getElementById('mergeOverlay').classList.add('show');
+        }
+
+        async function fetchTrackingFromAPI(tn, carrier) {
+            const PROXY_URL = 'https://us-central1-yijiao001.cloudfunctions.net/trackPackage';
+            try {
+                const resp = await fetch(PROXY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trackingNumber: tn, carrier })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    return {
+                        status: data.status || 'unknown',
+                        statusText: data.statusText || '运输中',
+                        estimatedDelivery: data.estimatedDelivery || '',
+                        origin: data.origin || '',
+                        destination: data.destination || '',
+                        events: data.events || [],
+                        lastUpdated: new Date().toISOString()
+                    };
+                }
+            } catch (e) { console.warn('API查询失败，可稍后刷新', e); }
+            return { status: 'pending', statusText: '等待查询', estimatedDelivery: '', origin: '', destination: '', events: [], lastUpdated: new Date().toISOString() };
+        }
+
+        async function refreshTracking(shipId) {
+            if (!order.shipments) return;
+            const ship = order.shipments.find(s => s.id === shipId);
+            if (!ship) return;
+            const td = await fetchTrackingFromAPI(ship.trackingNumber, ship.carrier);
+            ship.trackingData = td;
+            const mergedIds = (ship.mergedOrderIds) ? ship.mergedOrderIds : [];
+            const allOrderIds = [orderId, ...mergedIds];
+            for (const oid of allOrderIds) {
+                const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                const osnap = await getDoc(oref);
+                if (osnap.exists()) {
+                    const existing = osnap.data().shipments || [];
+                    const idx = existing.findIndex(s => s.id === shipId);
+                    if (idx >= 0) { existing[idx].trackingData = td; await updateDoc(oref, { shipments: existing }); }
+                }
+            }
+            renderTrackingTab();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.sidebar-nav li').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            const li = document.querySelector('.sidebar-nav li[data-tab="' + tabName + '"]');
+            if (li) li.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+            if (tabName === 'tracking') renderTrackingTab();
+        }
+
+        document.querySelectorAll('.sidebar-nav li').forEach(li => {
+            li.addEventListener('click', function() { switchTab(this.dataset.tab); });
+        });
+
+        function startTrackingPolling() {
+            setInterval(async () => {
+                if (!order.shipments || order.shipments.length === 0) return;
+                let changed = false;
+                for (const ship of order.shipments) {
+                    const data = await fetchTrackingFromAPI(ship.trackingNumber, ship.carrier);
+                    if (data.status !== (ship.trackingData && ship.trackingData.status)) {
+                        ship.trackingData = data;
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    const allMergedIds = new Set();
+                    order.shipments.forEach(s => { if (s.mergedOrderIds) s.mergedOrderIds.forEach(id => allMergedIds.add(id)); });
+                    const allOrderIds = [orderId, ...Array.from(allMergedIds)];
+                    for (const oid of allOrderIds) {
+                        await updateDoc(doc(db, 'users', user.uid, 'quotes', oid), { shipments: order.shipments });
+                    }
+                    renderTrackingTab();
+                }
+            }, 30 * 60 * 1000);
+        }
+
+        renderProcessTab();
+        renderTrackingTab();
+        startTrackingPolling();
+    </script>
+</body>
+</html>

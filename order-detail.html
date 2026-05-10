@@ -289,6 +289,75 @@
         .chat-send:hover { background: #4f46e5; }
         .chat-send:disabled { opacity: 0.5; cursor: default; }
 
+        .shipment-card {
+            background: #fafafa; border-radius: 10px;
+            padding: 16px; margin-bottom: 10px;
+            border: 1px solid #eee;
+        }
+        .shipment-card .carrier-tag {
+            font-size: 12px; padding: 2px 8px; border-radius: 4px;
+            font-weight: 500;
+        }
+        .carrier-dhl { background: #fef3c7; color: #b45309; }
+        .carrier-fedex { background: #eff6ff; color: #2563eb; }
+        .shipment-card .tracking-num {
+            font-size: 16px; font-weight: 700; color: #1a1a1a; letter-spacing: 0.5px; margin-bottom: 4px;
+        }
+        .shipment-card .ship-meta { font-size: 12px; color: #999; margin-bottom: 8px; }
+        .btn-refresh-tracking {
+            height: 32px; padding: 0 14px;
+            border-radius: 6px; border: 1px solid #ddd;
+            background: #fff; color: #666;
+            font-size: 12px; cursor: pointer;
+        }
+        .btn-refresh-tracking:hover { border-color: #6366f1; color: #6366f1; }
+
+        .account-input {
+            width: 200px; padding: 6px 10px;
+            border: 1px solid #ddd; border-radius: 6px;
+            font-size: 13px; color: #1a1a1a; outline: none;
+            transition: border-color 0.15s;
+        }
+        .account-input:focus { border-color: #6366f1; }
+        .btn-save-account {
+            padding: 10px 28px; background: #1a1a1a; color: #fff;
+            border: none; border-radius: 10px; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-save-account:hover { background: #333; }
+        .btn-save-account:disabled { opacity: 0.6; cursor: default; }
+
+        .payment-tag {
+            display: inline-block; font-size: 10px; font-weight: 500;
+            padding: 2px 6px; border-radius: 3px; vertical-align: middle;
+        }
+        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-status-tag {
+            font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
+            vertical-align: middle; margin-left: 4px;
+        }
+        .payment-status-tag.paid { background: #f0fdf4; color: #16a34a; }
+        .payment-status-tag.unpaid { background: #fef2f2; color: #dc2626; }
+
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline::before {
+            content: ''; position: absolute; left: 7px; top: 4px; bottom: 4px;
+            width: 2px; background: #e5e5e5;
+        }
+        .tl-item {
+            position: relative; padding: 4px 0 10px 16px; font-size: 13px; color: #888;
+        }
+        .tl-item:last-child { color: #22c55e; font-weight: 500; }
+        .tl-item::before {
+            content: ''; position: absolute; left: -17px; top: 8px;
+            width: 8px; height: 8px; border-radius: 50%; background: #ddd;
+        }
+        .tl-item:last-child::before { background: #22c55e; }
+        .tl-item .tl-time { font-size: 11px; color: #bbb; display: block; }
+
         @media (max-width: 640px) {
             .layout { flex-direction: column; }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #eee; padding: 0; }
@@ -312,7 +381,8 @@
         <aside class="sidebar">
             <ul class="sidebar-nav">
                 <li class="active" data-tab="detail">订单详情</li>
-                <li data-tab="process">厂内工序</li>
+                <li data-tab="process">作业流程</li>
+                <li data-tab="tracking">快递进度</li>
             </ul>
         </aside>
 
@@ -321,6 +391,9 @@
                 <div class="state-loading">加载中...</div>
             </div>
             <div class="tab-content" id="tab-process">
+                <div class="state-loading">加载中...</div>
+            </div>
+            <div class="tab-content" id="tab-tracking">
                 <div class="state-loading">加载中...</div>
             </div>
         </main>
@@ -343,6 +416,11 @@
         </div>
     </div>
 
+    <!-- Account overlay -->
+    <div class="chat-overlay" id="accountOverlay2">
+        <div class="chat-dialog" style="width:440px" id="accountDialog2"></div>
+    </div>
+
     <script type="module">
         import { auth, getCurrentUser, db } from "./firebase-init.js";
         import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
@@ -350,6 +428,111 @@
         const user = await getCurrentUser();
         if (!user) { window.location.href = 'login.html'; }
         document.getElementById('userEmail').textContent = user.email;
+        document.getElementById('userEmail').style.cursor = 'pointer';
+        document.getElementById('userEmail').title = '点击查看账户信息';
+
+        let clientProfile2 = null;
+        async function loadClientProfile2() {
+            try {
+                const q = query(collection(db, 'clientProfiles'), where('name', '==', user.email.split('@')[0]));
+                const snap = await getDocs(q);
+                snap.forEach(d => { clientProfile2 = { uid: d.id, ...d.data() }; });
+                if (!clientProfile2) {
+                    const allSnap = await getDocs(collection(db, 'clientProfiles'));
+                    allSnap.forEach(d => {
+                        if (d.data().contactEmail === user.email) clientProfile2 = { uid: d.id, ...d.data() };
+                    });
+                }
+            } catch (e) { console.warn('加载账户信息失败:', e); }
+        }
+        loadClientProfile2();
+
+        window.openAccount2 = function() {
+            const overlay = document.getElementById('accountOverlay2');
+            const container = document.getElementById('accountDialog2');
+            const p = clientProfile2 || {};
+            const pm = p.paymentMethod || '';
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+
+            let html = '<div class="chat-header"><h3>账户信息</h3><button class="chat-close" onclick="closeAccount2()">×</button></div>';
+            html += '<div style="padding:16px 20px;max-height:500px;overflow-y:auto">';
+
+            html += '<div class="section"><h4>基本信息</h4>';
+            html += '<div class="row"><span class="label">客户名称</span><span class="value">' + esc(p.name || user.email) + '</span></div>';
+            html += '<div class="row"><span class="label">邮箱</span><span class="value">' + esc(user.email) + '</span></div>';
+            html += '<div class="row"><span class="label">公司名称</span>';
+            html += '<input class="account-input" id="acctCompany2" value="' + esc(p.company || '') + '" placeholder="公司名称">';
+            html += '</div>';
+            html += '<div class="row"><span class="label">联系邮箱</span>';
+            html += '<input class="account-input" id="acctEmail2" value="' + esc(p.contactEmail || '') + '" placeholder="联系邮箱">';
+            html += '</div>';
+            html += '<div class="row"><span class="label">国家/地区</span>';
+            html += '<input class="account-input" id="acctCountry2" value="' + esc(p.country || '') + '" placeholder="国家">';
+            html += '</div>';
+            html += '</div>';
+
+            html += '<div class="section"><h4>付款信息</h4>';
+            html += '<div class="row"><span class="label">付款方式</span><span class="value">';
+            html += pm ? '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>' : '未设置';
+            html += '</span></div>';
+            if (pm === 'credit') {
+                const limit = p.creditLimit || 0;
+                const used = p.creditUsed || 0;
+                const remain = Math.max(0, limit - used);
+                html += '<div class="row"><span class="label">信用额度</span><span class="value">$' + limit.toLocaleString() + '</span></div>';
+                html += '<div class="row"><span class="label">已用额度</span><span class="value">$' + used.toLocaleString() + '</span></div>';
+                html += '<div class="row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + remain.toLocaleString() + '</span></div>';
+            }
+            html += '</div>';
+
+            html += '<div style="text-align:right;margin-top:12px">';
+            html += '<button class="btn-save-account" id="btnSaveAccount2" onclick="saveAccount2()">保存修改</button>';
+            html += '</div>';
+            html += '</div>';
+
+            container.innerHTML = html;
+            overlay.classList.add('show');
+        };
+
+        window.closeAccount2 = function() {
+            document.getElementById('accountOverlay2').classList.remove('show');
+        };
+
+        document.getElementById('userEmail').addEventListener('click', function() { openAccount2(); });
+
+        window.saveAccount2 = async function() {
+            const btn = document.getElementById('btnSaveAccount2');
+            btn.textContent = '保存中...';
+            btn.disabled = true;
+            try {
+                const company = document.getElementById('acctCompany2').value.trim();
+                const contactEmail = document.getElementById('acctEmail2').value.trim();
+                const country = document.getElementById('acctCountry2').value.trim();
+                if (clientProfile2 && clientProfile2.uid) {
+                    await updateDoc(doc(db, 'clientProfiles', clientProfile2.uid), { company, contactEmail, country });
+                } else {
+                    const { setDoc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                    await setDoc(doc(db, 'clientProfiles', user.uid), {
+                        name: user.email.split('@')[0], company, contactEmail, country,
+                        registeredAt: new Date()
+                    });
+                    clientProfile2 = { uid: user.uid, name: user.email.split('@')[0], company, contactEmail, country };
+                }
+                clientProfile2.company = company;
+                clientProfile2.contactEmail = contactEmail;
+                clientProfile2.country = country;
+                btn.textContent = '已保存';
+                setTimeout(() => { btn.textContent = '保存修改'; btn.disabled = false; }, 1500);
+            } catch (e) {
+                alert('保存失败: ' + (e.message || ''));
+                btn.textContent = '保存修改';
+                btn.disabled = false;
+            }
+        };
+
+        document.getElementById('accountOverlay2').addEventListener('click', function(e) {
+            if (e.target === this) closeAccount2();
+        });
 
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get('id');
@@ -373,6 +556,23 @@
                 document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p style="color:#dc2626">加载失败，请刷新重试</p></div>';
                 throw e;
             }
+        }
+
+        // Load customer payment method
+        let customerPayment = null;
+        if (order.customerName) {
+            try {
+                const profSnap = await getDocs(query(collection(db, 'clientProfiles'), where('name', '==', order.customerName)));
+                profSnap.forEach(d => {
+                    const data = d.data();
+                    customerPayment = {
+                        uid: d.id,
+                        paymentMethod: data.paymentMethod || null,
+                        creditLimit: data.creditLimit || null,
+                        creditUsed: data.creditUsed || 0
+                    };
+                });
+            } catch (e) { console.warn('加载客户付款方式失败:', e); }
         }
 
         // ---- Tab switching ----
@@ -407,6 +607,12 @@
             html += '<div class="quote-num">报价编号<br><span>' + esc(o.quoteNumber) + '</span></div>';
             html += '<div class="meta">';
             html += '<span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span>';
+            if (customerPayment && customerPayment.paymentMethod) {
+                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                html += '<span class="payment-tag ' + customerPayment.paymentMethod + '">' + (pmLabels[customerPayment.paymentMethod] || customerPayment.paymentMethod) + '</span>';
+                const paid = o.paymentStatus === 'paid';
+                html += '<span class="payment-status-tag ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收款' : '待收款') + '</span>';
+            }
             html += '<span>' + date + '</span>';
             if (o.publishedBy) html += '<span>负责销售: ' + esc(o.publishedBy.split('@')[0]) + '</span>';
             html += '</div>';
@@ -480,8 +686,8 @@
         function calcProgress(proc, status) {
             if (status === 'completed') return 100;
             if (!proc || !proc.steps || proc.steps.length === 0) return 0;
-            const total = proc.steps.length + (proc.surfaceTreatments ? proc.surfaceTreatments.length : 0);
-            const done = proc.steps.filter(s => s.done).length + (proc.surfaceTreatments ? proc.surfaceTreatments.filter(s => s.done).length : 0);
+            const total = proc.steps.length;
+            const done = proc.steps.filter(s => s.done).length;
             return total > 0 ? Math.round(done / total * 100) : 0;
         }
 
@@ -506,20 +712,8 @@
 
             // Main steps
             if (proc.steps && proc.steps.length > 0) {
-                html += '<div class="section"><h4>主要工序</h4><ul class="step-list">';
+                html += '<div class="section"><h4>作业流程</h4><ul class="step-list">';
                 proc.steps.forEach(s => {
-                    html += '<li class="' + (s.done ? 'done' : '') + '">';
-                    html += '<span class="step-check">✓</span>';
-                    html += '<span class="step-name">' + esc(s.name) + '</span>';
-                    html += '</li>';
-                });
-                html += '</ul></div>';
-            }
-
-            // Surface treatments
-            if (proc.surfaceTreatments && proc.surfaceTreatments.length > 0) {
-                html += '<div class="section"><h4>表面处理</h4><ul class="step-list">';
-                proc.surfaceTreatments.forEach(s => {
                     html += '<li class="' + (s.done ? 'done' : '') + '">';
                     html += '<span class="step-check">✓</span>';
                     html += '<span class="step-name">' + esc(s.name) + '</span>';
@@ -590,12 +784,42 @@
             if (!order || order.status !== 'pending') return;
             const btn = document.getElementById('btnConfirmInline');
             if (btn) { btn.disabled = true; btn.textContent = '确认中...'; }
+
+            // Credit check: if credit customer, verify enough remaining credit
+            if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
+                const limit = customerPayment.creditLimit || 0;
+                const used = customerPayment.creditUsed || 0;
+                const orderTotal = order.totalPrice || 0;
+                if (limit > 0 && used + orderTotal > limit) {
+                    const remain = Math.max(0, limit - used);
+                    alert('信用额度不足！\n总额度：$' + limit.toLocaleString() + '\n已用：$' + used.toLocaleString() + '\n剩余：$' + remain.toLocaleString() + '\n本单金额：$' + orderTotal.toLocaleString() + '\n\n请联系销售充值后再确认。');
+                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    return;
+                }
+            }
+
             try {
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'confirmed' });
+                // Deduct credit if credit customer
+                if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
+                    const newUsed = (customerPayment.creditUsed || 0) + (order.totalPrice || 0);
+                    await updateDoc(doc(db, 'clientProfiles', customerPayment.uid), { creditUsed: newUsed });
+                    customerPayment.creditUsed = newUsed;
+                }
+
+                const proc = { steps: ['作图','厂内工作','包装','发货'].map(name => ({ name, done: false })), confirmed: true };
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), {
+                    status: 'confirmed',
+                    process: proc
+                });
                 order.status = 'confirmed';
+                order.process = proc;
                 if (order.publishedByUid) {
                     try {
-                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), { status: 'confirmed' });
+                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), {
+                            status: 'in_production',
+                            process: proc,
+                            processPublished: true
+                        });
                     } catch (e) { console.error('同步确认到销售端失败:', e); }
                 }
                 if (btn) { btn.textContent = '已确认 ✓'; btn.className = 'btn-confirm-inline confirmed'; btn.disabled = false; }
@@ -760,6 +984,62 @@
                 input.focus();
             }
         };
+
+        // ---- Render tracking tab ----
+        function renderTrackingTab() {
+            const o = order;
+            const shipments = o.shipments || [];
+            let html = '';
+
+            html += '<div class="detail-header-block">';
+            html += '<div class="quote-num">快递进度<br><span>' + esc(o.quoteNumber) + '</span></div>';
+            html += '<div class="meta">客户：' + esc(o.customerName || '-') + '</div>';
+            html += '</div>';
+
+            if (shipments.length === 0) {
+                html += '<div class="section" style="text-align:center;padding:60px 20px;color:#bbb">';
+                html += '<p style="font-size:14px">暂无快递信息</p>';
+                html += '</div>';
+            } else {
+                shipments.forEach(ship => {
+                    if (!ship.publishedToClient) return;
+                    const statusText = ship.trackingData ? (ship.trackingData.statusText || '运输中') : '等待查询';
+                    html += '<div class="section">';
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+                    html += '<span class="carrier-tag carrier-' + (ship.carrier || 'dhl').toLowerCase() + '">' + esc(ship.carrier || 'DHL') + '</span>';
+                    html += '<span style="font-size:12px;color:#888">状态：' + statusText + '</span>';
+                    html += '</div>';
+                    html += '<div class="tracking-num">' + esc(ship.trackingNumber) + '</div>';
+                    if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
+                        html += '<div style="font-size:12px;color:#6366f1;margin:4px 0">合并发货：' + esc(ship.mergedOrderNumbers.join('、')) + '</div>';
+                    }
+                    html += '<div class="ship-meta">发货时间：' + esc(ship.shipDate || '-') + ' · 预计送达：' + (ship.trackingData ? esc(ship.trackingData.estimatedDelivery || '-') : '-') + '</div>';
+
+                    if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
+                        html += '<div class="timeline">';
+                        ship.trackingData.events.forEach(ev => {
+                            html += '<div class="tl-item">';
+                            html += '<span class="tl-time">' + esc(ev.time || '') + '</span>';
+                            html += esc(ev.location || '') + ' ' + esc(ev.description || ev.status || '');
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    } else {
+                        html += '<p style="text-align:center;color:#bbb;font-size:13px;padding:12px">暂无物流详情</p>';
+                    }
+                    html += '</div>';
+                });
+            }
+
+            document.getElementById('tab-tracking').innerHTML = html;
+        }
+
+        // ---- Load tracking on tab switch ----
+        document.querySelectorAll('.sidebar-nav li').forEach(li => {
+            li.addEventListener('click', function() {
+                if (this.dataset.tab === 'tracking') renderTrackingTab();
+            });
+        });
 
         // Close chat on overlay click
         document.getElementById('chatOverlay').addEventListener('click', function(e) {
