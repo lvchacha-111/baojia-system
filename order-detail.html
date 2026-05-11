@@ -35,6 +35,97 @@
         .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
         .user-email { font-size: 13px; color: #999; margin-left: auto; }
 
+        .header-user-area {
+            display: flex; align-items: center; gap: 10px; margin-left: auto;
+            cursor: pointer; padding: 4px 8px; border-radius: 8px;
+            transition: background 0.15s;
+        }
+        .header-user-area:hover { background: #f5f5f5; }
+
+        .header-pm-tag {
+            display: inline-block; font-size: 11px; font-weight: 600;
+            padding: 4px 10px; border-radius: 6px; white-space: nowrap;
+            position: relative; cursor: default;
+        }
+        .header-pm-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .header-pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .header-pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .header-pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+
+        .header-pm-popup {
+            display: none; position: absolute; top: calc(100% + 8px); left: 50%;
+            transform: translateX(-50%); white-space: nowrap;
+            background: #1a1a1a; color: #fff; font-size: 13px; font-weight: 500;
+            padding: 12px 16px; border-radius: 10px; line-height: 1.6;
+            pointer-events: none; z-index: 300;
+        }
+        .header-pm-popup .popup-row {
+            display: flex; gap: 16px; align-items: center;
+        }
+        .header-pm-popup .popup-label { color: #aaa; font-size: 11px; font-weight: 400; }
+        .header-pm-popup .popup-val { font-size: 15px; font-weight: 700; }
+        .header-pm-popup .popup-divider { color: #555; font-size: 15px; }
+        .header-pm-tag:hover .header-pm-popup { display: block; }
+        .header-pm-warn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: #f59e0b; color: #fff; font-size: 10px; font-weight: 700;
+            margin-right: 3px; vertical-align: middle; cursor: help;
+        }
+        .header-pm-warn.danger {
+            background: #dc2626;
+        }
+        .header-pm-tag.exhausted {
+            background: #fef2f2; color: #dc2626;
+        }
+
+        .header-user-text { line-height: 1.3; }
+        .header-user-name { font-size: 13px; font-weight: 500; color: #1a1a1a; display: block; }
+        .header-user-email { font-size: 11px; color: #999; display: block; }
+
+        .header-bell { position: relative; cursor: pointer; padding: 6px; border-radius: 8px; border: none; background: none; }
+        .header-bell:hover { background: #f5f5f5; }
+        .header-bell svg { width: 20px; height: 20px; color: #666; display: block; }
+        .header-bell-badge { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 4px; }
+        .header-bell-badge.show { display: flex; }
+
+        .notif-dropdown {
+            display: none; position: absolute; top: calc(100% + 8px); right: 0;
+            width: 380px; max-height: 480px; background: #fff; border-radius: 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid #eee;
+            z-index: 200; flex-direction: column; overflow: hidden;
+        }
+        .notif-dropdown.show { display: flex; }
+        .notif-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; border-bottom: 1px solid #f0f0f0;
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+        }
+        .notif-mark-all {
+            font-size: 12px; color: #6366f1; cursor: pointer; border: none; background: none; font-weight: 500;
+        }
+        .notif-mark-all:hover { color: #4f46e5; }
+        .notif-list { overflow-y: auto; max-height: 400px; }
+        .notif-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 18px; cursor: pointer; border-bottom: 1px solid #f9f9f9;
+            transition: background 0.1s; position: relative;
+        }
+        .notif-item:hover { background: #f8f9fa; }
+        .notif-item.unread { background: #fafaff; }
+        .notif-item.unread:hover { background: #f0f0ff; }
+        .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0; margin-top: 6px; }
+        .notif-dot.read { visibility: hidden; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+        .notif-body { font-size: 12px; color: #888; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .notif-time { font-size: 11px; color: #bbb; flex-shrink: 0; margin-top: 2px; }
+        .notif-empty { text-align: center; padding: 40px 20px; color: #ccc; font-size: 13px; }
+        .notif-empty svg { width: 36px; height: 36px; margin-bottom: 8px; color: #ddd; }
+        @media (max-width: 600px) {
+            .notif-dropdown { width: calc(100vw - 32px); right: -60px; }
+        }
+
         .layout {
             position: relative; z-index: 1;
             display: flex; min-height: calc(100vh - 56px);
@@ -374,7 +465,29 @@
     <header class="header">
         <a href="user.html" class="btn-back">← 返回</a>
         <span class="header-title">订单详情</span>
-        <span class="user-email" id="userEmail"></span>
+        <div class="header-user-area" id="headerUserArea2">
+            <span class="header-pm-tag" id="headerPmTag2" style="display:none"></span>
+            <div class="header-user-text">
+                <span class="header-user-name" id="headerUserName2"></span>
+                <span class="header-user-email" id="headerUserEmail2"></span>
+            </div>
+        </div>
+        <div style="position:relative">
+            <button class="header-bell" id="headerBell2" onclick="toggleNotif()" title="通知">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="header-bell-badge" id="bellBadge2">0</span>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown2">
+                <div class="notif-header">
+                    <span>消息通知</span>
+                    <button class="notif-mark-all" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
+                </div>
+                <div class="notif-list" id="notifList2"></div>
+            </div>
+        </div>
     </header>
 
     <div class="layout">
@@ -427,14 +540,55 @@
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = 'login.html'; }
-        document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('userEmail').style.cursor = 'pointer';
-        document.getElementById('userEmail').title = '点击查看账户信息';
+        const emailPrefix2 = user.email.split('@')[0];
+        document.getElementById('headerUserName2').textContent = emailPrefix2;
+        document.getElementById('headerUserEmail2').textContent = user.email;
 
         let clientProfile2 = null;
+
+        function updateHeaderFromProfile2() {
+            const p = clientProfile2;
+            const nameEl = document.getElementById('headerUserName2');
+            const pmTag = document.getElementById('headerPmTag2');
+            nameEl.textContent = (p && p.name) || emailPrefix2;
+
+            const pm = p ? p.paymentMethod : null;
+            if (pm) {
+                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                pmTag.style.display = '';
+                let popupHtml = '';
+                let warnHtml = '';
+                let labelText = pmLabels[pm] || pm;
+                let tagClass = 'header-pm-tag ' + pm;
+
+                if (pm === 'credit') {
+                    const limit = p.creditLimit || 0;
+                    const used = p.creditUsed || 0;
+                    if (limit > 0 && used >= limit) {
+                        warnHtml = '<span class="header-pm-warn danger" title="额度已用完，请充值">!</span>';
+                        labelText = '已用完';
+                        tagClass = 'header-pm-tag exhausted';
+                    } else if (limit > 0 && used >= limit * 2 / 3) {
+                        warnHtml = '<span class="header-pm-warn" title="额度即将用完，请充值">!</span>';
+                    }
+                    popupHtml = '<div class="header-pm-popup"><div class="popup-row">';
+                    popupHtml += '<div><div class="popup-label">总额度</div><div class="popup-val">$' + fmt(limit) + '</div></div>';
+                    popupHtml += '<div class="popup-divider">/</div>';
+                    popupHtml += '<div><div class="popup-label">已用额度</div><div class="popup-val">$' + fmt(used) + '</div></div>';
+                    popupHtml += '</div></div>';
+                } else {
+                    popupHtml = '<div class="header-pm-popup"><div style="font-size:13px">' + (pmLabels[pm] || pm) + '</div></div>';
+                }
+                pmTag.className = tagClass;
+                pmTag.innerHTML = warnHtml + labelText + popupHtml;
+            } else {
+                pmTag.style.display = 'none';
+            }
+        }
+
         async function loadClientProfile2() {
             try {
-                const q = query(collection(db, 'clientProfiles'), where('name', '==', user.email.split('@')[0]));
+                const q = query(collection(db, 'clientProfiles'), where('name', '==', emailPrefix2));
                 const snap = await getDocs(q);
                 snap.forEach(d => { clientProfile2 = { uid: d.id, ...d.data() }; });
                 if (!clientProfile2) {
@@ -443,9 +597,109 @@
                         if (d.data().contactEmail === user.email) clientProfile2 = { uid: d.id, ...d.data() };
                     });
                 }
+                updateHeaderFromProfile2();
             } catch (e) { console.warn('加载账户信息失败:', e); }
         }
         loadClientProfile2();
+
+        function escHTML2(str) {
+            const d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
+        }
+
+        // Notification bell with dropdown
+        let notifList = [];
+        const typeIcons = {
+            bill: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg>',
+            order: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+            system: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        };
+
+        async function loadNotifications() {
+            try {
+                const q = query(collection(db, 'notifications'),
+                    where('clientUid', '==', user.uid));
+                const snap = await getDocs(q);
+                notifList = [];
+                snap.forEach(d => { notifList.push({ id: d.id, ...d.data() }); });
+                notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+        }
+
+        function updateBellBadge() {
+            const count = notifList.filter(n => !n.read).length;
+            const badge = document.getElementById('bellBadge2');
+            if (badge) {
+                if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.classList.add('show'); }
+                else { badge.classList.remove('show'); }
+            }
+        }
+
+        function renderNotifList() {
+            const container = document.getElementById('notifList2');
+            if (!container) return;
+            if (notifList.length === 0) {
+                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>暂无消息</p></div>';
+                return;
+            }
+            let html = '';
+            notifList.forEach(n => {
+                const time = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                const icon = typeIcons[n.type] || typeIcons.system;
+                html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-link="' + escHTML2(n.link || '') + '" onclick="clickNotif(this)">';
+                html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
+                html += '<div style="flex-shrink:0;margin-top:2px">' + icon + '</div>';
+                html += '<div class="notif-content"><div class="notif-title">' + escHTML2(n.title || '') + '</div>';
+                html += '<div class="notif-body">' + escHTML2(n.body || '') + '</div></div>';
+                html += '<div class="notif-time">' + time + '</div>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        window.toggleNotif = function() {
+            const dd = document.getElementById('notifDropdown2');
+            dd.classList.toggle('show');
+        };
+
+        window.clickNotif = async function(el) {
+            const nid = el.dataset.nid;
+            const link = el.dataset.link;
+            try {
+                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                await updateDoc(doc(db, 'notifications', nid), { read: true });
+                const n = notifList.find(x => x.id === nid);
+                if (n) n.read = true;
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+            if (link) window.location.href = link;
+        };
+
+        window.markAllNotifRead = async function() {
+            try {
+                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const unread = notifList.filter(n => !n.read);
+                await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
+                unread.forEach(n => n.read = true);
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+        };
+
+        document.addEventListener('click', function(e) {
+            const dd = document.getElementById('notifDropdown2');
+            const bell = document.getElementById('headerBell2');
+            if (dd && dd.classList.contains('show') && !dd.contains(e.target) && e.target !== bell && !bell.contains(e.target)) {
+                dd.classList.remove('show');
+            }
+        });
+
+        await loadNotifications();
+        setInterval(loadNotifications, 10000);
 
         window.openAccount2 = function() {
             const overlay = document.getElementById('accountOverlay2');
@@ -479,9 +733,9 @@
                 const limit = p.creditLimit || 0;
                 const used = p.creditUsed || 0;
                 const remain = Math.max(0, limit - used);
-                html += '<div class="row"><span class="label">信用额度</span><span class="value">$' + limit.toLocaleString() + '</span></div>';
-                html += '<div class="row"><span class="label">已用额度</span><span class="value">$' + used.toLocaleString() + '</span></div>';
-                html += '<div class="row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + remain.toLocaleString() + '</span></div>';
+                html += '<div class="row"><span class="label">信用额度</span><span class="value">$' + fmt(limit) + '</span></div>';
+                html += '<div class="row"><span class="label">已用额度</span><span class="value">$' + fmt(used) + '</span></div>';
+                html += '<div class="row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + fmt(remain) + '</span></div>';
             }
             html += '</div>';
 
@@ -498,7 +752,7 @@
             document.getElementById('accountOverlay2').classList.remove('show');
         };
 
-        document.getElementById('userEmail').addEventListener('click', function() { openAccount2(); });
+        document.getElementById('headerUserArea2').addEventListener('click', function() { openAccount2(); });
 
         window.saveAccount2 = async function() {
             const btn = document.getElementById('btnSaveAccount2');
@@ -590,6 +844,7 @@
             d.textContent = s || '';
             return d.innerHTML;
         }
+        function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
         // ---- Render order detail tab ----
         function renderDetail() {
@@ -792,18 +1047,45 @@
                 const orderTotal = order.totalPrice || 0;
                 if (limit > 0 && used + orderTotal > limit) {
                     const remain = Math.max(0, limit - used);
-                    alert('信用额度不足！\n总额度：$' + limit.toLocaleString() + '\n已用：$' + used.toLocaleString() + '\n剩余：$' + remain.toLocaleString() + '\n本单金额：$' + orderTotal.toLocaleString() + '\n\n请联系销售充值后再确认。');
+                    alert('信用额度不足！\n总额度：$' + fmt(limit) + '\n已用：$' + fmt(used) + '\n剩余：$' + fmt(remain) + '\n本单金额：$' + fmt(orderTotal) + '\n\n请联系销售充值后再确认。');
                     if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
                     return;
                 }
             }
 
+            // Monthly check: block if unpaid statement exists
+            if (customerPayment && customerPayment.paymentMethod === 'monthly' && customerPayment.uid) {
+                try {
+                    const stmtSnap = await getDocs(query(
+                        collection(db, 'billingStatements'),
+                        where('clientUid', '==', customerPayment.uid),
+                        where('status', '==', 'pending')
+                    ));
+                    if (!stmtSnap.empty) {
+                        alert('存在未付账单，请先结清上月账单后再确认新订单。\n请联系销售了解详情。');
+                        if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                        return;
+                    }
+                } catch (e) { console.warn('账单检查失败:', e); }
+            }
+
             try {
                 // Deduct credit if credit customer
                 if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
-                    const newUsed = (customerPayment.creditUsed || 0) + (order.totalPrice || 0);
+                    const previousUsed = customerPayment.creditUsed || 0;
+                    const newUsed = previousUsed + (order.totalPrice || 0);
                     await updateDoc(doc(db, 'clientProfiles', customerPayment.uid), { creditUsed: newUsed });
                     customerPayment.creditUsed = newUsed;
+                    // Record transaction
+                    await addDoc(collection(db, 'creditTransactions'), {
+                        clientUid: customerPayment.uid,
+                        type: 'deduction',
+                        amount: order.totalPrice || 0,
+                        previousUsed: previousUsed,
+                        newUsed: newUsed,
+                        note: '订单确认：' + (order.quoteNumber || orderId),
+                        createdAt: serverTimestamp()
+                    }).catch(() => {});
                 }
 
                 const proc = { steps: ['作图','厂内工作','包装','发货'].map(name => ({ name, done: false })), confirmed: true };

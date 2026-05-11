@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的客户 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .bg-gradient { position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(34,197,94,0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+        .header { position: relative; z-index: 2; background: #fff; border-bottom: 1px solid #eee; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; }
+        .btn-back { font-size: 13px; color: #666; background: none; border: none; cursor: pointer; padding: 6px 0; text-decoration: none; }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; flex: 1; }
+
+        .main { position: relative; z-index: 1; max-width: 800px; margin: 0 auto; padding: 32px; }
+
+        .filter-tabs { display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
+        .filter-tab { padding: 7px 16px; font-size: 12px; font-weight: 500; color: #888; background: #fff; border: 1px solid #eee; border-radius: 20px; cursor: pointer; transition: all 0.15s; }
+        .filter-tab:hover { border-color: #6366f1; color: #6366f1; }
+        .filter-tab.active { background: #6366f1; color: #fff; border-color: #6366f1; }
+        .filter-result { font-size: 12px; color: #999; margin-bottom: 16px; }
+
+        .pm-group { margin-bottom: 28px; }
+        .pm-group-header { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 10px; padding-left: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .client-card { background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 16px 20px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+        .client-card:hover { border-color: #6366f1; }
+        .client-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .client-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .pm-tag { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 4px; }
+        .pm-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+
+        .client-status { font-size: 13px; color: #666; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .status-dot.warn { background: #f59e0b; }
+        .status-dot.danger { background: #dc2626; }
+        .status-dot.ok { background: #22c55e; }
+        .status-dot.info { background: #6366f1; }
+
+        .credit-mini-bar { display: inline-flex; align-items: center; gap: 6px; }
+        .credit-mini-bar .bar-bg { width: 60px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+        .credit-mini-bar .bar-fill { height: 100%; border-radius: 2px; }
+        .credit-mini-bar .bar-fill.safe { background: #22c55e; }
+        .credit-mini-bar .bar-fill.warn { background: #f59e0b; }
+        .credit-mini-bar .bar-fill.danger { background: #dc2626; }
+
+        .client-orders { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .client-orders.open { display: block; }
+        .co-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; font-size: 12px; border-bottom: 1px solid #f9f9f9; }
+        .co-row:last-child { border-bottom: none; }
+        .co-status { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+        .co-status.pending { background: #fefce8; color: #a16207; }
+        .co-status.confirmed { background: #fefce8; color: #ca8a04; }
+        .co-status.in_production { background: #eff6ff; color: #2563eb; }
+        .co-status.completed { background: #f0fdf4; color: #16a34a; }
+        .co-status.shipped { background: #faf5ff; color: #9333ea; }
+        .co-status.signed { background: #f0fdf4; color: #15803d; }
+        .co-total { font-weight: 600; color: #1a1a1a; }
+
+        .no-data { text-align: center; padding: 60px 20px; color: #bbb; }
+
+        @media (max-width: 600px) {
+            .main { padding: 24px 16px; }
+            .header { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="myorders.html" class="btn-back">← 返回</a>
+        <span class="header-title">我的客户</span>
+    </header>
+
+    <main class="main">
+        <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab active" data-filter="all">全部</button>
+            <button class="filter-tab" data-filter="monthly">月付</button>
+            <button class="filter-tab" data-filter="credit">信用额度</button>
+            <button class="filter-tab" data-filter="pay_before_ship">款到发货</button>
+            <button class="filter-tab" data-filter="prepaid">预付款</button>
+        </div>
+        <div class="filter-result" id="filterResult"></div>
+        <div id="clientsContainer"><div class="no-data">加载中...</div></div>
+    </main>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+        const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+
+        let clientDataMap = {};
+
+        async function loadData() {
+            clientDataMap = {};
+            try {
+                const cpSnap = await getDocs(collection(db, 'clientProfiles'));
+                const profiles = [];
+                cpSnap.forEach(d => { profiles.push({ uid: d.id, ...d.data() }); });
+
+                const stmtSnap = await getDocs(collection(db, 'billingStatements'));
+                const statements = [];
+                stmtSnap.forEach(d => { statements.push(d.data()); });
+
+                for (const p of profiles) {
+                    const clientUid = p.uid;
+                    let quotes = [];
+                    try {
+                        const quoteSnap = await getDocs(query(collection(db, 'users', clientUid, 'quotes'), orderBy('publishedAt', 'desc')));
+                        quoteSnap.forEach(d => { quotes.push({ id: d.id, ...d.data() }); });
+                    } catch (e) { /* no quotes */ }
+
+                    // Only show clients where this salesperson has published quotes
+                    const myQuotes = quotes.filter(q => q.publishedBy === user.email);
+                    if (myQuotes.length === 0) continue;
+
+                    const pm = p.paymentMethod || 'pay_before_ship';
+                    let statusText = '', statusClass = 'ok', statusExtra = '';
+
+                    if (pm === 'monthly') {
+                        const clientStmts = statements.filter(s => s.clientUid === clientUid);
+                        const unpaid = clientStmts.filter(s => s.status === 'pending' || s.status === 'confirming');
+                        const lastStmt = clientStmts.sort((a, b) => (b.generatedAt?.seconds || 0) - (a.generatedAt?.seconds || 0))[0];
+                        if (unpaid.length > 0) {
+                            statusText = '未付账单';
+                            statusClass = 'danger';
+                            statusExtra = '$' + fmt(unpaid.reduce((sum, s) => sum + (s.totalAmount || 0), 0));
+                        } else if (lastStmt) {
+                            statusText = '已结清';
+                            statusClass = 'ok';
+                            statusExtra = '最后出账 ' + (lastStmt.periodEnd || '');
+                        } else {
+                            statusText = '无账单';
+                            statusClass = 'info';
+                        }
+                    } else if (pm === 'credit') {
+                        const limit = p.creditLimit || 0;
+                        const used = p.creditUsed || 0;
+                        if (limit > 0 && used >= limit) {
+                            statusText = '已用完';
+                            statusClass = 'danger';
+                        } else if (limit > 0 && used >= limit * 2 / 3) {
+                            statusText = '即将用完';
+                            statusClass = 'warn';
+                        } else {
+                            statusText = '正常';
+                            statusClass = 'ok';
+                        }
+                        statusExtra = '$' + fmt(used) + ' / $' + fmt(limit);
+                    } else if (pm === 'pay_before_ship') {
+                        const pending = myQuotes.filter(q => q.status === 'confirmed' || q.status === 'in_production').length;
+                        statusText = pending > 0 ? pending + ' 笔进行中' : '无进行中订单';
+                        statusClass = pending > 0 ? 'info' : 'ok';
+                    } else if (pm === 'prepaid') {
+                        statusText = '预付款';
+                        statusClass = 'ok';
+                    }
+
+                    clientDataMap[clientUid] = {
+                        profile: p,
+                        paymentMethod: pm,
+                        quotes: myQuotes,
+                        statusText,
+                        statusClass,
+                        statusExtra,
+                        quoteCount: myQuotes.length
+                    };
+                }
+            } catch (e) { console.error('加载失败:', e); }
+            renderClients();
+        }
+
+        let currentFilter = 'all';
+
+        function renderClients() {
+            const container = document.getElementById('clientsContainer');
+            const entries = Object.entries(clientDataMap);
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="no-data"><p>暂无负责的客户</p><p style="font-size:12px;margin-top:4px">您还没有发布过报价</p></div>';
+                document.getElementById('filterResult').textContent = '';
+                return;
+            }
+
+            let filtered = entries;
+            if (currentFilter !== 'all') {
+                filtered = entries.filter(([, d]) => d.paymentMethod === currentFilter);
+            }
+            document.getElementById('filterResult').textContent = '共 ' + filtered.length + ' 位客户' + (filtered.length !== entries.length ? '（筛选自 ' + entries.length + ' 位）' : '');
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="no-data"><p>没有该付款方式的客户</p></div>';
+                return;
+            }
+
+            const groups = {};
+            filtered.forEach(([uid, d]) => {
+                const pm = d.paymentMethod;
+                if (!groups[pm]) groups[pm] = [];
+                groups[pm].push({ uid, ...d });
+            });
+
+            const pmOrder = ['monthly', 'credit', 'pay_before_ship', 'prepaid'];
+            let html = '';
+            for (const pm of pmOrder) {
+                const clients = groups[pm];
+                if (!clients || clients.length === 0) continue;
+                html += '<div class="pm-group">';
+                html += '<div class="pm-group-header">' + (pmLabels[pm] || pm) + ' · ' + clients.length + ' 位</div>';
+
+                clients.forEach(c => {
+                    const p = c.profile;
+                    html += '<div class="client-card" onclick="toggleClientOrders(\'' + c.uid + '\', this)">';
+                    html += '<div class="client-top">';
+                    html += '<span class="client-name">' + esc(p.name || p.contactEmail || '未命名') + '</span>';
+                    html += '<span class="pm-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>';
+                    html += '</div>';
+                    html += '<div class="client-status">';
+
+                    if (pm === 'credit') {
+                        const limit = p.creditLimit || 0;
+                        const used = p.creditUsed || 0;
+                        const pct = limit > 0 ? Math.round(used / limit * 100) : 0;
+                        let barCls = 'safe';
+                        if (limit > 0 && used >= limit) barCls = 'danger';
+                        else if (limit > 0 && used >= limit * 2 / 3) barCls = 'warn';
+                        html += '<span><span class="status-dot ' + c.statusClass + '"></span>' + c.statusText + '</span>';
+                        html += '<span class="credit-mini-bar">' + c.statusExtra + ' <div class="bar-bg"><div class="bar-fill ' + barCls + '" style="width:' + pct + '%"></div></div></span>';
+                    } else {
+                        html += '<span><span class="status-dot ' + c.statusClass + '"></span>' + c.statusText + '</span>';
+                        if (c.statusExtra) html += '<span>' + c.statusExtra + '</span>';
+                    }
+                    html += '<span style="color:#aaa">' + c.quoteCount + ' 笔订单</span>';
+                    html += '</div>';
+
+                    html += '<div class="client-orders" id="co-' + c.uid + '">';
+                    c.quotes.slice(0, 10).forEach(o => {
+                        const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const s = o.status || 'pending';
+                        html += '<div class="co-row">';
+                        html += '<span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</span>';
+                        html += '<span style="display:flex;align-items:center;gap:8px">';
+                        html += '<span class="co-status ' + s + '">' + (statusLabels[s] || '待确认') + '</span>';
+                        html += '<span class="co-total">¥' + (o.totalPrice || 0).toFixed(2) + '</span>';
+                        html += '</span></div>';
+                    });
+                    if (c.quotes.length > 10) {
+                        html += '<div style="font-size:11px;color:#aaa;text-align:center;padding:6px">还有 ' + (c.quotes.length - 10) + ' 笔订单...</div>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        }
+
+        window.toggleClientOrders = function(uid, card) {
+            const el = document.getElementById('co-' + uid);
+            if (el) el.classList.toggle('open');
+        };
+
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderClients();
+            });
+        });
+
+        await loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的账单 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .bg-gradient { position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(34,197,94,0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+        .header { position: relative; z-index: 2; background: #fff; border-bottom: 1px solid #eee; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; }
+        .btn-back { font-size: 13px; color: #666; background: none; border: none; cursor: pointer; padding: 6px 0; text-decoration: none; }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; flex: 1; }
+        .header-bell { position: relative; cursor: pointer; padding: 6px; border-radius: 8px; border: none; background: none; }
+        .header-bell:hover { background: #f5f5f5; }
+        .header-bell svg { width: 20px; height: 20px; color: #666; display: block; }
+        .header-bell-badge { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 4px; }
+        .header-bell-badge.show { display: flex; }
+
+        .notif-dropdown {
+            display: none; position: absolute; top: calc(100% + 8px); right: 0;
+            width: 380px; max-height: 480px; background: #fff; border-radius: 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid #eee;
+            z-index: 200; flex-direction: column; overflow: hidden;
+        }
+        .notif-dropdown.show { display: flex; }
+        .notif-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; border-bottom: 1px solid #f0f0f0;
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+        }
+        .notif-mark-all {
+            font-size: 12px; color: #6366f1; cursor: pointer; border: none; background: none; font-weight: 500;
+        }
+        .notif-mark-all:hover { color: #4f46e5; }
+        .notif-list { overflow-y: auto; max-height: 400px; }
+        .notif-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 18px; cursor: pointer; border-bottom: 1px solid #f9f9f9;
+            transition: background 0.1s; position: relative;
+        }
+        .notif-item:hover { background: #f8f9fa; }
+        .notif-item.unread { background: #fafaff; }
+        .notif-item.unread:hover { background: #f0f0ff; }
+        .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0; margin-top: 6px; }
+        .notif-dot.read { visibility: hidden; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+        .notif-body { font-size: 12px; color: #888; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .notif-time { font-size: 11px; color: #bbb; flex-shrink: 0; margin-top: 2px; }
+        .notif-empty { text-align: center; padding: 40px 20px; color: #ccc; font-size: 13px; }
+        .notif-empty svg { width: 36px; height: 36px; margin-bottom: 8px; color: #ddd; }
+        @media (max-width: 600px) {
+            .notif-dropdown { width: calc(100vw - 32px); right: -60px; }
+        }
+
+        .main { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 32px; }
+
+        .filter-bar {
+            display: flex; gap: 12px; margin-bottom: 20px; align-items: center;
+        }
+        .filter-month {
+            padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px;
+            font-size: 13px; color: #1a1a1a; background: #fff; outline: none;
+            cursor: pointer; min-width: 130px;
+        }
+        .filter-month:focus { border-color: #6366f1; }
+        .filter-result { font-size: 12px; color: #999; margin-bottom: 16px; }
+
+        .month-group { margin-bottom: 28px; }
+        .month-label { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; padding-left: 4px; }
+
+        .bill-card { background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+        .bill-card:hover { border-color: #6366f1; }
+        .bill-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .bill-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .bill-status { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 4px; }
+        .bill-status.pending { background: #fef3c7; color: #b45309; }
+        .bill-status.confirming { background: #fef9c3; color: #a16207; }
+        .bill-status.paid { background: #f0fdf4; color: #16a34a; }
+        .bill-status.settled { background: #eef2ff; color: #4f46e5; }
+        .bill-meta { font-size: 13px; color: #888; display: flex; gap: 24px; margin-bottom: 8px; flex-wrap: wrap; }
+        .bill-amount { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+        .bill-orders-count { font-size: 12px; color: #999; }
+
+        .bill-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
+        .bill-detail.open { display: block; }
+        .bill-detail-row { padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+        .bill-detail-row:last-child { border-bottom: none; }
+        .bill-detail-row .bd-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .bill-detail-row .bd-info { font-size: 13px; color: #1a1a1a; display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+        .bill-detail-row .bd-quote { font-weight: 600; white-space: nowrap; }
+        .bill-detail-row .bd-product { color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .bill-detail-row .bd-price { font-size: 14px; font-weight: 700; color: #1a1a1a; white-space: nowrap; }
+        .bill-detail-row .bd-meta { display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 12px; color: #999; }
+        .bd-status { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+        .bd-status.confirmed { background: #fef3c7; color: #a16207; }
+        .bd-status.in_production { background: #eff6ff; color: #2563eb; }
+        .bd-status.completed { background: #f0fdf4; color: #16a34a; }
+        .bd-status.shipped { background: #faf5ff; color: #9333ea; }
+        .bd-status.signed { background: #f0fdf4; color: #15803d; }
+        .bd-status.pending { background: #f9fafb; color: #888; }
+        .bill-detail-total { text-align: right; padding-top: 10px; font-size: 14px; font-weight: 600; color: #1a1a1a; border-top: 1px solid #eee; margin-top: 4px; }
+
+        .btn-confirm-pay { font-size: 12px; padding: 6px 14px; border-radius: 5px; border: none; background: #6366f1; color: #fff; cursor: pointer; margin-top: 10px; }
+        .btn-confirm-pay:hover { background: #4f46e5; }
+        .btn-confirm-pay:disabled { opacity: 0.5; }
+        .btn-confirm-pay.confirmed { background: #f0fdf4; color: #16a34a; }
+
+        /* Batch action bar */
+        .batch-bar {
+            display: none; align-items: center; justify-content: space-between;
+            background: #fff; border-radius: 10px; border: 1px solid #eee;
+            padding: 12px 16px; margin-bottom: 16px; gap: 12px;
+        }
+        .batch-bar.show { display: flex; }
+        .batch-bar .batch-left { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #666; }
+        .batch-bar .batch-left label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .batch-bar .batch-left input[type="checkbox"] { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+        .btn-batch-confirm {
+            font-size: 12px; padding: 7px 18px; border-radius: 6px; border: none;
+            background: #6366f1; color: #fff; cursor: pointer; font-weight: 500;
+        }
+        .btn-batch-confirm:hover { background: #4f46e5; }
+        .btn-batch-confirm:disabled { opacity: 0.5; cursor: default; }
+
+        /* Bill card checkbox */
+        .bill-card { display: flex; align-items: flex-start; gap: 12px; }
+        .bill-card-check { flex-shrink: 0; padding-top: 2px; }
+        .bill-card-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+        .bill-card-body { flex: 1; min-width: 0; }
+
+        /* Expand chevron */
+        .bill-expand-hint { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #999; }
+        .bill-expand-hint .chevron { display: inline-block; transition: transform 0.2s; font-size: 10px; }
+        .bill-card.expanded .bill-expand-hint .chevron { transform: rotate(180deg); }
+
+        .no-data { text-align: center; padding: 60px 20px; color: #bbb; }
+        .no-data svg { width: 48px; height: 48px; margin-bottom: 12px; color: #ddd; }
+
+        /* Credit view */
+        .credit-summary {
+            background: #fff; border-radius: 12px; border: 1px solid #eee; padding: 24px; margin-bottom: 20px;
+        }
+        .credit-summary h3 { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; }
+        .credit-summary-row { display: flex; gap: 24px; margin-bottom: 14px; flex-wrap: wrap; }
+        .credit-summary-item { flex: 1; min-width: 100px; }
+        .credit-summary-item .label { font-size: 11px; color: #999; margin-bottom: 2px; }
+        .credit-summary-item .val { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+        .credit-summary-item .val.danger { color: #dc2626; }
+        .credit-bar-wrap { margin-top: 4px; }
+        .credit-bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+        .credit-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .credit-bar-fill.safe { background: #22c55e; }
+        .credit-bar-fill.warn { background: #f59e0b; }
+        .credit-bar-fill.danger { background: #dc2626; }
+        .credit-bar-label { font-size: 11px; color: #888; margin-top: 4px; }
+
+        .txn-card {
+            background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 14px 18px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .txn-icon {
+            width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-size: 14px;
+        }
+        .txn-icon.recharge { background: #f0fdf4; color: #16a34a; }
+        .txn-icon.deduction { background: #fef2f2; color: #dc2626; }
+        .txn-info { flex: 1; min-width: 0; }
+        .txn-info .txn-title { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+        .txn-info .txn-desc { font-size: 12px; color: #888; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .txn-amount { font-size: 15px; font-weight: 700; text-align: right; }
+        .txn-amount.plus { color: #16a34a; }
+        .txn-amount.minus { color: #dc2626; }
+        .txn-time { font-size: 11px; color: #bbb; text-align: right; margin-top: 2px; }
+
+        @media (max-width: 600px) {
+            .main { padding: 24px 16px; }
+            .header { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="user.html" class="btn-back">← 返回</a>
+        <span class="header-title">我的账单</span>
+        <div style="position:relative">
+            <button class="header-bell" id="headerBell" onclick="toggleNotif()" title="通知">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span class="header-bell-badge" id="bellBadge">0</span>
+            </button>
+            <div class="notif-dropdown" id="notifDropdown">
+                <div class="notif-header">
+                    <span>消息通知</span>
+                    <button class="notif-mark-all" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
+                </div>
+                <div class="notif-list" id="notifList"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="filter-bar">
+            <select class="filter-month" id="filterMonth" onchange="applyFilter()">
+                <option value="">全部月份</option>
+            </select>
+        </div>
+        <div class="filter-result" id="filterResult"></div>
+        <div class="batch-bar" id="batchBar">
+            <div class="batch-left">
+                <label><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"> 全选</label>
+                <span id="batchCount">0</span>
+            </div>
+            <button class="btn-batch-confirm" id="btnBatchConfirm" onclick="batchConfirm()" disabled>批量确认</button>
+        </div>
+        <div id="billsContainer"><div class="no-data">加载中...</div></div>
+    </main>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        let clientProfile = null;
+        async function loadClientProfile() {
+            try {
+                const snap = await getDocs(query(collection(db, 'clientProfiles'), where('name', '==', user.email.split('@')[0])));
+                snap.forEach(d => { clientProfile = { uid: d.id, ...d.data() }; });
+                if (!clientProfile) {
+                    const allSnap = await getDocs(collection(db, 'clientProfiles'));
+                    allSnap.forEach(d => {
+                        if (d.data().contactEmail === user.email) clientProfile = { uid: d.id, ...d.data() };
+                    });
+                }
+            } catch (e) { console.warn('加载账户信息失败:', e); }
+        }
+        await loadClientProfile();
+
+        const paymentMethod = clientProfile?.paymentMethod || 'pay_before_ship';
+
+        let allStatements = [];
+        async function loadBills() {
+            try {
+                const q = query(collection(db, 'billingStatements'),
+                    where('clientUid', '==', user.uid));
+                const snap = await getDocs(q);
+                allStatements = [];
+                snap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
+                // Sort client-side to avoid composite index
+                allStatements.sort((a, b) => {
+                    const ta = a.generatedAt ? a.generatedAt.seconds : 0;
+                    const tb = b.generatedAt ? b.generatedAt.seconds : 0;
+                    return tb - ta;
+                });
+                renderBills();
+            } catch (e) {
+                console.error('加载账单失败:', e);
+                document.getElementById('billsContainer').innerHTML = '<div class="no-data">加载失败</div>';
+            }
+        }
+
+        function buildMonthOptions() {
+            const months = new Set();
+            allStatements.forEach(s => {
+                const key = (s.periodStart || '').substring(0, 7);
+                if (key) {
+                    const [y, m] = key.split('-');
+                    months.add(y + '年' + parseInt(m) + '月');
+                }
+            });
+            const sel = document.getElementById('filterMonth');
+            if (!sel) return;
+            const currentVal = sel.value;
+            sel.innerHTML = '<option value="">全部月份</option>';
+            Array.from(months).sort().reverse().forEach(m => {
+                sel.innerHTML += '<option value="' + m + '">' + m + '</option>';
+            });
+            sel.value = currentVal;
+        }
+
+        function renderBills() {
+            buildMonthOptions();
+            const container = document.getElementById('billsContainer');
+            const monthVal = document.getElementById('filterMonth')?.value || '';
+
+            if (allStatements.length === 0) {
+                container.innerHTML = '<div class="no-data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="16" x2="12" y2="16"/></svg><p>暂无账单</p></div>';
+                document.getElementById('filterResult').textContent = '';
+                return;
+            }
+
+            // Filter by selected month
+            let filtered = allStatements;
+            if (monthVal) {
+                filtered = allStatements.filter(s => {
+                    const key = (s.periodStart || '').substring(0, 7);
+                    if (!key) return false;
+                    const [y, m] = key.split('-');
+                    return (y + '年' + parseInt(m) + '月') === monthVal;
+                });
+            }
+
+            document.getElementById('filterResult').textContent = '共 ' + filtered.length + ' 条' + (filtered.length !== allStatements.length ? '（筛选自 ' + allStatements.length + ' 条）' : '');
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="no-data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="16" x2="12" y2="16"/></svg><p>该月份没有账单</p></div>';
+                return;
+            }
+
+            const groups = {};
+            filtered.forEach(s => {
+                const key = (s.periodStart || '').substring(0, 7);
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(s);
+            });
+
+            let html = '';
+            for (const [month, statements] of Object.entries(groups).sort().reverse()) {
+                const [y, m] = month.split('-');
+                html += '<div class="month-group"><div class="month-label">' + y + '年' + parseInt(m) + '月</div>';
+                statements.forEach(s => {
+                    const date = s.generatedAt ? new Date(s.generatedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const statusLabels = { pending: '待付款', confirming: '待确认', paid: '已付款', settled: '已结清' };
+                    const isPending = s.status === 'pending';
+                    html += '<div class="bill-card" onclick="toggleBillDetail(this)">';
+                    if (isPending) {
+                        html += '<div class="bill-card-check" onclick="event.stopPropagation()"><input type="checkbox" data-stmt-id="' + s.id + '" onchange="onBillCheck()"></div>';
+                    }
+                    html += '<div class="bill-card-body">';
+                    html += '<div class="bill-top"><span class="bill-name">' + esc(s.periodStart) + ' ~ ' + esc(s.periodEnd) + '</span>';
+                    html += '<span class="bill-status ' + s.status + '">' + (statusLabels[s.status] || s.status) + '</span></div>';
+                    html += '<div class="bill-meta"><span>结算日：每月' + (s.billingDay || '-') + '号</span><span>生成日期：' + date + '</span></div>';
+                    html += '<div class="bill-amount">$' + fmt(s.totalAmount || 0) + '</div>';
+                    html += '<div class="bill-expand-hint"><span>' + (s.orders ? s.orders.length : 0) + ' 笔订单 · 点击展开</span><span class="chevron">▾</span></div>';
+                    html += '<div class="bill-detail">';
+                    const orderStatusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                    (s.orders || []).forEach(o => {
+                        const oDate = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const oStatus = o.status || 'pending';
+                        html += '<div class="bill-detail-row">';
+                        html += '<div class="bd-top">';
+                        html += '<span class="bd-info"><span class="bd-quote">' + esc(o.quoteNumber || '-') + '</span><span class="bd-product">' + esc(o.productName || '-') + '</span></span>';
+                        html += '<span class="bd-price">$' + fmt(o.totalPrice || 0) + '</span>';
+                        html += '</div>';
+                        html += '<div class="bd-meta"><span class="bd-status ' + oStatus + '">' + (orderStatusLabels[oStatus] || oStatus) + '</span><span>' + oDate + '</span></div>';
+                        html += '</div>';
+                    });
+                    html += '<div class="bill-detail-total">合计 $' + fmt(s.totalAmount || 0) + '</div>';
+                    if (isPending) {
+                        html += '<button class="btn-confirm-pay" onclick="event.stopPropagation(); confirmPayment(\'' + s.id + '\', this)">确认付款</button>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            container.innerHTML = html;
+            updateBatchBar();
+        }
+
+        window.toggleBillDetail = function(card) {
+            const detail = card.querySelector('.bill-detail');
+            if (detail) {
+                detail.classList.toggle('open');
+                card.classList.toggle('expanded');
+            }
+        };
+
+        window.toggleSelectAll = function() {
+            const checked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]').forEach(cb => { cb.checked = checked; });
+            updateBatchBar();
+        };
+
+        window.onBillCheck = function() {
+            const all = document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]');
+            const checked = document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]:checked');
+            document.getElementById('selectAll').checked = all.length > 0 && checked.length === all.length;
+            updateBatchBar();
+        };
+
+        function updateBatchBar() {
+            const bar = document.getElementById('batchBar');
+            const checked = document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]:checked');
+            const btn = document.getElementById('btnBatchConfirm');
+            document.getElementById('batchCount').textContent = '已选 ' + checked.length + ' 笔';
+            btn.disabled = checked.length === 0;
+            btn.textContent = checked.length > 0 ? '批量确认（' + checked.length + '）' : '批量确认';
+            bar.classList.toggle('show', document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]').length > 0);
+        }
+
+        window.batchConfirm = async function() {
+            const checked = document.querySelectorAll('#billsContainer input[type="checkbox"][data-stmt-id]:checked');
+            if (checked.length === 0) return;
+            if (!confirm('确认已支付选中的 ' + checked.length + ' 笔账单？\n\n确认后我们的工作人员会进行核实。')) return;
+            const ids = Array.from(checked).map(cb => cb.dataset.stmtId);
+            const btn = document.getElementById('btnBatchConfirm');
+            btn.disabled = true; btn.textContent = '处理中...';
+            let ok = 0;
+            for (const id of ids) {
+                try {
+                    await updateDoc(doc(db, 'billingStatements', id), { status: 'confirming', paidAt: serverTimestamp() });
+                    const s = allStatements.find(s => s.id === id);
+                    if (s) { s.status = 'confirming'; s.paidAt = { seconds: Date.now() / 1000 }; }
+                    ok++;
+                } catch (e) { /* skip */ }
+            }
+            renderBills();
+            btn.textContent = ok === ids.length ? '已处理 ' + ok + ' 笔 ✓' : '完成 ' + ok + '/' + ids.length;
+            setTimeout(() => { btn.disabled = false; btn.textContent = '批量确认'; updateBatchBar(); }, 2000);
+        };
+
+        window.confirmPayment = async function(stmtId, btn) {
+            if (!confirm('确认已支付此账单？\n\n确认后我们的工作人员会进行核实。')) return;
+            btn.disabled = true; btn.textContent = '处理中...';
+            try {
+                await updateDoc(doc(db, 'billingStatements', stmtId), { status: 'confirming', paidAt: serverTimestamp() });
+                const s = allStatements.find(s => s.id === stmtId);
+                if (s) { s.status = 'confirming'; s.paidAt = { seconds: Date.now() / 1000 }; }
+                btn.textContent = '待确认 ✓'; btn.className = 'btn-confirm-pay confirmed';
+                btn.disabled = true;
+                renderBills();
+            } catch (e) { alert('操作失败: ' + e.message); btn.disabled = false; btn.textContent = '确认付款'; }
+        };
+
+        // Notification bell with dropdown
+        let notifList = [];
+        const typeIcons = {
+            bill: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#16a34a" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/></svg>',
+            order: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+            system: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+        };
+
+        async function loadNotifications() {
+            try {
+                const q = query(collection(db, 'notifications'),
+                    where('clientUid', '==', user.uid));
+                const snap = await getDocs(q);
+                notifList = [];
+                snap.forEach(d => { notifList.push({ id: d.id, ...d.data() }); });
+                notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+        }
+
+        function updateBellBadge() {
+            const count = notifList.filter(n => !n.read).length;
+            const badge = document.getElementById('bellBadge');
+            if (badge) {
+                if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.classList.add('show'); }
+                else { badge.classList.remove('show'); }
+            }
+        }
+
+        function renderNotifList() {
+            const container = document.getElementById('notifList');
+            if (!container) return;
+            if (notifList.length === 0) {
+                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>暂无消息</p></div>';
+                return;
+            }
+            let html = '';
+            notifList.forEach(n => {
+                const time = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                const icon = typeIcons[n.type] || typeIcons.system;
+                html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-link="' + esc(n.link || '') + '" onclick="clickNotif(this)">';
+                html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
+                html += '<div style="flex-shrink:0;margin-top:2px">' + icon + '</div>';
+                html += '<div class="notif-content"><div class="notif-title">' + esc(n.title || '') + '</div>';
+                html += '<div class="notif-body">' + esc(n.body || '') + '</div></div>';
+                html += '<div class="notif-time">' + time + '</div>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        window.toggleNotif = function() {
+            const dd = document.getElementById('notifDropdown');
+            dd.classList.toggle('show');
+        };
+
+        window.clickNotif = async function(el) {
+            const nid = el.dataset.nid;
+            const link = el.dataset.link;
+            try {
+                await updateDoc(doc(db, 'notifications', nid), { read: true });
+                const n = notifList.find(x => x.id === nid);
+                if (n) n.read = true;
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+            if (link) window.location.href = link;
+        };
+
+        window.markAllNotifRead = async function() {
+            try {
+                const unread = notifList.filter(n => !n.read);
+                await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
+                unread.forEach(n => n.read = true);
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+        };
+
+        document.addEventListener('click', function(e) {
+            const dd = document.getElementById('notifDropdown');
+            const bell = document.getElementById('headerBell');
+            if (dd && dd.classList.contains('show') && !dd.contains(e.target) && e.target !== bell && !bell.contains(e.target)) {
+                dd.classList.remove('show');
+            }
+        });
+
+        window.applyFilter = function() { renderBills(); };
+
+        // ==================== Credit View ====================
+        async function loadCreditView() {
+            // Hide filter bar (not needed for credit)
+            const filterBar = document.querySelector('.filter-bar');
+            const filterResult = document.getElementById('filterResult');
+            if (filterBar) filterBar.style.display = 'none';
+            if (filterResult) filterResult.style.display = 'none';
+
+            const p = clientProfile;
+            const limit = p?.creditLimit || 0;
+            const used = p?.creditUsed || 0;
+            const remain = Math.max(0, limit - used);
+            const pct = limit > 0 ? Math.round(used / limit * 100) : 0;
+            let barClass = 'safe', statusText = '正常';
+            if (limit > 0 && used >= limit) { barClass = 'danger'; statusText = '已用完'; }
+            else if (limit > 0 && used >= limit * 2 / 3) { barClass = 'warn'; statusText = '即将用完'; }
+
+            let html = '<div class="credit-summary">';
+            html += '<h3>信用额度</h3>';
+            html += '<div class="credit-summary-row">';
+            html += '<div class="credit-summary-item"><div class="label">总额度</div><div class="val">$' + fmt(limit) + '</div></div>';
+            html += '<div class="credit-summary-item"><div class="label">已用额度</div><div class="val' + (used >= limit && limit > 0 ? ' danger' : '') + '">$' + fmt(used) + '</div></div>';
+            html += '<div class="credit-summary-item"><div class="label">剩余额度</div><div class="val">$' + fmt(remain) + '</div></div>';
+            html += '</div>';
+            html += '<div class="credit-bar-wrap"><div class="credit-bar-bg"><div class="credit-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div></div>';
+            html += '<div class="credit-bar-label">已使用 ' + pct + '% · ' + statusText + '</div>';
+            html += '</div>';
+
+            // Load transactions
+            let txnsHtml = '';
+            try {
+                const q = query(collection(db, 'creditTransactions'),
+                    where('clientUid', '==', user.uid));
+                const snap = await getDocs(q);
+                const txns = [];
+                snap.forEach(d => { txns.push(d.data()); });
+                txns.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                if (txns.length === 0) {
+                    txnsHtml = '<div class="no-data"><p style="font-size:13px">暂无额度变动记录</p></div>';
+                } else {
+                    txns.forEach(t => {
+                        const isRecharge = t.type === 'recharge' || t.amount > 0;
+                        const time = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                        txnsHtml += '<div class="txn-card">';
+                        txnsHtml += '<div class="txn-icon ' + (isRecharge ? 'recharge' : 'deduction') + '">' + (isRecharge ? '↓' : '↑') + '</div>';
+                        txnsHtml += '<div class="txn-info">';
+                        txnsHtml += '<div class="txn-title">' + (isRecharge ? '额度恢复' : '额度消费') + '</div>';
+                        txnsHtml += '<div class="txn-desc">' + esc(t.note || '') + '</div>';
+                        txnsHtml += '</div>';
+                        txnsHtml += '<div><div class="txn-amount ' + (isRecharge ? 'plus' : 'minus') + '">' + (isRecharge ? '+' : '-') + '$' + fmt(t.amount || 0) + '</div>';
+                        txnsHtml += '<div class="txn-time">' + time + '</div></div>';
+                        txnsHtml += '</div>';
+                    });
+                }
+            } catch (e) { txnsHtml = '<div class="no-data">加载失败</div>'; }
+
+            html += '<div style="font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:12px;margin-top:24px">额度变动记录</div>';
+            html += txnsHtml;
+
+            document.getElementById('billsContainer').innerHTML = html;
+        }
+
+        // ==================== Startup ====================
+        if (paymentMethod === 'credit') {
+            await loadCreditView();
+            setInterval(loadCreditView, 15000);
+        } else if (paymentMethod === 'monthly') {
+            await loadBills();
+            setInterval(loadBills, 15000);
+        } else {
+            // pay_before_ship / prepaid - no bills needed
+            document.querySelector('.filter-bar').style.display = 'none';
+            document.getElementById('filterResult').style.display = 'none';
+            document.getElementById('billsContainer').innerHTML = '<div class="no-data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="6" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="6" y1="16" x2="12" y2="16"/></svg><p>' + (paymentMethod === 'prepaid' ? '预付款客户无需对账' : '款到发货客户无需对账') + '</p></div>';
+        }
+
+        await loadNotifications();
+        setInterval(loadNotifications, 10000);
+    </script>
+</body>
+</html>

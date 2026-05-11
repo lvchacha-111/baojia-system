@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务中心 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .bg-gradient { position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(34,197,94,0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+        .header { position: relative; z-index: 2; background: #fff; border-bottom: 1px solid #eee; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; }
+        .btn-back { font-size: 13px; color: #666; background: none; border: none; cursor: pointer; padding: 6px 0; text-decoration: none; }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+        .main { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 32px; }
+
+        .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #eee; }
+        .tab { padding: 10px 24px; font-size: 14px; font-weight: 500; color: #888; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .tab:hover { color: #6366f1; }
+        .tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Overview cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .card { background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 16px 20px; cursor: pointer; transition: all 0.15s; text-decoration: none; display: block; }
+        .card:hover { border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,0.08); }
+        .card-label { font-size: 12px; color: #999; margin-bottom: 6px; }
+        .card-value { font-size: 24px; font-weight: 700; color: #1a1a1a; }
+        .card-value.warn { color: #f59e0b; }
+        .card-value.danger { color: #dc2626; }
+        .card-hint { font-size: 11px; color: #bbb; margin-top: 4px; }
+        .warn-list { margin-top: 20px; }
+        .warn-list h4 { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 12px; }
+        .warn-item { background: #fff; border-radius: 8px; border: 1px solid #eee; padding: 10px 16px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+        .pending-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fff; border-radius: 8px; border: 1px solid #eee; margin-bottom: 6px; font-size: 13px; gap: 12px; }
+        .pending-info { flex: 1; }
+        .pending-meta { color: #999; font-size: 11px; }
+        .btn-finalize-sm { font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; background: #16a34a; color: #fff; cursor: pointer; white-space: nowrap; }
+        .btn-finalize-sm:hover { background: #15803d; }
+        .btn-finalize-sm:disabled { opacity: 0.5; }
+
+        /* Credit tab */
+        .credit-table { background: #fff; border-radius: 10px; border: 1px solid #eee; overflow: hidden; margin-bottom: 16px; }
+        .ct-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid #f5f5f5; gap: 12px; cursor: pointer; transition: background 0.1s; }
+        .ct-row:hover { background: #fafafa; }
+        .ct-row.header-row { background: #fafafa; font-size: 11px; color: #999; font-weight: 500; cursor: default; }
+        .ct-row:last-child { border-bottom: none; }
+        .ct-name { flex: 1; font-size: 13px; font-weight: 500; }
+        .ct-num { width: 90px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+        .ct-bar-wrap { width: 100px; }
+        .ct-bar-bg { height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+        .ct-bar-fill { height: 100%; border-radius: 3px; }
+        .ct-bar-fill.safe { background: #22c55e; }
+        .ct-bar-fill.warn { background: #f59e0b; }
+        .ct-bar-fill.danger { background: #dc2626; }
+        .ct-warn { width: 60px; text-align: center; }
+        .ct-actions { width: 120px; display: flex; gap: 6px; justify-content: flex-end; }
+        .ct-limit-wrap { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+        .ct-limit-wrap:hover .ct-limit-edit { opacity: 1; }
+        .ct-limit-edit { opacity: 0; font-size: 11px; color: #aaa; transition: opacity 0.15s; }
+        .ct-limit-input { width: 80px; height: 26px; border: 1px solid #6366f1; border-radius: 4px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; padding: 0 6px; outline: none; }
+        .warn-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 10px; font-weight: 700; }
+        .warn-icon.yellow { background: #f59e0b; }
+        .warn-icon.red { background: #dc2626; }
+
+        .order-sub { margin-left: 20px; border-left: 2px solid #eef2ff; padding-left: 12px; }
+        .order-sub-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 12px; border-bottom: 1px solid #f9f9f9; gap: 12px; }
+        .order-sub-row:last-child { border-bottom: none; }
+        .btn-finalize { font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; background: #16a34a; color: #fff; cursor: pointer; }
+        .btn-finalize:hover { background: #15803d; }
+        .btn-finalize:disabled { opacity: 0.5; cursor: default; }
+        .tag-finalized { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #f0fdf4; color: #16a34a; }
+
+        /* Edit limit */
+        .limit-edit { width: 80px; height: 28px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 12px; }
+        .limit-edit:focus { border-color: #6366f1; outline: none; }
+        .btn-save-limit { font-size: 10px; padding: 3px 8px; border-radius: 3px; border: 1px solid #6366f1; background: #fff; color: #6366f1; cursor: pointer; }
+        .pm-tag { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 4px; }
+        .pm-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+
+        .btn-recharge { font-size: 11px; padding: 4px 12px; border-radius: 4px; border: none; background: #6366f1; color: #fff; cursor: pointer; white-space: nowrap; }
+        .btn-recharge:hover { background: #4f46e5; }
+        .btn-txn-history { font-size: 11px; color: #6366f1; cursor: pointer; border: none; background: none; margin-left: 8px; white-space: nowrap; }
+        .btn-txn-history:hover { color: #4f46e5; }
+
+        .recharge-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+            z-index: 300; align-items: center; justify-content: center;
+        }
+        .recharge-overlay.show { display: flex; }
+        .recharge-dialog {
+            background: #fff; border-radius: 14px; padding: 32px;
+            width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .recharge-dialog h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+        .recharge-field { margin-bottom: 14px; }
+        .recharge-field label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; }
+        .recharge-field input, .recharge-field textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+            font-size: 13px; outline: none; font-family: inherit;
+        }
+        .recharge-field input:focus, .recharge-field textarea:focus { border-color: #6366f1; }
+        .recharge-info { font-size: 12px; color: #999; margin-bottom: 16px; padding: 10px; background: #f8f9fa; border-radius: 6px; }
+        .recharge-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .recharge-actions button { padding: 8px 20px; border-radius: 6px; font-size: 13px; cursor: pointer; border: none; }
+        .btn-recharge-confirm { background: #6366f1; color: #fff; }
+        .btn-recharge-confirm:hover { background: #4f46e5; }
+        .btn-recharge-confirm:disabled { opacity: 0.5; }
+        .btn-recharge-cancel { background: #f5f5f5; color: #666; }
+
+        .txn-list { margin-top: 0; margin-left: 20px; border-left: 2px solid #eef2ff; padding-left: 12px; }
+        .txn-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 12px; border-bottom: 1px solid #f9f9f9; }
+        .txn-row:last-child { border-bottom: none; }
+        .txn-amount { font-weight: 600; color: #16a34a; }
+        .txn-note { color: #888; flex: 1; margin: 0 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .txn-time { color: #bbb; font-size: 11px; white-space: nowrap; }
+
+        /* Statements tab (existing) */
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+        .filter-btn { padding: 6px 14px; font-size: 13px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #666; cursor: pointer; transition: all 0.15s; }
+        .filter-btn:hover { border-color: #6366f1; color: #6366f1; }
+        .filter-btn.active { background: #eef2ff; border-color: #6366f1; color: #6366f1; }
+        .statement-card { background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 16px 20px; margin-bottom: 10px; }
+        .stmt-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .stmt-client { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .stmt-status { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 4px; }
+        .stmt-status.pending { background: #fef3c7; color: #b45309; }
+        .stmt-status.confirming { background: #fef9c3; color: #a16207; }
+        .stmt-status.paid { background: #f0fdf4; color: #16a34a; }
+        .stmt-status.settled { background: #eef2ff; color: #4f46e5; }
+        .stmt-meta { font-size: 13px; color: #888; display: flex; gap: 24px; margin-bottom: 8px; flex-wrap: wrap; }
+        .stmt-amount { font-size: 18px; font-weight: 700; color: #1a1a1a; }
+        .stmt-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-top: 10px; border-top: 1px solid #f5f5f5; }
+        .stmt-orders { font-size: 12px; color: #999; }
+        .btn-mark-paid { font-size: 12px; padding: 6px 14px; border-radius: 5px; border: none; background: #16a34a; color: #fff; cursor: pointer; }
+        .btn-mark-paid:hover { background: #15803d; }
+        .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .section-title { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .btn-generate { font-size: 12px; padding: 6px 14px; border-radius: 5px; border: 1px solid #6366f1; background: #fff; color: #6366f1; cursor: pointer; }
+        .btn-generate:hover { background: #6366f1; color: #fff; }
+        .no-data { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
+
+        /* Monthly client settings */
+        .table-wrap { background: #fff; border-radius: 10px; border: 1px solid #eee; overflow: hidden; }
+        .table-row { display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid #f5f5f5; gap: 16px; }
+        .table-row:last-child { border-bottom: none; }
+        .table-row.header-row { background: #fafafa; font-size: 12px; color: #999; font-weight: 500; }
+        .col-name { flex: 1; font-size: 14px; font-weight: 500; color: #1a1a1a; }
+        .col-day { width: 160px; display: flex; align-items: center; gap: 8px; }
+        .col-day input { width: 56px; height: 32px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 13px; outline: none; }
+        .col-day input:focus { border-color: #6366f1; }
+        .col-period { width: 260px; font-size: 12px; color: #999; }
+        .btn-save-day { font-size: 12px; padding: 5px 12px; border-radius: 5px; border: 1px solid #6366f1; background: #fff; color: #6366f1; cursor: pointer; }
+        .btn-save-day:hover { background: #6366f1; color: #fff; }
+        .btn-save-day.saved { background: #f0fdf4; border-color: #16a34a; color: #16a34a; }
+
+        /* All-clients tab */
+        .settings-select { font-size: 12px; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; outline: none; background: #fff; }
+        .settings-select:focus { border-color: #6366f1; }
+        .settings-input { width: 80px; height: 28px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 12px; }
+        .settings-input:focus { border-color: #6366f1; outline: none; }
+        .col-pm { width: 130px; }
+        .col-extra { width: 200px; font-size: 12px; color: #999; }
+
+        /* Reconciliation tab */
+        .recon-group { background: #fff; border-radius: 10px; border: 1px solid #eee; margin-bottom: 16px; overflow: hidden; }
+        .recon-group-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #fafafa; border-bottom: 1px solid #f0f0f0; font-size: 13px; font-weight: 600; color: #1a1a1a; }
+        .recon-group-header label { font-weight: 400; font-size: 11px; color: #6366f1; cursor: pointer; }
+        .recon-group-header label input { margin-right: 4px; }
+        .recon-row { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid #f9f9f9; font-size: 12px; gap: 10px; }
+        .recon-row:last-child { border-bottom: none; }
+        .recon-row input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; accent-color: #6366f1; }
+        .recon-info { flex: 1; }
+        .recon-meta { color: #999; font-size: 11px; }
+        .tag-settled { font-size: 10px; padding: 2px 6px; border-radius: 3px; background: #f0fdf4; color: #16a34a; }
+        .btn-settle { font-size: 11px; padding: 4px 10px; border-radius: 4px; border: none; background: #6366f1; color: #fff; cursor: pointer; }
+        .btn-settle:hover { background: #4f46e5; }
+        .btn-settle:disabled { opacity: 0.5; }
+
+        @media (max-width: 600px) {
+            .main { padding: 24px 16px; }
+            .header { padding: 0 16px; }
+            .cards { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="myorders.html" class="btn-back">← 返回</a>
+        <span class="header-title">财务中心</span>
+    </header>
+
+    <main class="main">
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">总览</button>
+            <button class="tab" data-tab="credit">信用额度</button>
+            <button class="tab" data-tab="monthly">月付账单</button>
+            <button class="tab" data-tab="reconciliation">月付待对账</button>
+            <button class="tab" data-tab="settings">现有客户</button>
+        </div>
+
+        <!-- Tab 1: 总览 -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="cards" id="overviewCards"></div>
+            <div class="warn-list" id="overviewWarn"></div>
+            <div id="pendingOrders" style="margin-top:24px"></div>
+        </div>
+
+        <!-- Tab 2: 信用额度 -->
+        <div class="tab-content" id="tab-credit">
+            <div class="section-header"><span class="section-title">信用客户</span></div>
+            <div class="credit-table" id="creditTable"><div class="no-data">加载中...</div></div>
+        </div>
+
+        <!-- Tab 3: 月付账单 -->
+        <div class="tab-content" id="tab-monthly">
+            <div class="section-header">
+                <span class="section-title">对账单</span>
+                <button class="btn-generate" id="btnGenerateAll">生成当期账单</button>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="pending">待付款</button>
+                <button class="filter-btn" data-filter="confirming">待确认</button>
+                <button class="filter-btn" data-filter="paid">已付款</button>
+                <button class="filter-btn" data-filter="settled">已结清</button>
+            </div>
+            <div id="statementsList"><div class="no-data">加载中...</div></div>
+        </div>
+
+        <!-- Tab 4: 月付待对账 -->
+        <div class="tab-content" id="tab-reconciliation">
+            <div class="section-header">
+                <span class="section-title">待对账订单</span>
+                <button class="btn-generate" id="btnGenFromRecon">生成当期账单</button>
+            </div>
+            <div id="reconciliationList"><div class="no-data">加载中...</div></div>
+        </div>
+
+        <!-- Tab 5: 现有客户 -->
+        <div class="tab-content" id="tab-settings">
+            <div class="section-header"><span class="section-title">现有客户</span></div>
+            <div class="table-wrap" id="allClientsTable"><div class="no-data">加载中...</div></div>
+        </div>
+    </main>
+
+    <!-- Recharge overlay -->
+    <div class="recharge-overlay" id="rechargeOverlay">
+        <div class="recharge-dialog">
+            <h3>客户还款</h3>
+            <div class="recharge-info" id="rechargeInfo"></div>
+            <div class="recharge-field">
+                <label>客户还款金额</label>
+                <input type="number" id="rechargeAmount" placeholder="输入金额" step="0.01" min="0.01">
+            </div>
+            <div class="recharge-field">
+                <label>备注说明</label>
+                <textarea id="rechargeNote" rows="2" placeholder="如：客户已汇款、银行转账..."></textarea>
+            </div>
+            <div class="recharge-actions">
+                <button class="btn-recharge-cancel" onclick="closeRecharge()">取消</button>
+                <button class="btn-recharge-confirm" id="btnRechargeConfirm" onclick="confirmRecharge()">确认还款</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { collection, getDocs, doc, updateDoc, query, where, orderBy, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+        if (user.email !== 'sales01@test.com') { window.location.replace('my-clients.html'); throw new Error('非管理员，跳转至我的客户'); }
+
+        let allClients = [];
+        let creditClients = [];
+        let monthlyClients = [];
+        let allStatements = [];
+        let clientOrders = {}; // uid → orders[]
+        let currentFilter = 'all';
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        // ==================== Data loading ====================
+        async function loadAllData() {
+            try {
+                // Load all client profiles
+                const profSnap = await getDocs(collection(db, 'clientProfiles'));
+                allClients = []; creditClients = []; monthlyClients = [];
+                profSnap.forEach(d => {
+                    const data = d.data();
+                    const c = { uid: d.id, ...data };
+                    allClients.push(c);
+                    if (data.paymentMethod === 'credit') creditClients.push(c);
+                    if (data.paymentMethod === 'monthly') monthlyClients.push(c);
+                });
+
+                // Load orders for all clients
+                clientOrders = {};
+                for (const c of allClients) {
+                    try {
+                        const q = query(collection(db, 'users', c.uid, 'quotes'), orderBy('createdAt', 'desc'));
+                        const snap = await getDocs(q);
+                        const orders = [];
+                        snap.forEach(d => { orders.push({ id: d.id, ...d.data() }); });
+                        clientOrders[c.uid] = orders;
+                    } catch (e) { clientOrders[c.uid] = []; }
+                }
+
+                // Load statements
+                const stmtSnap = await getDocs(query(collection(db, 'billingStatements'), orderBy('generatedAt', 'desc')));
+                allStatements = [];
+                stmtSnap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
+
+                // Auto-generate statements
+                await autoGenerate();
+
+                renderOverview();
+                renderCreditTab();
+                renderStatements();
+                renderReconciliation();
+                renderAllClientsTab();
+            } catch (e) { console.error('加载失败:', e); }
+        }
+
+        // ==================== Tab 1: Overview ====================
+        function renderOverview() {
+            // Count unfinalized orders across all clients
+            let pendingFinalize = 0;
+            for (const c of allClients) {
+                const orders = clientOrders[c.uid] || [];
+                pendingFinalize += orders.filter(o => !o.finalized && o.status !== 'pending').length;
+            }
+
+            let creditWarnCount = 0;
+            creditClients.forEach(c => {
+                const limit = c.creditLimit || 0;
+                const used = c.creditUsed || 0;
+                if (limit > 0 && used >= limit * 2 / 3) creditWarnCount++;
+            });
+
+            let monthlyPending = 0, monthlyCount = 0;
+            allStatements.forEach(s => {
+                if (s.status === 'pending') { monthlyPending += s.totalAmount || 0; monthlyCount++; }
+            });
+
+            // Count finalized but unbilled monthly orders
+            let reconCount = 0;
+            for (const c of monthlyClients) {
+                const orders = clientOrders[c.uid] || [];
+                reconCount += orders.filter(o => o.finalized && !o.statementId && !o.settled).length;
+            }
+
+            const cardsEl = document.getElementById('overviewCards');
+            cardsEl.innerHTML =
+                '<div class="card" onclick="document.getElementById(\'pendingOrders\').scrollIntoView({behavior:\'smooth\'})">' +
+                    '<div class="card-label">待完结订单</div>' +
+                    '<div class="card-value' + (pendingFinalize > 0 ? ' warn' : '') + '">' + pendingFinalize + ' <span style="font-size:13px;color:#999;font-weight:400">笔</span></div>' +
+                    '<div class="card-hint">点击查看 →</div>' +
+                '</div>' +
+                '<div class="card" onclick="switchTab(\'credit\')">' +
+                    '<div class="card-label">信用预警客户</div>' +
+                    '<div class="card-value' + (creditWarnCount > 0 ? ' danger' : '') + '">' + creditWarnCount + ' <span style="font-size:13px;color:#999;font-weight:400">个</span></div>' +
+                    '<div class="card-hint">点击查看 →</div>' +
+                '</div>' +
+                '<div class="card" onclick="switchTab(\'reconciliation\')">' +
+                    '<div class="card-label">月付待对账</div>' +
+                    '<div class="card-value' + (reconCount > 0 ? ' warn' : '') + '">' + reconCount + ' <span style="font-size:13px;color:#999;font-weight:400">笔</span></div>' +
+                    '<div class="card-hint">点击查看 →</div>' +
+                '</div>';
+
+            // Warning list
+            let warnHtml = '';
+            creditClients.forEach(c => {
+                const limit = c.creditLimit || 0;
+                const used = c.creditUsed || 0;
+                if (limit > 0 && used >= limit * 2 / 3) {
+                    const pct = Math.round(used / limit * 100);
+                    const exhausted = used >= limit;
+                    warnHtml += '<div class="warn-item"><span>' + esc(c.name || '未命名') + ' · 信用额度</span><span style="color:' + (exhausted ? '#dc2626' : '#f59e0b') + ';font-weight:600">已用 ' + pct + '%' + (exhausted ? ' 已用完' : '') + '</span></div>';
+                }
+            });
+            allStatements.filter(s => s.status === 'pending').forEach(s => {
+                warnHtml += '<div class="warn-item"><span>' + esc(s.clientName || '未命名') + ' · 月付</span><span style="color:#b45309;font-weight:600">待付款 $' + fmt(s.totalAmount || 0) + '</span></div>';
+            });
+            const warnSection = document.getElementById('overviewWarn');
+            warnSection.innerHTML = warnHtml ? '<h4>⚠️ 需要关注</h4>' + warnHtml : '<h4>✓ 一切正常</h4><p style="color:#999;font-size:13px">当前无需关注的客户</p>';
+
+            // Pending orders (unfinalized, confirmed or beyond)
+            let pendingHtml = '';
+            for (const c of allClients) {
+                const orders = clientOrders[c.uid] || [];
+                const unfinalized = orders.filter(o => !o.finalized && o.status !== 'pending');
+                if (unfinalized.length === 0) continue;
+                pendingHtml += '<h4 style="font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:10px;margin-top:16px">' + esc(c.name || '未命名') + ' <span style="font-weight:400;color:#999;font-size:12px">' + unfinalized.length + ' 笔待完结</span></h4>';
+                unfinalized.forEach(o => {
+                    const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const pm = c.paymentMethod || '';
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                    pendingHtml += '<div class="pending-row"><div class="pending-info"><span>' + esc(o.quoteNumber || '-') + '</span> <span style="color:#888">' + esc(o.productName || '-') + '</span><br><span class="pending-meta">' + date + ' · $' + (o.totalPrice || 0).toLocaleString() + ' · ' + (pmLabels[pm] || pm) + '</span></div><button class="btn-finalize-sm" onclick="finalizeOrder2(\'' + c.uid + '\',\'' + o.id + '\',' + (o.totalPrice || 0) + ', this)">标记完结</button></div>';
+                });
+            }
+            document.getElementById('pendingOrders').innerHTML = pendingHtml || '<div style="text-align:center;padding:20px;color:#bbb">暂无待完结订单</div>';
+        }
+
+        // ==================== Tab 2: Credit ====================
+        function renderCreditTab() {
+            const container = document.getElementById('creditTable');
+            if (creditClients.length === 0) {
+                container.innerHTML = '<div class="no-data">暂无信用额度客户</div>';
+                return;
+            }
+            let html = '<div class="ct-row header-row"><span class="ct-name">客户</span><span class="ct-num">总额度</span><span class="ct-num">已用</span><span class="ct-num">剩余</span><span class="ct-bar-wrap">使用率</span><span class="ct-warn">预警</span><span class="ct-actions">操作</span></div>';
+            creditClients.forEach(c => {
+                const limit = c.creditLimit || 0;
+                const used = c.creditUsed || 0;
+                const remain = Math.max(0, limit - used);
+                const pct = limit > 0 ? Math.round(used / limit * 100) : 0;
+                let barClass = 'safe', warnHtml = '';
+                if (limit > 0 && used >= limit) { barClass = 'danger'; warnHtml = '<span class="warn-icon red">!</span>'; }
+                else if (limit > 0 && used >= limit * 2 / 3) { barClass = 'warn'; warnHtml = '<span class="warn-icon yellow">!</span>'; }
+                html += '<div class="ct-row" data-uid="' + c.uid + '" onclick="toggleCreditOrders(\'' + c.uid + '\')">';
+                html += '<span class="ct-name">' + esc(c.name || '未命名') + '</span>';
+                html += '<span class="ct-num"><span class="ct-limit-wrap" onclick="event.stopPropagation();editCreditLimit(this,\'' + c.uid + '\',' + limit + ')">$' + fmt(limit) + ' <span class="ct-limit-edit">✎</span></span></span>';
+                html += '<span class="ct-num">$' + fmt(used) + '</span>';
+                html += '<span class="ct-num">$' + fmt(remain) + '</span>';
+                html += '<span class="ct-bar-wrap"><div class="ct-bar-bg"><div class="ct-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div></span>';
+                html += '<span class="ct-warn">' + warnHtml + '</span>';
+                html += '<span class="ct-actions">';
+                html += '<button class="btn-recharge" onclick="event.stopPropagation();openRecharge(\'' + c.uid + '\')">充值</button>';
+                html += '<button class="btn-txn-history" onclick="event.stopPropagation();toggleCreditTxns(\'' + c.uid + '\', this)">记录</button>';
+                html += '</span>';
+                html += '</div>';
+                html += '<div class="order-sub" id="orders-' + c.uid + '" style="display:none"></div>';
+                html += '<div class="txn-list" id="txns-' + c.uid + '" style="display:none"></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        window.toggleCreditOrders = async function(uid) {
+            const el = document.getElementById('orders-' + uid);
+            if (el.style.display === 'block') { el.style.display = 'none'; return; }
+            el.style.display = 'block';
+            if (el.dataset.loaded) return;
+            el.dataset.loaded = '1';
+
+            const orders = clientOrders[uid] || [];
+            const c = creditClients.find(c => c.uid === uid);
+            const limit = c ? (c.creditLimit || 0) : 0;
+
+            if (orders.length === 0) { el.innerHTML = '<div style="padding:12px;color:#999;font-size:12px">暂无订单</div>'; return; }
+
+            el.innerHTML = orders.map(o => {
+                const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                const done = o.finalized;
+                let actionHtml = '';
+                if (done) {
+                    actionHtml = '<span class="tag-finalized">已完结</span>';
+                } else {
+                    actionHtml = '<button class="btn-finalize" onclick="finalizeOrder(\'' + uid + '\',\'' + o.id + '\', ' + (o.totalPrice || 0) + ', this)">标记完结</button>';
+                }
+                return '<div class="order-sub-row"><span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</span><span style="font-weight:600">$' + (o.totalPrice || 0).toLocaleString() + '</span>' + actionHtml + '</div>';
+            }).join('');
+        };
+
+        window.finalizeOrder = async function(clientUid, orderId, totalPrice, btn) {
+            if (!confirm('确认将此订单标记为已完结？\n\n信用额度将释放 $' + fmt(totalPrice))) return;
+            btn.disabled = true;
+            btn.textContent = '处理中...';
+            try {
+                // Update order in client's collection
+                await updateDoc(doc(db, 'users', clientUid, 'quotes', orderId), {
+                    finalized: true, finalizedAt: serverTimestamp()
+                });
+
+                // Sync to sales copy
+                try {
+                    const osnap = await getDoc(doc(db, 'users', clientUid, 'quotes', orderId));
+                    if (osnap.exists()) {
+                        const odata = osnap.data();
+                        if (odata.publishedByUid) {
+                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', orderId), {
+                                finalized: true, finalizedAt: serverTimestamp()
+                            }).catch(() => {});
+                        }
+                    }
+                } catch (e) { /* ignore sync errors */ }
+
+                // Release credit
+                const c = creditClients.find(c => c.uid === clientUid);
+                if (c) {
+                    const newUsed = Math.max(0, (c.creditUsed || 0) - totalPrice);
+                    await updateDoc(doc(db, 'clientProfiles', clientUid), { creditUsed: newUsed });
+                    c.creditUsed = newUsed;
+                }
+
+                // Update local state
+                const orders = clientOrders[clientUid];
+                if (orders) {
+                    const o = orders.find(o => o.id === orderId);
+                    if (o) o.finalized = true;
+                }
+
+                btn.textContent = '已完结 ✓';
+                btn.className = 'tag-finalized';
+                btn.disabled = true;
+
+                // Refresh
+                renderOverview();
+                renderCreditTab();
+                renderReconciliation();
+            } catch (e) {
+                alert('操作失败: ' + (e.message || ''));
+                btn.disabled = false;
+                btn.textContent = '标记完结';
+            }
+        };
+
+        // Shared finalize for overview tab (works for all payment types)
+        window.finalizeOrder2 = async function(clientUid, orderId, totalPrice, btn) {
+            if (!confirm('确认将此订单标记为已完结？')) return;
+            btn.disabled = true; btn.textContent = '处理中...';
+            try {
+                await updateDoc(doc(db, 'users', clientUid, 'quotes', orderId), { finalized: true, finalizedAt: serverTimestamp() });
+                try {
+                    const osnap = await getDoc(doc(db, 'users', clientUid, 'quotes', orderId));
+                    if (osnap.exists()) {
+                        const odata = osnap.data();
+                        if (odata.publishedByUid) {
+                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', orderId), { finalized: true, finalizedAt: serverTimestamp() }).catch(() => {});
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+
+                // Release credit if credit client
+                const c = allClients.find(c => c.uid === clientUid);
+                if (c && c.paymentMethod === 'credit') {
+                    const newUsed = Math.max(0, (c.creditUsed || 0) - totalPrice);
+                    await updateDoc(doc(db, 'clientProfiles', clientUid), { creditUsed: newUsed });
+                    c.creditUsed = newUsed;
+                    creditClients.forEach(cc => { if (cc.uid === clientUid) cc.creditUsed = newUsed; });
+                }
+
+                // Update local
+                const orders = clientOrders[clientUid];
+                if (orders) { const o = orders.find(o => o.id === orderId); if (o) o.finalized = true; }
+
+                btn.textContent = '已完结 ✓'; btn.disabled = true;
+                renderOverview();
+                renderCreditTab();
+                renderReconciliation();
+            } catch (e) { alert('操作失败: ' + (e.message || '')); btn.disabled = false; btn.textContent = '标记完结'; }
+        };
+
+        // ==================== Credit Recharge ====================
+        let rechargeUid = null;
+        window.openRecharge = function(uid) {
+            rechargeUid = uid;
+            const c = creditClients.find(c => c.uid === uid);
+            if (!c) return;
+            const limit = c.creditLimit || 0;
+            const used = c.creditUsed || 0;
+            document.getElementById('rechargeInfo').innerHTML =
+                '客户：<b>' + esc(c.name || '未命名') + '</b><br>' +
+                '总额度：$' + fmt(limit) + ' · 已用：$' + fmt(used) + ' · 剩余：$' + fmt(Math.max(0, limit - used));
+            document.getElementById('rechargeAmount').value = '';
+            document.getElementById('rechargeNote').value = '';
+            document.getElementById('rechargeOverlay').classList.add('show');
+        };
+        window.closeRecharge = function() {
+            document.getElementById('rechargeOverlay').classList.remove('show');
+            rechargeUid = null;
+        };
+        window.confirmRecharge = async function() {
+            const rawAmount = parseFloat(document.getElementById('rechargeAmount').value);
+            if (!rawAmount || rawAmount <= 0) { alert('请输入有效的还款金额'); return; }
+            const amount = Math.round(rawAmount * 100) / 100;
+            const c = creditClients.find(c => c.uid === rechargeUid);
+            if (!c) return;
+            const previousUsed = c.creditUsed || 0;
+            if (amount > previousUsed) { alert('还款金额不能超过已用额度（$' + fmt(previousUsed) + '）'); return; }
+            const newUsed = Math.round((previousUsed - amount) * 100) / 100;
+            const note = document.getElementById('rechargeNote').value.trim() || '客户还款';
+            const btn = document.getElementById('btnRechargeConfirm');
+            btn.disabled = true; btn.textContent = '处理中...';
+            try {
+                // Update client creditUsed
+                await updateDoc(doc(db, 'clientProfiles', rechargeUid), { creditUsed: newUsed });
+                c.creditUsed = newUsed;
+                // Record transaction
+                await addDoc(collection(db, 'creditTransactions'), {
+                    clientUid: rechargeUid,
+                    type: 'recharge',
+                    amount: amount,
+                    previousUsed: previousUsed,
+                    newUsed: newUsed,
+                    note: note,
+                    createdBy: user.email,
+                    createdAt: serverTimestamp()
+                });
+                // Create notification for client
+                await addDoc(collection(db, 'notifications'), {
+                    clientUid: rechargeUid,
+                    type: 'system',
+                    title: '额度已恢复',
+                    body: '客户还款 $' + amount.toFixed(2) + '，当前已用额度：$' + newUsed.toFixed(2) + '。备注：' + note,
+                    read: false,
+                    createdAt: serverTimestamp(),
+                    link: 'client-bills.html'
+                }).catch(() => {});
+                closeRecharge();
+                renderCreditTab();
+                renderOverview();
+            } catch (e) { alert('操作失败: ' + e.message); btn.disabled = false; btn.textContent = '确认还款'; }
+        };
+
+        window.toggleCreditTxns = async function(uid, btn) {
+            const el = document.getElementById('txns-' + uid);
+            if (el.style.display === 'block') { el.style.display = 'none'; return; }
+            el.style.display = 'block';
+            if (el.dataset.loaded) return;
+            el.dataset.loaded = '1';
+            el.innerHTML = '<div style="padding:12px;color:#999;font-size:12px">加载中...</div>';
+            try {
+                const q = query(collection(db, 'creditTransactions'),
+                    where('clientUid', '==', uid));
+                const snap = await getDocs(q);
+                const txns = [];
+                snap.forEach(d => { txns.push(d.data()); });
+                txns.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                if (txns.length === 0) {
+                    el.innerHTML = '<div style="padding:12px;color:#999;font-size:12px">暂无充值记录</div>';
+                } else {
+                    el.innerHTML = txns.map(t => {
+                        const time = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleString('zh-CN') : '';
+                        return '<div class="txn-row"><span class="txn-amount">+$' + fmt(t.amount || 0) + '</span><span class="txn-note">' + esc(t.note || '') + '</span><span class="txn-time">' + time + '</span></div>';
+                    }).join('');
+                }
+            } catch (e) { el.innerHTML = '<div style="padding:12px;color:#dc2626;font-size:12px">加载失败</div>'; }
+        };
+
+        // ==================== Tab 3: Monthly Statements ====================
+        function renderStatements() {
+            const container = document.getElementById('statementsList');
+            let filtered = allStatements;
+            if (currentFilter !== 'all') filtered = allStatements.filter(s => s.status === currentFilter);
+            if (filtered.length === 0) { container.innerHTML = '<div class="no-data">暂无账单</div>'; return; }
+            container.innerHTML = filtered.map(s => {
+                const date = s.generatedAt ? new Date(s.generatedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                const paidDate = s.paidAt ? new Date(s.paidAt.seconds * 1000).toLocaleDateString('zh-CN') : '';
+                let html = '<div class="statement-card">';
+                html += '<div class="stmt-top"><span class="stmt-client">' + esc(s.clientName || '未命名') + '</span>';
+                const statusLabels = { pending: '待付款', confirming: '待确认', paid: '已付款', settled: '已结清' };
+                html += '<span class="stmt-status ' + s.status + '">' + (statusLabels[s.status] || s.status) + '</span></div>';
+                html += '<div class="stmt-meta"><span>周期：' + s.periodStart + ' ~ ' + s.periodEnd + '</span><span>结算日：每月' + (s.billingDay || '-') + '号</span><span>生成日期：' + date + '</span>';
+                if (paidDate) html += '<span>付款日期：' + paidDate + '</span>';
+                html += '</div><div class="stmt-amount">$' + fmt(s.totalAmount || 0) + '</div>';
+                html += '<div class="stmt-footer"><span class="stmt-orders">' + (s.orders ? s.orders.length : 0) + ' 笔订单</span>';
+                if (s.status === 'pending' || s.status === 'confirming') {
+                    html += '<button class="btn-mark-paid" onclick="markStmtPaid(\'' + s.id + '\')">标记已付款</button>';
+                } else if (s.status === 'paid') {
+                    html += '<button class="btn-settle" onclick="settleStatement(\'' + s.id + '\')">确认结清</button>';
+                } else if (s.status === 'settled') {
+                    html += '<span class="tag-settled">已结清</span>';
+                }
+                html += '</div></div>';
+                return html;
+            }).join('');
+        }
+
+        window.markStmtPaid = async function(stmtId) {
+            if (!confirm('确认标记此账单为已付款？')) return;
+            try {
+                await updateDoc(doc(db, 'billingStatements', stmtId), { status: 'paid', paidAt: serverTimestamp() });
+                const s = allStatements.find(s => s.id === stmtId);
+                if (s) { s.status = 'paid'; s.paidAt = { seconds: Date.now() / 1000 }; }
+                renderStatements();
+                renderOverview();
+                renderReconciliation();
+            } catch (e) { alert('操作失败: ' + e.message); }
+        };
+
+        // ==================== Tab 4: Reconciliation ====================
+        function renderReconciliation() {
+            const container = document.getElementById('reconciliationList');
+            let html = '';
+            for (const c of monthlyClients) {
+                const orders = (clientOrders[c.uid] || []).filter(o => o.finalized && !o.statementId && !o.settled);
+                if (orders.length === 0) continue;
+                html += '<div class="recon-group">';
+                html += '<div class="recon-group-header"><span>' + esc(c.name || '未命名') + ' · ' + orders.length + ' 笔</span>';
+                html += '<label><input type="checkbox" onchange="toggleClientOrders(this, \'' + c.uid + '\')"> 全选</label></div>';
+                orders.forEach(o => {
+                    const date = o.finalizedAt ? new Date(o.finalizedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    html += '<div class="recon-row">';
+                    html += '<input type="checkbox" class="recon-cb-' + c.uid + '" data-oid="' + o.id + '" data-price="' + (o.totalPrice || 0) + '">';
+                    html += '<div class="recon-info"><span>' + esc(o.quoteNumber || '-') + '</span> <span style="color:#888">' + esc(o.productName || '-') + '</span><br><span class="recon-meta">完结: ' + date + ' · $' + (o.totalPrice || 0).toLocaleString() + '</span></div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            container.innerHTML = html || '<div class="no-data">暂无待对账订单</div>';
+        }
+
+        window.toggleClientOrders = function(cb, uid) {
+            document.querySelectorAll('.recon-cb-' + uid).forEach(c => { c.checked = cb.checked; });
+        };
+
+        window.generateFromRecon = async function() {
+            // Collect selected orders by client
+            const selected = {}; // clientUid -> [{id, totalPrice}]
+            document.querySelectorAll('#reconciliationList input[type="checkbox"][data-oid]:checked').forEach(cb => {
+                const uid = cb.className.replace('recon-cb-', '').split(' ')[0];
+                if (!selected[uid]) selected[uid] = [];
+                selected[uid].push({ id: cb.dataset.oid, totalPrice: parseFloat(cb.dataset.price) || 0 });
+            });
+            const totalSelected = Object.values(selected).reduce((s, arr) => s + arr.length, 0);
+            if (totalSelected === 0) { alert('请先勾选订单'); return; }
+            if (!confirm('将为 ' + totalSelected + ' 笔订单生成对账单，确定？')) return;
+
+            const btn = document.getElementById('btnGenFromRecon');
+            btn.disabled = true; btn.textContent = '生成中...';
+            try {
+                for (const [uid, orders] of Object.entries(selected)) {
+                    const c = monthlyClients.find(c => c.uid === uid);
+                    if (!c || !c.billingDay) continue;
+                    const period = getPeriodDates(c.billingDay);
+                    const periodOrders = orders.map(o => ({
+                        id: o.id,
+                        quoteNumber: (clientOrders[uid].find(x => x.id === o.id) || {}).quoteNumber || '-',
+                        totalPrice: o.totalPrice,
+                        confirmedAt: new Date().toISOString().split('T')[0]
+                    }));
+                    const totalAmount = periodOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+                    const stmtRef = await addDoc(collection(db, 'billingStatements'), {
+                        clientUid: uid, clientName: c.name || '未命名', billingDay: c.billingDay,
+                        periodStart: period.start, periodEnd: period.end, orders: periodOrders,
+                        totalAmount: Math.round(totalAmount * 100) / 100, status: 'pending',
+                        generatedAt: serverTimestamp(), paidAt: null
+                    });
+                    // Mark orders with statementId
+                    for (const o of orders) {
+                        await updateDoc(doc(db, 'users', uid, 'quotes', o.id), { statementId: stmtRef.id, billedAt: serverTimestamp() });
+                        const lo = (clientOrders[uid] || []).find(x => x.id === o.id);
+                        if (lo) { lo.statementId = stmtRef.id; lo.billedAt = { seconds: Date.now() / 1000 }; }
+                    }
+                    // Create notification
+                    try {
+                        await addDoc(collection(db, 'notifications'), {
+                            clientUid: uid, type: 'bill', title: '新对账单',
+                            body: '您有一份新的对账单（' + period.start + ' ~ ' + period.end + '），金额 $' + Math.round(totalAmount * 100) / 100 + '，请查看并确认。',
+                            read: false, createdAt: serverTimestamp(),
+                            link: 'client-bills.html', statementId: stmtRef.id
+                        });
+                    } catch (e) { /* ignore */ }
+                }
+                // Reload statements
+                const stmtSnap = await getDocs(query(collection(db, 'billingStatements'), orderBy('generatedAt', 'desc')));
+                allStatements = [];
+                stmtSnap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
+                renderReconciliation();
+                renderStatements();
+                renderOverview();
+            } catch (e) { alert('生成失败: ' + e.message); }
+            btn.disabled = false; btn.textContent = '生成当期账单';
+        };
+
+        // ==================== Statement settlement ====================
+        window.settleStatement = async function(stmtId) {
+            if (!confirm('确认结清此账单？所有关联订单将标记为已结清。')) return;
+            try {
+                const s = allStatements.find(s => s.id === stmtId);
+                if (!s) return;
+                // Mark all orders in the statement as settled
+                for (const o of (s.orders || [])) {
+                    await updateDoc(doc(db, 'users', s.clientUid, 'quotes', o.id), { settled: true }).catch(() => {});
+                    const orders = clientOrders[s.clientUid] || [];
+                    const lo = orders.find(x => x.id === o.id);
+                    if (lo) lo.settled = true;
+                }
+                // Update statement
+                await updateDoc(doc(db, 'billingStatements', stmtId), { status: 'settled', settledAt: serverTimestamp() });
+                s.status = 'settled'; s.settledAt = { seconds: Date.now() / 1000 };
+                renderStatements();
+                renderOverview();
+                renderReconciliation();
+            } catch (e) { alert('操作失败: ' + e.message); }
+        };
+
+        // ==================== Tab 5: All Clients ====================
+        function renderAllClientsTab() {
+            const wrap = document.getElementById('allClientsTable');
+            if (allClients.length === 0) {
+                wrap.innerHTML = '<div class="no-data">暂无客户</div>';
+                return;
+            }
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            let html = '<div class="table-row header-row"><span class="col-name">客户名称</span><span class="col-pm">付款方式</span><span class="col-extra">付款设置</span></div>';
+            allClients.forEach(c => {
+                const pm = c.paymentMethod || '';
+                html += '<div class="table-row">';
+                html += '<span class="col-name">' + esc(c.name || '未命名') + '</span>';
+                html += '<span class="col-pm"><span class="pm-tag ' + pm + '">' + (pmLabels[pm] || '未设置') + '</span></span>';
+
+                let extraHtml = '';
+                if (pm === 'credit') {
+                    const limit = c.creditLimit || 0;
+                    const used = c.creditUsed || 0;
+                    extraHtml = '<span style="font-size:12px;color:#888">额度 $' + (limit ? fmt(limit) : '未设') + ' · 已用 $' + fmt(used) + ' · 剩余 $' + fmt(Math.max(0, limit - used)) + '</span>';
+                } else if (pm === 'monthly') {
+                    const bd = c.billingDay || '';
+                    const period = bd ? getPeriodDates(bd) : null;
+                    const periodText = period ? period.start + ' ~ ' + period.end : '';
+                    extraHtml = '<span style="font-size:12px;color:#888">结算日：每月' + (bd || '未设') + '号';
+                    if (periodText) extraHtml += '（' + periodText + '）';
+                    extraHtml += '</span>';
+                }
+                html += '<span class="col-extra">' + extraHtml + '</span>';
+                html += '</div>';
+            });
+            wrap.innerHTML = html;
+        }
+
+        window.onClientPmChange = async function(uid, pm) {
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), { paymentMethod: pm || null });
+                const c = allClients.find(c => c.uid === uid);
+                if (c) { c.paymentMethod = pm || null; if (pm !== 'credit') { c.creditLimit = null; c.creditUsed = 0; } }
+                // Refresh client lists
+                creditClients = allClients.filter(c => c.paymentMethod === 'credit');
+                monthlyClients = allClients.filter(c => c.paymentMethod === 'monthly');
+                renderAllClientsTab();
+                renderCreditTab();
+                renderOverview();
+            } catch (e) { alert('保存失败: ' + e.message); }
+        };
+
+        window.editCreditLimit = function(el, uid, currentLimit) {
+            const wrap = el.parentNode;
+            const input = document.createElement('input');
+            input.type = 'number'; input.step = '0.01'; input.min = '0';
+            input.value = currentLimit;
+            input.className = 'ct-limit-input';
+            const save = () => {
+                const v = parseFloat(input.value);
+                if (isNaN(v) || v < 0 || v === currentLimit) { renderCreditTab(); return; }
+                saveCreditLimit(uid, v);
+            };
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { renderCreditTab(); } });
+            wrap.innerHTML = '';
+            wrap.appendChild(input);
+            input.focus(); input.select();
+        };
+
+        window.saveCreditLimit = async function(uid, val) {
+            const limit = parseFloat(val) || 0;
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), { creditLimit: limit });
+                const c = allClients.find(c => c.uid === uid);
+                if (c) c.creditLimit = limit;
+                creditClients.forEach(c => { if (c.uid === uid) c.creditLimit = limit; });
+                renderCreditTab();
+                renderOverview();
+            } catch (e) { alert('保存失败: ' + e.message); }
+        };
+
+        window.saveBillingDay2 = async function(uid, val) {
+            const day = parseInt(val);
+            if (isNaN(day) || day < 1 || day > 28) return;
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), { billingDay: day });
+                const c = allClients.find(c => c.uid === uid);
+                if (c) c.billingDay = day;
+                monthlyClients.forEach(c => { if (c.uid === uid) c.billingDay = day; });
+                renderAllClientsTab();
+            } catch (e) { /* ignore */ }
+        };
+
+        // ==================== Statement generation ====================
+        function getPeriodDates(billingDay) {
+            const today = new Date();
+            const end = new Date(today.getFullYear(), today.getMonth(), billingDay);
+            if (end <= today) end.setMonth(end.getMonth() + 1);
+            const start = new Date(end);
+            start.setMonth(start.getMonth() - 1);
+            return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+        }
+
+        function daysUntilSettlement(billingDay) {
+            const period = getPeriodDates(billingDay);
+            const end = new Date(period.end);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            return Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+        }
+
+        async function autoGenerate() {
+            for (const client of monthlyClients) {
+                const bd = client.billingDay;
+                if (!bd || bd < 1 || bd > 28) continue;
+                if (daysUntilSettlement(bd) > 3) continue;
+                const period = getPeriodDates(bd);
+                const exists = allStatements.find(s => s.clientUid === client.uid && s.periodStart === period.start && s.periodEnd === period.end);
+                if (exists) continue;
+                // Pull finalized orders without statementId in this period
+                const orders = clientOrders[client.uid] || [];
+                const periodOrders = [];
+                orders.forEach(o => {
+                    if (!o.finalized || o.statementId || o.settled) return;
+                    if (!o.finalizedAt || !o.finalizedAt.seconds) return;
+                    const fd = new Date(o.finalizedAt.seconds * 1000).toISOString().split('T')[0];
+                    if (fd >= period.start && fd < period.end) periodOrders.push({ id: o.id, quoteNumber: o.quoteNumber || '-', totalPrice: o.totalPrice || 0, confirmedAt: fd });
+                });
+                if (periodOrders.length === 0) continue;
+                const totalAmount = periodOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+                const stmtRef = await addDoc(collection(db, 'billingStatements'), {
+                    clientUid: client.uid, clientName: client.name || '未命名', billingDay: bd,
+                    periodStart: period.start, periodEnd: period.end, orders: periodOrders,
+                    totalAmount: Math.round(totalAmount * 100) / 100, status: 'pending',
+                    generatedAt: serverTimestamp(), paidAt: null
+                });
+                // Write statementId back to orders
+                for (const o of periodOrders) {
+                    await updateDoc(doc(db, 'users', client.uid, 'quotes', o.id), { statementId: stmtRef.id, billedAt: serverTimestamp() }).catch(() => {});
+                    const lo = orders.find(x => x.id === o.id);
+                    if (lo) { lo.statementId = stmtRef.id; lo.billedAt = { seconds: Date.now() / 1000 }; }
+                }
+                // Create notification
+                try {
+                    await addDoc(collection(db, 'notifications'), {
+                        clientUid: client.uid, type: 'bill', title: '新对账单',
+                        body: '您有一份新的对账单（' + period.start + ' ~ ' + period.end + '），金额 $' + Math.round(totalAmount * 100) / 100 + '，请查看并确认。',
+                        read: false, createdAt: serverTimestamp(),
+                        link: 'client-bills.html', statementId: stmtRef.id
+                    });
+                } catch (e) { /* ignore */ }
+            }
+            const stmtSnap = await getDocs(query(collection(db, 'billingStatements'), orderBy('generatedAt', 'desc')));
+            allStatements = [];
+            stmtSnap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
+        }
+
+        document.getElementById('btnGenerateAll').addEventListener('click', async function() {
+            this.textContent = '生成中...'; this.disabled = true;
+            try {
+                for (const client of monthlyClients) {
+                    const bd = client.billingDay;
+                    if (!bd || bd < 1 || bd > 28) continue;
+                    const period = getPeriodDates(bd);
+                    const exists = allStatements.find(s => s.clientUid === client.uid && s.periodStart === period.start && s.periodEnd === period.end);
+                    if (exists) continue;
+                    const orders = clientOrders[client.uid] || [];
+                    const periodOrders = [];
+                    orders.forEach(o => {
+                        if (!o.finalized || o.statementId || o.settled) return;
+                        if (!o.finalizedAt || !o.finalizedAt.seconds) return;
+                        const fd = new Date(o.finalizedAt.seconds * 1000).toISOString().split('T')[0];
+                        if (fd >= period.start && fd < period.end) periodOrders.push({ id: o.id, quoteNumber: o.quoteNumber || '-', totalPrice: o.totalPrice || 0, confirmedAt: fd });
+                    });
+                    if (periodOrders.length === 0) continue;
+                    const totalAmount = periodOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+                    const stmtRef = await addDoc(collection(db, 'billingStatements'), {
+                        clientUid: client.uid, clientName: client.name || '未命名', billingDay: bd,
+                        periodStart: period.start, periodEnd: period.end, orders: periodOrders,
+                        totalAmount: Math.round(totalAmount * 100) / 100, status: 'pending',
+                        generatedAt: serverTimestamp(), paidAt: null
+                    });
+                    for (const o of periodOrders) {
+                        await updateDoc(doc(db, 'users', client.uid, 'quotes', o.id), { statementId: stmtRef.id, billedAt: serverTimestamp() }).catch(() => {});
+                        const lo = orders.find(x => x.id === o.id);
+                        if (lo) { lo.statementId = stmtRef.id; lo.billedAt = { seconds: Date.now() / 1000 }; }
+                    }
+                    try {
+                        await addDoc(collection(db, 'notifications'), {
+                            clientUid: client.uid, type: 'bill', title: '新对账单',
+                            body: '您有一份新的对账单（' + period.start + ' ~ ' + period.end + '），金额 $' + Math.round(totalAmount * 100) / 100 + '，请查看并确认。',
+                            read: false, createdAt: serverTimestamp(),
+                            link: 'client-bills.html', statementId: stmtRef.id
+                        });
+                    } catch (e) { /* ignore */ }
+                }
+                const stmtSnap = await getDocs(query(collection(db, 'billingStatements'), orderBy('generatedAt', 'desc')));
+                allStatements = [];
+                stmtSnap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
+                renderStatements();
+                renderReconciliation();
+                renderOverview();
+            } catch (e) { alert('生成失败: ' + e.message); }
+            this.textContent = '生成当期账单'; this.disabled = false;
+        });
+
+        // ==================== Tab switching ====================
+        window.switchTab = function(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            const tabEl = document.querySelector('.tab[data-tab="' + name + '"]');
+            if (tabEl) tabEl.classList.add('active');
+            const contentEl = document.getElementById('tab-' + name);
+            if (contentEl) contentEl.classList.add('active');
+        };
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            });
+        });
+
+        document.getElementById('btnGenFromRecon').addEventListener('click', generateFromRecon);
+
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderStatements();
+            });
+        });
+
+        loadAllData();
+    </script>
+</body>
+</html>
