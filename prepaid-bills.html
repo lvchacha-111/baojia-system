@@ -185,11 +185,14 @@
             html += '<div class="card-date">' + date + ' · ' + (statusLabels[o.status] || o.status) + '</div>';
 
             // Deposit row
+            const dpApplied = o.clientConfirmedDeposit;
             html += '<div class="pay-row deposit' + (o.depositPaid ? ' done' : '') + '">';
             html += '<span class="pay-label">定金（' + dpPct + '%）</span>';
             html += '<span class="pay-amount">$' + fmt(dpAmt) + '</span>';
             if (o.depositPaid) {
-                html += '<span class="pay-status paid">已付 ✓</span>';
+                html += '<span class="pay-status paid">管理员已确认 ✓</span>';
+            } else if (dpApplied) {
+                html += '<span class="pay-status" style="background:#fefce8;color:#b45309">已申请，等待确认</span>';
             } else {
                 html += '<span class="pay-status unpaid">未付</span>';
                 html += '<button class="btn-pay deposit-btn" onclick="confirmPayment(\'' + o.id + '\',\'deposit\',this)">确认已付定金</button>';
@@ -197,11 +200,14 @@
             html += '</div>';
 
             // Remainder row
+            const rmApplied = o.clientConfirmedRemainder;
             html += '<div class="pay-row remainder' + (o.remainderPaid ? ' done' : '') + '">';
             html += '<span class="pay-label">尾款</span>';
             html += '<span class="pay-amount">$' + fmt(rmAmt) + '</span>';
             if (o.remainderPaid) {
-                html += '<span class="pay-status paid">已付 ✓</span>';
+                html += '<span class="pay-status paid">管理员已确认 ✓</span>';
+            } else if (rmApplied) {
+                html += '<span class="pay-status" style="background:#fefce8;color:#b45309">已申请，等待确认</span>';
             } else if (o.depositPaid) {
                 html += '<span class="pay-status unpaid">未付</span>';
                 html += '<button class="btn-pay remainder-btn" onclick="confirmPayment(\'' + o.id + '\',\'remainder\',this)">确认已付尾款</button>';
