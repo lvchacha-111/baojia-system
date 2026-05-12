@@ -308,11 +308,11 @@
     </div>
 
     <script type="module">
-        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
         import { collection, getDocs, doc, updateDoc, query, where, orderBy, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
-        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+        if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
         if (user.email !== 'sales01@test.com') { window.location.replace('sales-billing.html'); throw new Error('非管理员，跳转至我的财务'); }
 
         let allClients = [];

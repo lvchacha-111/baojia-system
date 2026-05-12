@@ -453,12 +453,12 @@
     </div>
 
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db } from "./firebase-init.js";
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/firebase-init.js";
         import { collection, getDocs, query, orderBy, updateDoc, doc, where, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
         if (!user) {
-            window.location.href = 'login.html';
+            window.location.href = '../auth/login.html';
         }
 
         // Set initial header with email
@@ -625,6 +625,7 @@
         await loadNotifications();
         setInterval(loadNotifications, 10000);
 
+        let loadError = null;
         try {
             const q = query(collection(db, 'users', user.uid, 'quotes'), orderBy('publishedAt', 'desc'));
             const snapshot = await getDocs(q);
@@ -632,6 +633,7 @@
             snapshot.forEach(d => { allOrders.push({ id: d.id, ...d.data() }); });
         } catch (e) {
             console.error('加载订单失败:', e);
+            loadError = e.message || '未知错误';
         }
 
         // Build month dropdown from actual orders
@@ -683,6 +685,13 @@
                 empty.style.display = '';
                 container.querySelectorAll('.order-card').forEach(c => c.remove());
                 result.textContent = '';
+                if (loadError) {
+                    empty.querySelector('h3').textContent = '加载失败';
+                    empty.querySelector('p').innerHTML = '<span style="color:#dc2626">' + loadError + '</span><br><span style="font-size:11px;color:#aaa">UID: ' + user.uid + '</span>';
+                } else {
+                    empty.querySelector('h3').textContent = '暂无订单';
+                    empty.querySelector('p').innerHTML = '您的订单将在这里显示<br><span style="font-size:11px;color:#aaa">UID: ' + user.uid + '</span>';
+                }
                 return;
             }
 
@@ -766,7 +775,7 @@
             // Attach click handlers
             container.querySelectorAll('.order-card').forEach(card => {
                 card.addEventListener('click', function() {
-                    window.location.href = 'order-detail.html?id=' + this.dataset.oid;
+                    window.location.href = '../admin/order-detail.html?id=' + this.dataset.oid;
                 });
             });
         }
@@ -992,7 +1001,7 @@
 
         window.logout = async function() {
             await firebaseLogout();
-            window.location.href = 'login.html';
+            window.location.href = '../auth/login.html';
         };
     </script>
 </body>

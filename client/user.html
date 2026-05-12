@@ -418,7 +418,7 @@
                     <p>查看报价和订单进度</p>
                 </div>
             </a>
-            <a href="client-bills.html" class="card">
+            <a id="billsCard" href="client-bills.html" class="card">
                 <div class="card-icon" style="background:#f0fdf4;color:#16a34a">
                     <svg viewBox="0 0 24 24">
                         <rect x="2" y="3" width="20" height="18" rx="2"/>
@@ -441,12 +441,12 @@
     </div>
 
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db } from "./firebase-init.js";
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/firebase-init.js";
         import { collection, getDocs, query, updateDoc, doc, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
         if (!user) {
-            window.location.href = 'login.html';
+            window.location.href = '../auth/login.html';
         }
 
         // Set initial header with email
@@ -494,6 +494,14 @@
                 }
                 pmTag.className = tagClass;
                 pmTag.innerHTML = warnHtml + labelText + popupHtml;
+
+                // Update bills card link based on payment method
+                const billsCard = document.getElementById('billsCard');
+                if (billsCard) {
+                    if (pm === 'full') billsCard.href = 'full-bills.html';
+                    else if (pm === 'prepaid') billsCard.href = 'prepaid-bills.html';
+                    else billsCard.href = 'client-bills.html';
+                }
             } else {
                 pmTag.style.display = 'none';
             }
@@ -717,7 +725,7 @@
 
         window.logout = async function() {
             await firebaseLogout();
-            window.location.href = 'login.html';
+            window.location.href = '../auth/login.html';
         };
     </script>
 </body>

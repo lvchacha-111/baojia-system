@@ -223,11 +223,11 @@
     </main>
 
     <script type="module">
-        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
         import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
-        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+        if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }

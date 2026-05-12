@@ -176,7 +176,7 @@
     </div>
 
     <script type="module">
-        import { auth, db } from "./firebase-init.js";
+        import { auth, db } from "../shared/firebase-init.js";
         import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
         import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
@@ -308,7 +308,7 @@
                     company,
                     registeredAt: serverTimestamp()
                 });
-                window.location.href = 'user.html';
+                window.location.href = '../client/user.html';
             } catch (err) {
                 showError(errMsg(err.code));
                 submitBtn.disabled = false;

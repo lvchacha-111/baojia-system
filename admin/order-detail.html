@@ -465,7 +465,7 @@
     <div class="bg-gradient"></div>
 
     <header class="header">
-        <a href="user.html" class="btn-back">← 返回</a>
+        <a href="../client/user.html" class="btn-back">← 返回</a>
         <span class="header-title">订单详情</span>
         <div class="header-user-area" id="headerUserArea2">
             <span class="header-pm-tag" id="headerPmTag2" style="display:none"></span>
@@ -537,11 +537,11 @@
     </div>
 
     <script type="module">
-        import { auth, getCurrentUser, db } from "./firebase-init.js";
+        import { auth, getCurrentUser, db } from "../shared/firebase-init.js";
         import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
-        if (!user) { window.location.href = 'login.html'; }
+        if (!user) { window.location.href = '../auth/login.html'; }
         const emailPrefix2 = user.email.split('@')[0];
         document.getElementById('headerUserName2').textContent = emailPrefix2;
         document.getElementById('headerUserEmail2').textContent = user.email;
@@ -1171,7 +1171,7 @@
                         body: '您有一笔预付款定金需要支付：$' + prepaidDepositAmt.toFixed(2) + '（' + (customerPayment.depositPercent || 0) + '%），支付后生产才会开始。点击查看订单详情。',
                         read: false,
                         createdAt: serverTimestamp(),
-                        link: 'prepaid-bills.html'
+                        link: '../client/prepaid-bills.html'
                     }).catch(() => {});
                 }
                 if (isFull) {
@@ -1182,7 +1182,7 @@
                         body: '您的订单需支付全款 $' + prepaidDepositAmt.toFixed(2) + '，支付后生产才会开始。点击查看订单详情。',
                         read: false,
                         createdAt: serverTimestamp(),
-                        link: 'prepaid-bills.html'
+                        link: '../client/full-bills.html'
                     }).catch(() => {});
                 }
 

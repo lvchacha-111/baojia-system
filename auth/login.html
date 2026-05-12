@@ -229,7 +229,7 @@
     </div>
 
     <script type="module">
-        import { auth } from "./firebase-init.js";
+        import { auth } from "../shared/firebase-init.js";
         import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
 
         const form = document.getElementById('loginForm');
@@ -242,7 +242,7 @@
         }
 
         function redirectByRole(email) {
-            window.location.href = isSalesAccount(email) ? 'myorders.html' : 'user.html';
+            window.location.href = isSalesAccount(email) ? '../admin/myorders.html' : '../client/user.html';
         }
 
         form.addEventListener('submit', async function(e) {

@@ -98,11 +98,11 @@
     <div class="notif-toast" id="toast"></div>
 
     <script type="module">
-        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
         import { collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
-        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+        if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -131,7 +131,8 @@
                 allOrders = [];
                 snap.forEach(d => {
                     const o = { id: d.id, ...d.data() };
-                    if (o.depositPercent || o.depositAmount || depositPercent) {
+                    // Exclude full payment orders (depositPercent === 100), they have their own page
+                    if (o.depositPercent !== 100 && (o.depositPercent || o.depositAmount)) {
                         allOrders.push(o);
                     }
                 });
@@ -235,7 +236,7 @@
                     body: '客户确认已支付' + label + '：订单 ' + qn + '，金额 $' + fmt(amt) + '。请核实。',
                     read: false,
                     createdAt: serverTimestamp(),
-                    link: 'billing.html'
+                    link: '../admin/billing.html'
                 });
 
                 if (type === 'deposit') {

@@ -388,11 +388,11 @@
     </div>
 
     <script type="module">
-        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
         import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
         const user = await getCurrentUser();
-        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+        if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
 
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get('id');
