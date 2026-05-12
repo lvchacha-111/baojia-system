@@ -931,7 +931,10 @@
                 const orders = clientOrders[clientUid] || [];
                 const o = orders.find(o => o.id === orderId);
                 if (o) { o.depositPaid = true; o.depositPaidAt = { seconds: Date.now() / 1000 }; }
-                // Notify client
+                // Sync to salesperson copy
+                if (o && o.publishedByUid) {
+                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { depositPaid: true, depositPaidAt: serverTimestamp() }).catch(() => {});
+                }
                 await addDoc(collection(db, 'notifications'), {
                     clientUid: clientUid, type: 'system', title: '定金已确认',
                     body: '管理员已确认收到您的预付款定金，订单将进入生产。',
@@ -951,7 +954,10 @@
                 const orders = clientOrders[clientUid] || [];
                 const o = orders.find(o => o.id === orderId);
                 if (o) { o.remainderPaid = true; o.remainderPaidAt = { seconds: Date.now() / 1000 }; }
-                // Notify client
+                // Sync to salesperson copy
+                if (o && o.publishedByUid) {
+                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { remainderPaid: true, remainderPaidAt: serverTimestamp() }).catch(() => {});
+                }
                 await addDoc(collection(db, 'notifications'), {
                     clientUid: clientUid, type: 'system', title: '尾款已确认',
                     body: '管理员已确认收到您的尾款，订单即将发货。',
