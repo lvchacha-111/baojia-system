@@ -419,7 +419,8 @@
                         uid: d.id,
                         paymentMethod: data.paymentMethod || null,
                         creditLimit: data.creditLimit || null,
-                        creditUsed: data.creditUsed || 0
+                        creditUsed: data.creditUsed || 0,
+                        depositPercent: data.depositPercent || 0
                     };
                 });
             } catch (e) { console.warn('加载客户付款方式失败:', e); }
@@ -499,8 +500,10 @@
             const pm = customerPayment ? customerPayment.paymentMethod : null;
             const paid = o.paymentStatus === 'paid';
             const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
-            const blockProcess = (pm === 'prepaid' && !paid); // prepaid blocks all production
-            const blockShip = (pm === 'pay_before_ship' && !paid && st !== 'completed'); // pay_before_ship blocks shipping
+            const depositPaid = o.depositPaid;
+            const remainderPaid = o.remainderPaid;
+            const blockProcess = (pm === 'prepaid' && !depositPaid); // prepaid: deposit must be paid
+            const blockShip = (pm === 'pay_before_ship' && !paid && st !== 'completed') || (pm === 'prepaid' && depositPaid && !remainderPaid);
 
             html += '<div class="detail-header-block">';
             html += '<div class="quote-num">报价编号<br><span>' + esc(o.quoteNumber || '-') + '</span></div>';
@@ -524,10 +527,15 @@
                     html += '<div class="payment-warn"><strong>信用额度：</strong>总额 $' + limit.toLocaleString() + ' · 已用 $' + used.toLocaleString() + ' · 剩余 $' + remain.toLocaleString() + '</div>';
                 }
             }
-            if (blockProcess && !paid) {
-                html += '<div class="payment-warn"><strong>预付款客户</strong> — 必须先收款才能开始生产</div>';
+            if (blockProcess && !depositPaid) {
+                const dpAmt = o.depositAmount || 0;
+                html += '<div class="payment-warn"><strong>预付款客户</strong> — 客户需先支付定金 $' + (dpAmt).toFixed(2) + ' 才能开始生产</div>';
             }
-            if (blockShip && !paid && !blockProcess) {
+            if (pm === 'prepaid' && depositPaid && !remainderPaid) {
+                const rmAmt = o.remainderAmount || 0;
+                html += '<div class="payment-warn"><strong>预付款客户</strong> — 尾款 $' + (rmAmt).toFixed(2) + ' 待支付，厂内完成后可催收</div>';
+            }
+            if (blockShip && !paid && !blockProcess && !(pm === 'prepaid')) {
                 html += '<div class="payment-warn"><strong>款到发货客户</strong> — 必须先收款才能发货</div>';
             }
 
@@ -571,6 +579,46 @@
                     renderProcessProgress();
                     saveProcess();
                     if (order.process.steps[idx].done && stepName === '发货') {
+                        // Prepaid: double confirmation for factory completion
+                        if (pm === 'prepaid') {
+                            if (!confirm('是否确认厂内作业完成，将前往催收剩余货款？')) {
+                                order.process.steps[idx].done = false;
+                                item.classList.remove('done');
+                                renderProcessProgress();
+                                saveProcess();
+                                return;
+                            }
+                            if (!confirm('是否确认厂内已经完成？此操作将通知客户支付尾款。')) {
+                                order.process.steps[idx].done = false;
+                                item.classList.remove('done');
+                                renderProcessProgress();
+                                saveProcess();
+                                return;
+                            }
+                            // Set factoryCompleted and create remainder notification
+                            (async () => {
+                                try {
+                                    await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { factoryCompleted: true, factoryCompletedAt: serverTimestamp() });
+                                    order.factoryCompleted = true;
+                                    // Sync to client
+                                    if (order.publishedTo) {
+                                        await updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), { factoryCompleted: true, factoryCompletedAt: serverTimestamp() }).catch(() => {});
+                                    }
+                                    // Create remainder notification
+                                    const rmAmt = order.remainderAmount || 0;
+                                    const { addDoc: addNotif, collection: collNotif, serverTimestamp: stNotif } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                                    await addNotif(collNotif(db, 'notifications'), {
+                                        clientUid: order.publishedTo || '',
+                                        type: 'bill',
+                                        title: '尾款待支付',
+                                        body: '您有一笔尾款待支付：$' + (rmAmt).toFixed(2) + '。厂内作业已完成，请尽快支付尾款以便发货。',
+                                        read: false,
+                                        createdAt: stNotif(),
+                                        link: 'prepaid-bills.html'
+                                    }).catch(() => {});
+                                } catch (e) { console.error('厂内完成标记失败:', e); }
+                            })();
+                        }
                         switchTab('tracking');
                     }
                 });

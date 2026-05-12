@@ -705,8 +705,24 @@
                 html += '<div class="order-left">';
                 html += '<div class="order-number">' + escHTML(o.quoteNumber || '-') + '<span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span>' + (o.finalized ? ' <span class="payment-status-tag finalized">已完结</span>' : '') + '</div>';
                 html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
-                if (s === 'confirmed') {
-                    html += '<div class="order-sales" style="color:#b45309">已确认 · 等待工厂排流程</div>';
+                if (o.depositPercent || o.depositAmount) {
+                    const dpPaid = o.depositPaid;
+                    const rmPaid = o.remainderPaid;
+                    const dpAmt = o.depositAmount || 0;
+                    const rmAmt = o.remainderAmount || 0;
+                    let prepaidHtml = '<div class="order-sales" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">';
+                    if (dpPaid) {
+                        prepaidHtml += '<span style="color:#16a34a">定金已付 ✓</span>';
+                    } else {
+                        prepaidHtml += '<span style="color:#dc2626;font-weight:500">待付定金 $' + fmt(dpAmt) + '</span>';
+                    }
+                    if (rmPaid) {
+                        prepaidHtml += '<span style="color:#16a34a">尾款已付 ✓</span>';
+                    } else if (dpPaid) {
+                        prepaidHtml += '<span style="color:#f59e0b;font-weight:500">待付尾款 $' + fmt(rmAmt) + '</span>';
+                    }
+                    prepaidHtml += '</div>';
+                    html += prepaidHtml;
                 }
                 if (s === 'in_production' && o.process) {
                     const pct = calcProgress(o.process, o.status);

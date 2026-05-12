@@ -1069,6 +1069,25 @@
                 } catch (e) { console.warn('账单检查失败:', e); }
             }
 
+            // Prepaid: calculate deposit and notify
+            let prepaidDepositAmt = 0, prepaidRemainderAmt = 0, isPrepaid = false;
+            if (customerPayment && customerPayment.paymentMethod === 'prepaid' && customerPayment.uid) {
+                isPrepaid = true;
+                const dpPct = customerPayment.depositPercent || 0;
+                const total = order.totalPrice || 0;
+                prepaidDepositAmt = Math.round(total * dpPct / 100 * 100) / 100;
+                prepaidRemainderAmt = Math.round((total - prepaidDepositAmt) * 100) / 100;
+                if (dpPct <= 0) {
+                    alert('预付款比例未设置，请联系销售设置后再确认。');
+                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    return;
+                }
+                if (!confirm('您需要先支付预付款定金 $' + fmt(prepaidDepositAmt) + '（' + dpPct + '%）才能开始生产。\n\n确认后将通知您支付定金。')) {
+                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    return;
+                }
+            }
+
             try {
                 // Deduct credit if credit customer
                 if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
@@ -1076,7 +1095,6 @@
                     const newUsed = previousUsed + (order.totalPrice || 0);
                     await updateDoc(doc(db, 'clientProfiles', customerPayment.uid), { creditUsed: newUsed });
                     customerPayment.creditUsed = newUsed;
-                    // Record transaction
                     await addDoc(collection(db, 'creditTransactions'), {
                         clientUid: customerPayment.uid,
                         type: 'deduction',
@@ -1089,23 +1107,59 @@
                 }
 
                 const proc = { steps: ['作图','厂内工作','包装','发货'].map(name => ({ name, done: false })), confirmed: true };
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), {
-                    status: 'confirmed',
-                    process: proc
-                });
+                const updateData = { status: 'confirmed', process: proc };
+
+                // Prepaid: store deposit/remainder amounts
+                if (isPrepaid) {
+                    updateData.depositAmount = prepaidDepositAmt;
+                    updateData.remainderAmount = prepaidRemainderAmt;
+                    updateData.depositPercent = customerPayment.depositPercent || 0;
+                    updateData.depositPaid = false;
+                    updateData.remainderPaid = false;
+                }
+
+                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), updateData);
                 order.status = 'confirmed';
                 order.process = proc;
+                if (isPrepaid) {
+                    order.depositAmount = prepaidDepositAmt;
+                    order.remainderAmount = prepaidRemainderAmt;
+                    order.depositPercent = customerPayment.depositPercent || 0;
+                    order.depositPaid = false;
+                    order.remainderPaid = false;
+                }
+
                 if (order.publishedByUid) {
                     try {
-                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), {
-                            status: 'in_production',
-                            process: proc,
-                            processPublished: true
-                        });
+                        const syncData = { process: proc, processPublished: true };
+                        if (isPrepaid) {
+                            syncData.status = 'confirmed';
+                            syncData.depositAmount = prepaidDepositAmt;
+                            syncData.remainderAmount = prepaidRemainderAmt;
+                            syncData.depositPercent = customerPayment.depositPercent || 0;
+                            syncData.depositPaid = false;
+                            syncData.remainderPaid = false;
+                        } else {
+                            syncData.status = 'in_production';
+                        }
+                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), syncData);
                     } catch (e) { console.error('同步确认到销售端失败:', e); }
                 }
+
+                // Create notification for prepaid deposit
+                if (isPrepaid) {
+                    await addDoc(collection(db, 'notifications'), {
+                        clientUid: customerPayment.uid,
+                        type: 'bill',
+                        title: '预付款待支付',
+                        body: '您有一笔预付款定金需要支付：$' + prepaidDepositAmt.toFixed(2) + '（' + (customerPayment.depositPercent || 0) + '%），支付后生产才会开始。点击查看订单详情。',
+                        read: false,
+                        createdAt: serverTimestamp(),
+                        link: 'prepaid-bills.html'
+                    }).catch(() => {});
+                }
+
                 if (btn) { btn.textContent = '已确认 ✓'; btn.className = 'btn-confirm-inline confirmed'; btn.disabled = false; }
-                // Update status badge
                 const badge = document.querySelector('.status-badge');
                 if (badge) { badge.textContent = '已确认'; badge.className = 'status-badge status-confirmed'; }
             } catch (err) {
