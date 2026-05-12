@@ -145,6 +145,14 @@
             background: #dc2626; color: #fff; border-color: #dc2626;
         }
 
+        .btn-collect-remainder {
+            font-size: 12px; padding: 5px 14px; border-radius: 6px;
+            border: none; background: #f59e0b; color: #fff; cursor: pointer;
+            font-weight: 500; white-space: nowrap; margin-left: 8px;
+        }
+        .btn-collect-remainder:hover { background: #d97706; }
+        .btn-collect-remainder:disabled { opacity: 0.5; cursor: default; }
+
         .shipment-type-row {
             display: flex; align-items: center; gap: 12px;
             margin-top: 8px;
@@ -486,6 +494,32 @@
             } catch (e) { console.error('保存失败:', e); alert('保存失败'); }
         }
 
+        window.collectRemainder = async function() {
+            const rmAmt = order.remainderAmount || 0;
+            const btn = document.getElementById('btnCollectRemainder');
+            if (!confirm('确认向客户催收尾款 $' + rmAmt.toFixed(2) + '？\n\n小铃铛将通知客户支付尾款。')) return;
+            if (btn) { btn.disabled = true; btn.textContent = '推送中...'; }
+            try {
+                const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                await addDoc(collection(db, 'notifications'), {
+                    clientUid: order.publishedTo || '',
+                    type: 'bill',
+                    title: '尾款待支付',
+                    body: '您的订单 ' + (order.quoteNumber || '') + ' 厂内作业即将完成，请尽快支付尾款 $' + rmAmt.toFixed(2) + ' 以便发货。',
+                    read: false,
+                    createdAt: serverTimestamp(),
+                    link: 'prepaid-bills.html'
+                });
+                if (btn) { btn.textContent = '已推送 ✓'; btn.style.background = '#16a34a'; }
+                setTimeout(() => {
+                    if (btn) { btn.disabled = false; btn.textContent = '收尾款'; btn.style.background = '#f59e0b'; }
+                }, 2000);
+            } catch (e) {
+                alert('推送失败: ' + (e.message || '未知错误'));
+                if (btn) { btn.disabled = false; btn.textContent = '收尾款'; }
+            }
+        };
+
         function renderProcessTab() {
             const o = order;
             const proc = o.process;
@@ -515,6 +549,15 @@
                 html += '<span class="payment-status ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收款' : '待收款') + '</span>';
             }
             html += '<span>' + date + '</span>';
+
+            // Prepaid: "收尾款" button when first 3 steps done
+            if (pm === 'prepaid' && depositPaid && !remainderPaid) {
+                const first3Done = proc.steps.slice(0, 3).every(s => s.done);
+                if (first3Done) {
+                    html += '<button class="btn-collect-remainder" id="btnCollectRemainder" onclick="collectRemainder()">收尾款</button>';
+                }
+            }
+
             html += '</div>';
             html += '</div>';
 
@@ -578,6 +621,18 @@
                     }
                     renderProcessProgress();
                     saveProcess();
+                    // Show/hide "收尾款" button for prepaid when first 3 steps done
+                    if (pm === 'prepaid' && depositPaid && !remainderPaid) {
+                        const first3Done = order.process.steps.slice(0, 3).every(s => s.done);
+                        const btn = document.getElementById('btnCollectRemainder');
+                        if (btn) {
+                            btn.style.display = first3Done ? '' : 'none';
+                        } else if (first3Done) {
+                            // Button doesn't exist yet, re-render the tab
+                            renderProcessTab();
+                            return;
+                        }
+                    }
                     if (order.process.steps[idx].done && stepName === '发货') {
                         // Prepaid: double confirmation for factory completion
                         if (pm === 'prepaid') {
