@@ -326,6 +326,7 @@
         .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-tag.full { background: #fef2f2; color: #dc2626; }
         .payment-status {
             font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
         }
@@ -533,10 +534,10 @@
             // Payment method & status
             const pm = customerPayment ? customerPayment.paymentMethod : null;
             const paid = o.paymentStatus === 'paid';
-            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
             const depositPaid = o.depositPaid;
             const remainderPaid = o.remainderPaid;
-            const blockProcess = (pm === 'prepaid' && !depositPaid); // prepaid: deposit must be paid
+            const blockProcess = (pm === 'prepaid' && !depositPaid) || (pm === 'full' && !depositPaid);
             const blockShip = (pm === 'pay_before_ship' && !paid && st !== 'completed') || (pm === 'prepaid' && depositPaid && !remainderPaid);
 
             html += '<div class="detail-header-block">';
@@ -570,7 +571,10 @@
                     html += '<div class="payment-warn"><strong>信用额度：</strong>总额 $' + limit.toLocaleString() + ' · 已用 $' + used.toLocaleString() + ' · 剩余 $' + remain.toLocaleString() + '</div>';
                 }
             }
-            if (blockProcess && !depositPaid) {
+            if (pm === 'full' && !depositPaid) {
+                html += '<div class="payment-warn"><strong>全款客户</strong> — 客户需先支付全款 $' + (o.totalPrice || 0).toFixed(2) + ' 才能开始生产</div>';
+            }
+            if (pm === 'prepaid' && !depositPaid) {
                 const dpAmt = o.depositAmount || 0;
                 html += '<div class="payment-warn"><strong>预付款客户</strong> — 客户需先支付定金 $' + (dpAmt).toFixed(2) + ' 才能开始生产</div>';
             }

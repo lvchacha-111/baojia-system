@@ -81,6 +81,7 @@
         .pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .pm-tag.full { background: #fef2f2; color: #dc2626; }
 
         .btn-recharge { font-size: 11px; padding: 4px 12px; border-radius: 4px; border: none; background: #6366f1; color: #fff; cursor: pointer; white-space: nowrap; }
         .btn-recharge:hover { background: #4f46e5; }
@@ -225,6 +226,7 @@
             <button class="tab" data-tab="monthly">月付账单</button>
             <button class="tab" data-tab="reconciliation">月付待对账</button>
             <button class="tab" data-tab="prepaid">预付款</button>
+            <button class="tab" data-tab="full">全款</button>
             <button class="tab" data-tab="settings">现有客户</button>
         </div>
 
@@ -272,6 +274,12 @@
             <div id="prepaidAdminList"><div class="no-data">加载中...</div></div>
         </div>
 
+        <!-- Tab 7: 全款 -->
+        <div class="tab-content" id="tab-full">
+            <div class="section-header"><span class="section-title">全款客户订单</span></div>
+            <div id="fullAdminList"><div class="no-data">加载中...</div></div>
+        </div>
+
         <!-- Tab 5: 现有客户 -->
         <div class="tab-content" id="tab-settings">
             <div class="section-header"><span class="section-title">现有客户</span></div>
@@ -311,6 +319,7 @@
         let creditClients = [];
         let monthlyClients = [];
         let prepaidClients = [];
+        let fullClients = [];
         let allStatements = [];
         let clientOrders = {}; // uid → orders[]
         let currentFilter = 'all';
@@ -323,7 +332,7 @@
             try {
                 // Load all client profiles
                 const profSnap = await getDocs(collection(db, 'clientProfiles'));
-                allClients = []; creditClients = []; monthlyClients = []; prepaidClients = [];
+                allClients = []; creditClients = []; monthlyClients = []; prepaidClients = []; fullClients = [];
                 profSnap.forEach(d => {
                     const data = d.data();
                     const c = { uid: d.id, ...data };
@@ -331,6 +340,7 @@
                     if (data.paymentMethod === 'credit') creditClients.push(c);
                     if (data.paymentMethod === 'monthly') monthlyClients.push(c);
                     if (data.paymentMethod === 'prepaid') prepaidClients.push(c);
+                    if (data.paymentMethod === 'full') fullClients.push(c);
                 });
 
                 // Load orders for all clients
@@ -358,6 +368,7 @@
                 renderStatements();
                 renderReconciliation();
                 renderPrepaidAdminTab();
+                renderFullAdminTab();
                 renderAllClientsTab();
             } catch (e) { console.error('加载失败:', e); }
         }
@@ -398,6 +409,13 @@
                 prepaidRemainderWait += orders.filter(o => o.depositPaid && !o.remainderPaid && o.status === 'completed').length;
             }
 
+            // Count full-payment orders needing admin attention
+            let fullWait = 0;
+            for (const c of fullClients) {
+                const orders = clientOrders[c.uid] || [];
+                fullWait += orders.filter(o => o.status === 'confirmed' && !o.depositPaid).length;
+            }
+
             const cardsEl = document.getElementById('overviewCards');
             cardsEl.innerHTML =
                 '<div class="card" onclick="document.getElementById(\'pendingOrders\').scrollIntoView({behavior:\'smooth\'})">' +
@@ -419,6 +437,11 @@
                     '<div class="card-label">预付款待确认</div>' +
                     '<div class="card-value' + (prepaidDepositWait + prepaidRemainderWait > 0 ? ' warn' : '') + '">' + (prepaidDepositWait + prepaidRemainderWait) + ' <span style="font-size:13px;color:#999;font-weight:400">笔</span></div>' +
                     '<div class="card-hint">待付定金 ' + prepaidDepositWait + ' · 待付尾款 ' + prepaidRemainderWait + '</div>' +
+                '</div>' +
+                '<div class="card" onclick="switchTab(\'full\')">' +
+                    '<div class="card-label">全款待确认</div>' +
+                    '<div class="card-value' + (fullWait > 0 ? ' warn' : '') + '">' + fullWait + ' <span style="font-size:13px;color:#999;font-weight:400">笔</span></div>' +
+                    '<div class="card-hint">点击查看 →</div>' +
                 '</div>';
 
             // Warning list
@@ -448,7 +471,7 @@
                 unfinalized.forEach(o => {
                     const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
                     const pm = c.paymentMethod || '';
-                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
                     pendingHtml += '<div class="pending-row"><div class="pending-info"><span>' + esc(o.quoteNumber || '-') + '</span> <span style="color:#888">' + esc(o.productName || '-') + '</span><br><span class="pending-meta">' + date + ' · $' + (o.totalPrice || 0).toLocaleString() + ' · ' + (pmLabels[pm] || pm) + '</span></div><button class="btn-finalize-sm" onclick="finalizeOrder2(\'' + c.uid + '\',\'' + o.id + '\',' + (o.totalPrice || 0) + ', this)">标记完结</button></div>';
                 });
             }
@@ -846,14 +869,14 @@
                 wrap.innerHTML = '<div class="no-data">暂无客户</div>';
                 return;
             }
-            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
             let html = '<div class="table-row header-row"><span class="col-name">客户名称</span><span class="col-pm">付款方式</span><span class="col-extra">付款设置</span></div>';
             allClients.forEach(c => {
                 const pm = c.paymentMethod || '';
                 html += '<div class="table-row">';
                 html += '<span class="col-name">' + esc(c.name || '未命名') + '</span>';
                 html += '<span class="col-pm"><select class="settings-select" onchange="onClientPmChange(\'' + c.uid + '\', this.value)" style="width:100%">';
-                ['', 'monthly', 'credit', 'pay_before_ship', 'prepaid'].forEach(opt => {
+                ['', 'monthly', 'credit', 'pay_before_ship', 'prepaid', 'full'].forEach(opt => {
                     html += '<option value="' + opt + '"' + (pm === opt ? ' selected' : '') + '>' + (pmLabels[opt] || '未设置') + '</option>';
                 });
                 html += '</select></span>';
@@ -979,6 +1002,43 @@
             } catch (e) { alert('操作失败: ' + e.message); btn.disabled = false; btn.textContent = '确认已付'; }
         };
 
+        // ==================== Tab 7: Full Payment Admin ====================
+        function renderFullAdminTab() {
+            const container = document.getElementById('fullAdminList');
+            if (fullClients.length === 0) {
+                container.innerHTML = '<div class="no-data">暂无全款客户</div>';
+                return;
+            }
+            let html = '';
+            for (const c of fullClients) {
+                const orders = clientOrders[c.uid] || [];
+                html += '<div class="prepaid-group">';
+                html += '<div class="prepaid-group-header"><span>' + esc(c.name || '未命名') + ' · 全款</span><span style="font-weight:400;font-size:11px;color:#999">' + orders.length + ' 笔订单</span></div>';
+                orders.forEach(o => {
+                    const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const total = o.totalPrice || 0;
+                    const fullPaid = o.depositPaid;
+                    const clientConfirmed = o.clientConfirmedDeposit;
+                    const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                    html += '<div class="prepaid-order-row">';
+                    html += '<div class="prepaid-order-info"><span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + '</span><br><span class="prepaid-order-meta">' + date + ' · $' + (total || 0).toLocaleString() + ' · ' + (statusLabels[o.status] || o.status) + '</span></div>';
+                    html += '<div class="prepaid-pay-cell"><span>全款 $' + fmt(total) + '</span>';
+                    if (fullPaid) {
+                        html += '<span class="prepaid-pay-tag paid">已确认 ✓</span>';
+                    } else if (clientConfirmed) {
+                        html += '<span class="prepaid-pay-tag applied">客户已申请</span>';
+                        html += '<button class="btn-confirm-pay priority" onclick="confirmDepositPaid(\'' + c.uid + '\',\'' + o.id + '\', this)">确认收款</button>';
+                    } else {
+                        html += '<span class="prepaid-pay-tag unpaid">待客户付款</span>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        }
+
         window.onClientPmChange = async function(uid, pm) {
             try {
                 await updateDoc(doc(db, 'clientProfiles', uid), { paymentMethod: pm || null });
@@ -987,8 +1047,12 @@
                 // Refresh client lists
                 creditClients = allClients.filter(c => c.paymentMethod === 'credit');
                 monthlyClients = allClients.filter(c => c.paymentMethod === 'monthly');
+                prepaidClients = allClients.filter(c => c.paymentMethod === 'prepaid');
+                fullClients = allClients.filter(c => c.paymentMethod === 'full');
                 renderAllClientsTab();
                 renderCreditTab();
+                renderPrepaidAdminTab();
+                renderFullAdminTab();
                 renderOverview();
             } catch (e) { alert('保存失败: ' + e.message); }
         };

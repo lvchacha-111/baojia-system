@@ -1089,6 +1089,19 @@
                 }
             }
 
+            // Full payment: require 100% payment before production
+            let isFull = false;
+            if (customerPayment && customerPayment.paymentMethod === 'full' && customerPayment.uid) {
+                isFull = true;
+                const total = order.totalPrice || 0;
+                prepaidDepositAmt = total;
+                prepaidRemainderAmt = 0;
+                if (!confirm('此订单为全款订单，您需要支付全款 $' + fmt(total) + ' 才能开始生产。\n\n确认后将通知您支付全款。')) {
+                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    return;
+                }
+            }
+
             try {
                 // Deduct credit if credit customer
                 if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
@@ -1110,11 +1123,11 @@
                 const proc = { steps: ['作图','厂内工作','包装','发货'].map(name => ({ name, done: false })), confirmed: true };
                 const updateData = { status: 'confirmed', process: proc };
 
-                // Prepaid: store deposit/remainder amounts
-                if (isPrepaid) {
+                // Prepaid / Full: store payment amounts
+                if (isPrepaid || isFull) {
                     updateData.depositAmount = prepaidDepositAmt;
                     updateData.remainderAmount = prepaidRemainderAmt;
-                    updateData.depositPercent = customerPayment.depositPercent || 0;
+                    updateData.depositPercent = isFull ? 100 : (customerPayment.depositPercent || 0);
                     updateData.depositPaid = false;
                     updateData.remainderPaid = false;
                 }
@@ -1122,10 +1135,10 @@
                 await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), updateData);
                 order.status = 'confirmed';
                 order.process = proc;
-                if (isPrepaid) {
+                if (isPrepaid || isFull) {
                     order.depositAmount = prepaidDepositAmt;
                     order.remainderAmount = prepaidRemainderAmt;
-                    order.depositPercent = customerPayment.depositPercent || 0;
+                    order.depositPercent = isFull ? 100 : (customerPayment.depositPercent || 0);
                     order.depositPaid = false;
                     order.remainderPaid = false;
                 }
@@ -1133,11 +1146,11 @@
                 if (order.publishedByUid) {
                     try {
                         const syncData = { process: proc, processPublished: true };
-                        if (isPrepaid) {
+                        if (isPrepaid || isFull) {
                             syncData.status = 'confirmed';
                             syncData.depositAmount = prepaidDepositAmt;
                             syncData.remainderAmount = prepaidRemainderAmt;
-                            syncData.depositPercent = customerPayment.depositPercent || 0;
+                            syncData.depositPercent = isFull ? 100 : (customerPayment.depositPercent || 0);
                             syncData.depositPaid = false;
                             syncData.remainderPaid = false;
                         } else {
@@ -1147,13 +1160,24 @@
                     } catch (e) { console.error('同步确认到销售端失败:', e); }
                 }
 
-                // Create notification for prepaid deposit
+                // Create notification
                 if (isPrepaid) {
                     await addDoc(collection(db, 'notifications'), {
                         clientUid: customerPayment.uid,
                         type: 'bill',
                         title: '预付款待支付',
                         body: '您有一笔预付款定金需要支付：$' + prepaidDepositAmt.toFixed(2) + '（' + (customerPayment.depositPercent || 0) + '%），支付后生产才会开始。点击查看订单详情。',
+                        read: false,
+                        createdAt: serverTimestamp(),
+                        link: 'prepaid-bills.html'
+                    }).catch(() => {});
+                }
+                if (isFull) {
+                    await addDoc(collection(db, 'notifications'), {
+                        clientUid: customerPayment.uid,
+                        type: 'bill',
+                        title: '全款待支付',
+                        body: '您的订单需支付全款 $' + prepaidDepositAmt.toFixed(2) + '，支付后生产才会开始。点击查看订单详情。',
                         read: false,
                         createdAt: serverTimestamp(),
                         link: 'prepaid-bills.html'

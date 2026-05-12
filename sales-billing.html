@@ -36,6 +36,7 @@
         .pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .pm-tag.full { background: #fef2f2; color: #dc2626; }
 
         .client-status { font-size: 13px; color: #666; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
         .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
@@ -118,7 +119,7 @@
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
-        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
         const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
 
         let clientDataMap = {};
@@ -180,6 +181,12 @@
                         const waitingRemainder = myQuotes.filter(q => q.status === 'completed' && q.depositPaid && !q.remainderPaid).length;
                         if (waitingDeposit > 0) { statusText = waitingDeposit + ' 笔待付定金'; statusClass = 'danger'; }
                         else if (waitingRemainder > 0) { statusText = waitingRemainder + ' 笔待付尾款'; statusClass = 'warn'; }
+                        else if (inProd > 0) { statusText = inProd + ' 笔生产中'; statusClass = 'info'; }
+                        else { statusText = '已付清'; statusClass = 'ok'; }
+                    } else if (pm === 'full') {
+                        const waitingFull = myQuotes.filter(q => q.status === 'confirmed' && !q.depositPaid).length;
+                        const inProd = myQuotes.filter(q => q.status === 'in_production' || q.status === 'completed').length;
+                        if (waitingFull > 0) { statusText = waitingFull + ' 笔待付全款'; statusClass = 'danger'; }
                         else if (inProd > 0) { statusText = inProd + ' 笔生产中'; statusClass = 'info'; }
                         else { statusText = '已付清'; statusClass = 'ok'; }
                     }
@@ -300,7 +307,7 @@
                 groups[d.paymentMethod].push({ uid, ...d });
             });
 
-            const pmOrder = ['monthly', 'credit', 'pay_before_ship', 'prepaid'];
+            const pmOrder = ['monthly', 'credit', 'pay_before_ship', 'prepaid', 'full'];
             let html = '';
             for (const pm of pmOrder) {
                 const clients = groups[pm];
