@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的财务 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f5f5; min-height: 100vh; }
+        .bg-gradient { position: fixed; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.04) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(34,197,94,0.03) 0%, transparent 50%); pointer-events: none; z-index: 0; }
+        .header { position: relative; z-index: 2; background: #fff; border-bottom: 1px solid #eee; padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px; }
+        .btn-back { font-size: 13px; color: #666; background: none; border: none; cursor: pointer; padding: 6px 0; text-decoration: none; }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; flex: 1; }
+
+        .main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 32px; }
+
+        .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #eee; }
+        .tab { padding: 10px 24px; font-size: 14px; font-weight: 500; color: #888; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .tab:hover { color: #6366f1; }
+        .tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .filter-result { font-size: 12px; color: #999; margin-bottom: 16px; }
+
+        .pm-group { margin-bottom: 28px; }
+        .pm-group-header { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 10px; padding-left: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .client-card { background: #fff; border-radius: 10px; border: 1px solid #eee; padding: 16px 20px; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
+        .client-card:hover { border-color: #6366f1; }
+        .client-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .client-name { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .pm-tag { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 4px; }
+        .pm-tag.monthly { background: #eff6ff; color: #2563eb; }
+        .pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
+        .pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
+        .pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+
+        .client-status { font-size: 13px; color: #666; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .status-dot.warn { background: #f59e0b; }
+        .status-dot.danger { background: #dc2626; }
+        .status-dot.ok { background: #22c55e; }
+        .status-dot.info { background: #6366f1; }
+
+        .credit-mini-bar { display: inline-flex; align-items: center; gap: 6px; }
+        .credit-mini-bar .bar-bg { width: 60px; height: 4px; background: #eee; border-radius: 2px; overflow: hidden; }
+        .credit-mini-bar .bar-fill { height: 100%; border-radius: 2px; }
+        .credit-mini-bar .bar-fill.safe { background: #22c55e; }
+        .credit-mini-bar .bar-fill.warn { background: #f59e0b; }
+        .credit-mini-bar .bar-fill.danger { background: #dc2626; }
+
+        .client-orders { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .client-orders.open { display: block; }
+        .co-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 12px; border-bottom: 1px solid #f9f9f9; gap: 10px; }
+        .co-row:last-child { border-bottom: none; }
+        .co-status { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+        .co-status.pending { background: #fefce8; color: #a16207; }
+        .co-status.confirmed { background: #fefce8; color: #ca8a04; }
+        .co-status.in_production { background: #eff6ff; color: #2563eb; }
+        .co-status.completed { background: #f0fdf4; color: #16a34a; }
+        .co-status.shipped { background: #faf5ff; color: #9333ea; }
+        .co-status.signed { background: #f0fdf4; color: #15803d; }
+        .co-total { font-weight: 600; color: #1a1a1a; }
+        .co-pm-status { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+        .co-pm-status.paid { background: #f0fdf4; color: #16a34a; }
+        .co-pm-status.unpaid { background: #fef2f2; color: #dc2626; }
+
+        .deposit-setter { display: inline-flex; align-items: center; gap: 6px; }
+        .deposit-input { width: 48px; height: 26px; border: 1px solid #ddd; border-radius: 4px; text-align: center; font-size: 13px; outline: none; }
+        .deposit-input:focus { border-color: #6366f1; }
+        .deposit-save { font-size: 11px; padding: 3px 10px; border-radius: 4px; border: 1px solid #6366f1; background: #fff; color: #6366f1; cursor: pointer; }
+        .deposit-save:hover { background: #6366f1; color: #fff; }
+        .deposit-save.saved { background: #f0fdf4; border-color: #16a34a; color: #16a34a; }
+
+        .section-title { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 14px; }
+        .no-data { text-align: center; padding: 60px 20px; color: #bbb; }
+
+        @media (max-width: 600px) {
+            .main { padding: 24px 16px; }
+            .header { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="myorders.html" class="btn-back">← 返回</a>
+        <span class="header-title">我的财务</span>
+    </header>
+
+    <main class="main">
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="prepaid">预付款管理</button>
+            <button class="tab" data-tab="all">全部客户</button>
+        </div>
+
+        <div class="tab-content active" id="tab-prepaid">
+            <div class="filter-result" id="prepaidResult"></div>
+            <div id="prepaidContainer"><div class="no-data">加载中...</div></div>
+        </div>
+
+        <div class="tab-content" id="tab-all">
+            <div class="filter-result" id="allResult"></div>
+            <div id="allContainer"><div class="no-data">加载中...</div></div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { auth, db, getCurrentUser } from "./firebase-init.js";
+        import { collection, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+        const user = await getCurrentUser();
+        if (!user) { window.location.href = 'login.html'; throw new Error('未登录'); }
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+        const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+
+        let clientDataMap = {};
+        let allProfiles = [];
+
+        async function loadData() {
+            clientDataMap = {};
+            allProfiles = [];
+            try {
+                const cpSnap = await getDocs(collection(db, 'clientProfiles'));
+                cpSnap.forEach(d => {
+                    const p = { uid: d.id, ...d.data() };
+                    allProfiles.push(p);
+                });
+
+                const stmtSnap = await getDocs(collection(db, 'billingStatements'));
+                const statements = [];
+                stmtSnap.forEach(d => { statements.push(d.data()); });
+
+                for (const p of allProfiles) {
+                    const clientUid = p.uid;
+                    let quotes = [];
+                    try {
+                        const quoteSnap = await getDocs(query(collection(db, 'users', clientUid, 'quotes'), orderBy('publishedAt', 'desc')));
+                        quoteSnap.forEach(d => { quotes.push({ id: d.id, ...d.data() }); });
+                    } catch (e) { /* no quotes */ }
+
+                    const myQuotes = quotes.filter(q => q.publishedBy === user.email);
+                    if (myQuotes.length === 0) continue;
+
+                    const pm = p.paymentMethod || 'pay_before_ship';
+                    let statusText = '', statusClass = 'ok', statusExtra = '';
+
+                    if (pm === 'monthly') {
+                        const clientStmts = statements.filter(s => s.clientUid === clientUid);
+                        const unpaid = clientStmts.filter(s => s.status === 'pending' || s.status === 'confirming');
+                        const lastStmt = clientStmts.sort((a, b) => (b.generatedAt?.seconds || 0) - (a.generatedAt?.seconds || 0))[0];
+                        if (unpaid.length > 0) {
+                            statusText = '未付账单'; statusClass = 'danger';
+                            statusExtra = '$' + fmt(unpaid.reduce((sum, s) => sum + (s.totalAmount || 0), 0));
+                        } else if (lastStmt) {
+                            statusText = '已结清'; statusClass = 'ok';
+                            statusExtra = '最后出账 ' + (lastStmt.periodEnd || '');
+                        } else { statusText = '无账单'; statusClass = 'info'; }
+                    } else if (pm === 'credit') {
+                        const limit = p.creditLimit || 0;
+                        const used = p.creditUsed || 0;
+                        if (limit > 0 && used >= limit) { statusText = '已用完'; statusClass = 'danger'; }
+                        else if (limit > 0 && used >= limit * 2 / 3) { statusText = '即将用完'; statusClass = 'warn'; }
+                        else { statusText = '正常'; statusClass = 'ok'; }
+                        statusExtra = '$' + fmt(used) + ' / $' + fmt(limit);
+                    } else if (pm === 'pay_before_ship') {
+                        const pending = myQuotes.filter(q => q.status === 'confirmed' || q.status === 'in_production').length;
+                        statusText = pending > 0 ? pending + ' 笔进行中' : '无进行中订单';
+                        statusClass = pending > 0 ? 'info' : 'ok';
+                    } else if (pm === 'prepaid') {
+                        const waitingDeposit = myQuotes.filter(q => q.status === 'confirmed' && !q.depositPaid).length;
+                        const inProd = myQuotes.filter(q => q.status === 'in_production' || q.status === 'completed').length;
+                        const waitingRemainder = myQuotes.filter(q => q.status === 'completed' && q.depositPaid && !q.remainderPaid).length;
+                        if (waitingDeposit > 0) { statusText = waitingDeposit + ' 笔待付定金'; statusClass = 'danger'; }
+                        else if (waitingRemainder > 0) { statusText = waitingRemainder + ' 笔待付尾款'; statusClass = 'warn'; }
+                        else if (inProd > 0) { statusText = inProd + ' 笔生产中'; statusClass = 'info'; }
+                        else { statusText = '已付清'; statusClass = 'ok'; }
+                    }
+
+                    clientDataMap[clientUid] = {
+                        profile: p, paymentMethod: pm, quotes: myQuotes,
+                        statusText, statusClass, statusExtra, quoteCount: myQuotes.length
+                    };
+                }
+            } catch (e) { console.error('加载失败:', e); }
+            renderPrepaidTab();
+            renderAllTab();
+        }
+
+        // ==================== Prepaid Tab ====================
+        function renderPrepaidTab() {
+            const container = document.getElementById('prepaidContainer');
+            const entries = Object.entries(clientDataMap).filter(([, d]) => d.paymentMethod === 'prepaid');
+            document.getElementById('prepaidResult').textContent = '共 ' + entries.length + ' 位预付款客户';
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="no-data"><p>暂无预付款客户</p><p style="font-size:12px;margin-top:4px">管理员将客户设为"预付款"后在此管理</p></div>';
+                return;
+            }
+
+            let html = '';
+            entries.forEach(([uid, d]) => {
+                const p = d.profile;
+                const depositPct = p.depositPercent || '';
+                html += '<div class="client-card" onclick="toggleClientOrders(\'' + uid + '\', this)">';
+                html += '<div class="client-top">';
+                html += '<span class="client-name">' + esc(p.name || p.contactEmail || '未命名') + '</span>';
+                html += '<span class="pm-tag prepaid">预付款</span>';
+                html += '</div>';
+                html += '<div class="client-status">';
+                html += '<span><span class="status-dot ' + d.statusClass + '"></span>' + d.statusText + '</span>';
+                if (d.statusExtra) html += '<span>' + d.statusExtra + '</span>';
+                html += '<span style="color:#aaa">' + d.quoteCount + ' 笔订单</span>';
+                html += '</div>';
+
+                html += '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;font-size:13px" onclick="event.stopPropagation()">';
+                html += '<span style="color:#888">预付款比例：</span>';
+                html += '<div class="deposit-setter">';
+                html += '<input type="number" class="deposit-input" id="dp-' + uid + '" value="' + depositPct + '" min="0" max="100" step="0.01" placeholder="30">';
+                html += '<span>%</span>';
+                html += '<button class="deposit-save" onclick="saveDepositPercent(\'' + uid + '\', this)">保存</button>';
+                html += '</div>';
+                html += '<span style="font-size:11px;color:#bbb">（客户确认报价时需付此比例定金）</span>';
+                html += '</div>';
+
+                html += '<div class="client-orders" id="co-' + uid + '">';
+                d.quotes.slice(0, 20).forEach(o => {
+                    const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const s = o.status || 'pending';
+                    const total = o.totalPrice || 0;
+                    const dpPct = o.depositPercent || depositPct || 0;
+                    const depositAmt = o.depositAmount || Math.round(total * dpPct / 100 * 100) / 100;
+                    const remainAmt = o.remainderAmount || Math.round((total - depositAmt) * 100) / 100;
+                    const dpPaid = o.depositPaid;
+                    const rmPaid = o.remainderPaid;
+
+                    html += '<div class="co-row">';
+                    html += '<div style="flex:1;min-width:0">';
+                    html += '<div>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</div>';
+                    html += '<div style="display:flex;gap:10px;margin-top:3px;font-size:11px;color:#888">';
+                    html += '<span>定金 ' + dpPct + '%：$' + fmt(depositAmt) + ' <span class="co-pm-status ' + (dpPaid ? 'paid' : 'unpaid') + '">' + (dpPaid ? '已付✓' : '未付') + '</span></span>';
+                    html += '<span>尾款：$' + fmt(remainAmt) + ' <span class="co-pm-status ' + (rmPaid ? 'paid' : 'unpaid') + '">' + (rmPaid ? '已付✓' : '未付') + '</span></span>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '<span style="display:flex;align-items:center;gap:8px">';
+                    html += '<span class="co-status ' + s + '">' + (statusLabels[s] || '待确认') + '</span>';
+                    html += '<span class="co-total">¥' + fmt(total) + '</span>';
+                    html += '</span></div>';
+                });
+                if (d.quotes.length > 20) {
+                    html += '<div style="font-size:11px;color:#aaa;text-align:center;padding:6px">还有 ' + (d.quotes.length - 20) + ' 笔订单...</div>';
+                }
+                html += '</div>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        window.saveDepositPercent = async function(uid, btn) {
+            const input = document.getElementById('dp-' + uid);
+            const val = parseFloat(input.value);
+            if (isNaN(val) || val < 0 || val > 100) { alert('请输入 0-100 的有效比例'); return; }
+            btn.disabled = true; btn.textContent = '...';
+            try {
+                await updateDoc(doc(db, 'clientProfiles', uid), { depositPercent: val });
+                allProfiles.forEach(p => { if (p.uid === uid) p.depositPercent = val; });
+                Object.values(clientDataMap).forEach(d => { if (d.profile.uid === uid) d.profile.depositPercent = val; });
+                btn.classList.add('saved');
+                btn.textContent = '已保存 ✓';
+                setTimeout(() => { btn.classList.remove('saved'); btn.textContent = '保存'; btn.disabled = false; }, 1500);
+            } catch (e) { alert('保存失败: ' + e.message); btn.disabled = false; btn.textContent = '保存'; }
+        };
+
+        window.toggleClientOrders = function(uid, card) {
+            const el = document.getElementById('co-' + uid);
+            if (el) el.classList.toggle('open');
+        };
+
+        // ==================== All Clients Tab ====================
+        function renderAllTab() {
+            const container = document.getElementById('allContainer');
+            const entries = Object.entries(clientDataMap);
+            document.getElementById('allResult').textContent = '共 ' + entries.length + ' 位客户';
+
+            if (entries.length === 0) {
+                container.innerHTML = '<div class="no-data"><p>暂无负责的客户</p><p style="font-size:12px;margin-top:4px">您还没有发布过报价</p></div>';
+                return;
+            }
+
+            const groups = {};
+            entries.forEach(([uid, d]) => {
+                if (!groups[d.paymentMethod]) groups[d.paymentMethod] = [];
+                groups[d.paymentMethod].push({ uid, ...d });
+            });
+
+            const pmOrder = ['monthly', 'credit', 'pay_before_ship', 'prepaid'];
+            let html = '';
+            for (const pm of pmOrder) {
+                const clients = groups[pm];
+                if (!clients || clients.length === 0) continue;
+                html += '<div class="pm-group">';
+                html += '<div class="pm-group-header">' + (pmLabels[pm] || pm) + ' · ' + clients.length + ' 位</div>';
+                clients.forEach(c => {
+                    const p = c.profile;
+                    html += '<div class="client-card" onclick="toggleClientOrders(\'' + c.uid + '\', this)">';
+                    html += '<div class="client-top">';
+                    html += '<span class="client-name">' + esc(p.name || p.contactEmail || '未命名') + '</span>';
+                    html += '<span class="pm-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>';
+                    html += '</div>';
+                    html += '<div class="client-status">';
+                    if (pm === 'credit') {
+                        const limit = p.creditLimit || 0;
+                        const used = p.creditUsed || 0;
+                        const pct = limit > 0 ? Math.round(used / limit * 100) : 0;
+                        let barCls = 'safe';
+                        if (limit > 0 && used >= limit) barCls = 'danger';
+                        else if (limit > 0 && used >= limit * 2 / 3) barCls = 'warn';
+                        html += '<span><span class="status-dot ' + c.statusClass + '"></span>' + c.statusText + '</span>';
+                        html += '<span class="credit-mini-bar">' + c.statusExtra + ' <div class="bar-bg"><div class="bar-fill ' + barCls + '" style="width:' + pct + '%"></div></div></span>';
+                    } else {
+                        html += '<span><span class="status-dot ' + c.statusClass + '"></span>' + c.statusText + '</span>';
+                        if (c.statusExtra) html += '<span>' + c.statusExtra + '</span>';
+                    }
+                    html += '<span style="color:#aaa">' + c.quoteCount + ' 笔订单</span>';
+                    html += '</div>';
+                    html += '<div class="client-orders" id="co-' + c.uid + '">';
+                    c.quotes.slice(0, 10).forEach(o => {
+                        const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const s = o.status || 'pending';
+                        html += '<div class="co-row">';
+                        html += '<span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</span>';
+                        html += '<span style="display:flex;align-items:center;gap:8px">';
+                        html += '<span class="co-status ' + s + '">' + (statusLabels[s] || '待确认') + '</span>';
+                        html += '<span class="co-total">¥' + fmt(o.totalPrice || 0) + '</span>';
+                        html += '</span></div>';
+                    });
+                    if (c.quotes.length > 10) {
+                        html += '<div style="font-size:11px;color:#aaa;text-align:center;padding:6px">还有 ' + (c.quotes.length - 10) + ' 笔订单...</div>';
+                    }
+                    html += '</div></div>';
+                });
+                html += '</div>';
+            }
+            container.innerHTML = html;
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            });
+        });
+
+        await loadData();
+    </script>
+</body>
+</html>
