@@ -51,6 +51,7 @@
         .header-pm-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .header-pm-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .header-pm-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .header-pm-tag.full { background: #fef2f2; color: #dc2626; }
 
         .header-pm-popup {
             display: none; position: absolute; top: calc(100% + 8px); left: 50%;
@@ -426,6 +427,7 @@
         .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-tag.full { background: #fef2f2; color: #dc2626; }
         .payment-status-tag {
             font-size: 10px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
             vertical-align: middle; margin-left: 4px;
@@ -554,7 +556,7 @@
 
             const pm = p ? p.paymentMethod : null;
             if (pm) {
-                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
                 pmTag.style.display = '';
                 let popupHtml = '';
                 let warnHtml = '';
@@ -706,7 +708,7 @@
             const container = document.getElementById('accountDialog2');
             const p = clientProfile2 || {};
             const pm = p.paymentMethod || '';
-            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
 
             let html = '<div class="chat-header"><h3>账户信息</h3><button class="chat-close" onclick="closeAccount2()">×</button></div>';
             html += '<div style="padding:16px 20px;max-height:500px;overflow-y:auto">';
@@ -864,7 +866,7 @@
             html += '<div class="meta">';
             html += '<span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span>';
             if (customerPayment && customerPayment.paymentMethod) {
-                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款' };
+                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
                 html += '<span class="payment-tag ' + customerPayment.paymentMethod + '">' + (pmLabels[customerPayment.paymentMethod] || customerPayment.paymentMethod) + '</span>';
                 const paid = o.paymentStatus === 'paid';
                 html += '<span class="payment-status-tag ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收款' : '待收款') + '</span>';
