@@ -411,6 +411,7 @@
         .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
         .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
         .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
+        .payment-tag.full { background: #fef2f2; color: #dc2626; }
         .payment-tag.unset { background: #f5f5f5; color: #999; }
         .payment-tag.admin { cursor: pointer; }
         .payment-tag.admin:hover { opacity: 0.7; }
@@ -695,7 +696,7 @@
                 poolUnassigned.forEach(cust => {
                     const quotes = quotesByCustomer[cust.name] || [];
                     const pm = cust.poolInfo.paymentMethod || 'unset';
-                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', unset: '未设置' };
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款', unset: '未设置' };
                     html += '<div class="pool-card">';
                     html += '<div class="pool-card-left">';
                     html += '<span class="pool-card-name">' + esc(cust.name) + '</span>';
@@ -754,7 +755,7 @@
                     html += '<span style="font-size:14px;font-weight:500;color:#1a1a1a">' + esc(cust.name) + '</span>';
                     if (isInPool) {
                         const pm = poolInfo.paymentMethod || 'unset';
-                        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', unset: '未设置' };
+                        const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款', unset: '未设置' };
                         html += '<span class="payment-tag ' + pm + ' admin" data-cust-name="' + esc(cust.name) + '" data-pm="' + pm + '">' + pmLabels[pm] + '</span>';
                         if (pm === 'credit') {
                             const limit = poolInfo.creditLimit || 0;
@@ -951,7 +952,7 @@
             // ---- Payment method inline edit (admin only) ----
             if (isAdmin) {
                 function makePaymentTag(custName, pm) {
-                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', unset: '未设置' };
+                    const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款', unset: '未设置' };
                     const span = document.createElement('span');
                     span.className = 'payment-tag ' + pm + ' admin';
                     span.dataset.custName = custName;
@@ -973,7 +974,8 @@
                         { value: 'monthly', label: '月付' },
                         { value: 'credit', label: '信用额度' },
                         { value: 'pay_before_ship', label: '款到发货' },
-                        { value: 'prepaid', label: '预付款' }
+                        { value: 'prepaid', label: '预付款' },
+                        { value: 'full', label: '全款' }
                     ];
                     let selHtml = '<select class="payment-select">';
                     selHtml += '<option value="">未设置</option>';
