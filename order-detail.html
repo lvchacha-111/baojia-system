@@ -823,7 +823,8 @@
                         uid: d.id,
                         paymentMethod: data.paymentMethod || null,
                         creditLimit: data.creditLimit || null,
-                        creditUsed: data.creditUsed || 0
+                        creditUsed: data.creditUsed || 0,
+                        depositPercent: data.depositPercent || 0
                     };
                 });
             } catch (e) { console.warn('加载客户付款方式失败:', e); }
