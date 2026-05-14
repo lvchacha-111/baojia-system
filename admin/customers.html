@@ -573,9 +573,9 @@
         <div class="detail-container" id="detailContainer"></div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, setDoc, serverTimestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, collection, getDocs, deleteDoc, doc, addDoc, updateDoc, setDoc, serverTimestamp, query, orderBy, where, subscribe } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -599,7 +599,7 @@
                 poolSnap.forEach(d => {
                     const data = d.data();
                     if (data.name) {
-                        clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
+                        clientPoolMap[data.name] = { id: d.id, uid: data.uid || d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
                         if (data.assignedTo) salesSet.add(data.assignedTo);
                     }
                 });
@@ -607,10 +607,10 @@
                 // Collect all salespeople (sorted)
                 allSalespeople = Array.from(salesSet).sort((a, b) => a.localeCompare(b));
 
-                const custRef = collection(db, 'users', user.uid, 'customers');
+                const custRef = collection(db, 'users', user.id, 'customers');
                 const custSnapshot = await getDocs(custRef);
                 allCustomers = [];
-                custSnapshot.forEach(d => { allCustomers.push({ id: d.id, ...d.data() }); });
+                custSnapshot.forEach(d => { allCustomers.push({ ...d.data(), id: d.id }); });
 
                 // Pool clients: admin sees all, sales see only assigned
                 const existingNames = new Set(allCustomers.map(c => c.name));
@@ -621,11 +621,11 @@
                 }
                 allCustomers.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
 
-                const quoteRef = collection(db, 'users', user.uid, 'quotes');
+                const quoteRef = collection(db, 'users', user.id, 'quotes');
                 const q = query(quoteRef, orderBy('createdAt', 'desc'));
                 const quoteSnapshot = await getDocs(q);
                 allQuotes = [];
-                quoteSnapshot.forEach(d => { allQuotes.push({ id: d.id, ...d.data() }); });
+                quoteSnapshot.forEach(d => { allQuotes.push({ ...d.data(), id: d.id }); });
 
                 if (allCustomers.length === 0 && allQuotes.length === 0) {
                     content.innerHTML = '<div class="page-top"><h1 class="page-title">我的客户</h1><button class="btn-add" id="btnAddCustomer">+ 新增客户</button></div><div class="state-msg"><h3>暂无客户</h3><p>点击右上角"新增客户"开始添加</p></div>';
@@ -790,7 +790,7 @@
                         html += '<div class="empty-quotes">暂无报价</div>';
                     } else {
                         quotes.forEach(q => {
-                            const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                            const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
                             html += '<div class="quote-card quote-card-clickable" data-qid="' + q.id + '">';
                             html += '<div class="quote-info">';
                             html += '<div class="quote-number">' + esc(q.quoteNumber || '-') + '</div>';
@@ -816,7 +816,7 @@
                 html += '<span class="customer-name" style="color:#999">其他报价（未关联客户）</span>';
                 html += '</div>';
                 orphanQuotes.forEach(q => {
-                    const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
                     html += '<div class="quote-card quote-card-clickable" data-qid="' + q.id + '">';
                     html += '<div class="quote-info">';
                     html += '<div class="quote-number">' + esc(q.quoteNumber || '-') + ' · ' + esc(q.customerName || '-') + '</div>';
@@ -891,7 +891,7 @@
                     const name = this.dataset.cname;
                     if (!name || name === '-') return;
                     try {
-                        await addDoc(collection(db, 'users', user.uid, 'customers'), { name, createdAt: serverTimestamp() });
+                        await addDoc(collection(db, 'users', user.id, 'customers'), { name, createdAt: serverTimestamp() });
                         await autoAssignClientProfile(name);
                         const cached = sessionStorage.getItem('_customerList');
                         if (cached) {
@@ -993,7 +993,7 @@
                     async function savePm() {
                         const newPm = selectEl.value;
                         try {
-                            await updateDoc(doc(db, 'clientProfiles', poolInfo.uid), { paymentMethod: newPm || null });
+                            await updateDoc(doc(db, 'clientProfiles', poolInfo.id), { paymentMethod: newPm || null });
                             clientPoolMap[custName].paymentMethod = newPm || null;
                         } catch (err) { console.error('保存付款方式失败:', err); }
                         const newTag = makePaymentTag(custName, newPm || 'unset');
@@ -1026,7 +1026,7 @@
                         async function saveLimit() {
                             const newLimit = parseFloat(inputEl.value) || 0;
                             try {
-                                await updateDoc(doc(db, 'clientProfiles', poolInfo.uid), { creditLimit: newLimit });
+                                await updateDoc(doc(db, 'clientProfiles', poolInfo.id), { creditLimit: newLimit });
                                 clientPoolMap[custName].creditLimit = newLimit;
                             } catch (err) { console.error('保存额度失败:', err); }
                             loadData();
@@ -1054,8 +1054,8 @@
                 clientPoolMap = {};
                 snap.forEach(d => {
                     const data = d.data();
-                    allClientProfiles.push({ uid: d.id, ...data });
-                    if (data.name) clientPoolMap[data.name] = { uid: d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
+                    allClientProfiles.push({ ...data, uid: data.uid || d.id });
+                    if (data.name) clientPoolMap[data.name] = { id: d.id, uid: data.uid || d.id, assignedTo: data.assignedTo || null, country: data.country, company: data.company, paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
                 });
                 allClientProfiles.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
                 renderClientSelectList(allClientProfiles, existingNames);
@@ -1106,12 +1106,12 @@
 
         async function addToClientPool(name) {
             if (!name) return;
-            await addDoc(collection(db, 'clientProfiles'), {
+            const docRef = await addDoc(collection(db, 'clientProfiles'), {
                 name,
                 assignedTo: user.email,
                 createdAt: serverTimestamp()
             });
-            clientPoolMap[name] = { uid: null, assignedTo: user.email };
+            clientPoolMap[name] = { id: docRef.id, uid: null, assignedTo: user.email };
         }
 
         async function autoAssignClientProfile(name) {
@@ -1138,14 +1138,8 @@
                 return;
             }
             try {
-                await updateDoc(doc(db, 'clientProfiles', poolInfo.uid), { assignedTo: newSalesEmail });
+                await updateDoc(doc(db, 'clientProfiles', poolInfo.id), { assignedTo: newSalesEmail });
                 poolInfo.assignedTo = newSalesEmail;
-                // Also add to new salesperson's customer list if not already there
-                try {
-                    const custRef = collection(db, 'users', 'sales01@test.com', 'customers');
-                    const q = query(collection(db, 'clientProfiles'), where('name', '==', custName));
-                    const snap = await getDocs(q);
-                } catch (e) { /* ignore */ }
                 loadData();
             } catch (err) {
                 console.error('分配失败:', err);
@@ -1157,7 +1151,7 @@
         async function quickAddCustomer(name) {
             if (!name) return;
             try {
-                await addDoc(collection(db, 'users', user.uid, 'customers'), {
+                await addDoc(collection(db, 'users', user.id, 'customers'), {
                     name,
                     createdAt: serverTimestamp()
                 });
@@ -1186,7 +1180,7 @@
             const name = document.getElementById('newCustomerName').value.trim();
             if (!name) return;
             try {
-                await addDoc(collection(db, 'users', user.uid, 'customers'), {
+                await addDoc(collection(db, 'users', user.id, 'customers'), {
                     name,
                     createdAt: serverTimestamp()
                 });
@@ -1215,7 +1209,7 @@
         window.confirmDelete = async function() {
             if (!deleteTarget) return;
             try {
-                await deleteDoc(doc(db, 'users', user.uid, 'quotes', deleteTarget));
+                await deleteDoc(doc(db, 'users', user.id, 'quotes', deleteTarget));
                 allQuotes = allQuotes.filter(q => q.id !== deleteTarget);
                 deleteTarget = null;
                 document.getElementById('deleteOverlay').classList.remove('show');
@@ -1262,7 +1256,7 @@
         document.getElementById('btnDelCustomerOnly').addEventListener('click', async function() {
             if (!deleteCustomerTarget) return;
             try {
-                await deleteDoc(doc(db, 'users', user.uid, 'customers', deleteCustomerTarget.id));
+                await deleteDoc(doc(db, 'users', user.id, 'customers', deleteCustomerTarget.id));
                 allCustomers = allCustomers.filter(c => c.id !== deleteCustomerTarget.id);
                 removeCustomerFromCache(deleteCustomerTarget.name);
                 deleteCustomerTarget = null;
@@ -1276,10 +1270,10 @@
         document.getElementById('btnDelCustomerWithQuotes').addEventListener('click', async function() {
             if (!deleteCustomerTarget) return;
             try {
-                await deleteDoc(doc(db, 'users', user.uid, 'customers', deleteCustomerTarget.id));
+                await deleteDoc(doc(db, 'users', user.id, 'customers', deleteCustomerTarget.id));
                 const toDelete = allQuotes.filter(q => q.customerName === deleteCustomerTarget.name);
                 for (const q of toDelete) {
-                    await deleteDoc(doc(db, 'users', user.uid, 'quotes', q.id));
+                    await deleteDoc(doc(db, 'users', user.id, 'quotes', q.id));
                 }
                 allCustomers = allCustomers.filter(c => c.id !== deleteCustomerTarget.id);
                 allQuotes = allQuotes.filter(q => q.customerName !== deleteCustomerTarget.name);
@@ -1364,7 +1358,7 @@
                     updateData.freight = { destination: q.freight.destination, volumetricWeight: q.freight.volumetricWeight, chargeableWeight: q.freight.chargeableWeight, price: freightPrice };
                 }
 
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), updateData);
+                await updateDoc(doc(db, 'users', user.id, 'quotes', q.id), updateData);
 
                 const idx = allQuotes.findIndex(x => x.id === q.id);
                 if (idx >= 0) Object.assign(allQuotes[idx], updateData);
@@ -1399,9 +1393,10 @@
             try {
                 // Find client UID by customerName
                 let clientUid = null;
-                const snap = await getDocs(collection(db, 'clientProfiles'));
+                const q2 = query(collection(db, 'clientProfiles'), where('name', '==', q.customerName));
+                const snap = await getDocs(q2);
                 snap.forEach(d => {
-                    if (d.data().name === q.customerName) clientUid = d.id;
+                    if (d.data().uid) clientUid = d.data().uid;
                 });
 
                 if (!clientUid) {
@@ -1416,6 +1411,8 @@
 
                 // Build a clean order document for the client
                 const orderDoc = {
+                    ownerUid: clientUid,
+                    originalRecordId: q.id,
                     quoteNumber: latestQuote.quoteNumber || '',
                     customerName: latestQuote.customerName || '',
                     productId: latestQuote.productId || '',
@@ -1435,18 +1432,20 @@
                     totalPrice: latestQuote.totalPrice || 0,
                     svgContent: latestQuote.svgContent || '',
                     status: 'pending',
-                    publishedByUid: user.uid,
+                    publishedByUid: user.id,
                     publishedAt: serverTimestamp(),
                     publishedBy: user.email,
                     createdAt: latestQuote.createdAt || serverTimestamp()
                 };
 
-                await setDoc(doc(db, 'users', clientUid, 'quotes', q.id), orderDoc);
+                const clientOrderRef = await addDoc(collection(db, 'users', clientUid, 'quotes'), orderDoc);
 
                 // Mark as published in business account
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', q.id), {
+                await updateDoc(doc(db, 'users', user.id, 'quotes', q.id), {
                     published: true,
                     publishedTo: clientUid,
+                    publishedToUid: clientUid,
+                    publishedToRecordId: clientOrderRef.id,
                     publishedAt: serverTimestamp(),
                     status: 'pending'
                 });
@@ -1470,7 +1469,7 @@
 
         function showDetail(q) {
             const container = document.getElementById('detailContainer');
-            const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
 
             let html = '<button class="detail-close" onclick="document.getElementById(\'detailOverlay\').classList.remove(\'show\')">×</button>';
 
@@ -1601,6 +1600,15 @@
         });
 
         loadData();
+
+        // Real-time subscription: auto-refresh when admin changes client profiles
+        let _reloadTimer = null;
+        subscribe('clientProfiles', (e) => {
+            if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                clearTimeout(_reloadTimer);
+                _reloadTimer = setTimeout(() => loadData(), 300);
+            }
+        });
     </script>
 </body>
 </html>

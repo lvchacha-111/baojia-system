@@ -525,9 +525,9 @@
         </div>
     </main>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { getCurrentUser, db } from "../shared/firebase-init.js";
-        import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { getCurrentUser, db, collection, getDocs } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) window.location.href = '../auth/login.html';
@@ -563,7 +563,7 @@
         (async function() {
             let PRODUCT_DATA;
             try {
-                const resp = await fetch('data/products.json');
+                const resp = await fetch('../data/products.json');
                 PRODUCT_DATA = await resp.json();
             } catch (e) {
                 alert('数据加载失败，请检查 data/products.json 是否存在');

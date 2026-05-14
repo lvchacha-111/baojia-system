@@ -109,9 +109,9 @@
         </div>
     </main>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, collection, getDocs, doc, updateDoc, query, orderBy, subscribe } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -131,7 +131,7 @@
             try {
                 const cpSnap = await getDocs(collection(db, 'clientProfiles'));
                 cpSnap.forEach(d => {
-                    const p = { uid: d.id, ...d.data() };
+                    const p = { ...d.data(), _id: d.id, uid: d.data().uid || d.id };
                     allProfiles.push(p);
                 });
 
@@ -156,7 +156,7 @@
                     if (pm === 'monthly') {
                         const clientStmts = statements.filter(s => s.clientUid === clientUid);
                         const unpaid = clientStmts.filter(s => s.status === 'pending' || s.status === 'confirming');
-                        const lastStmt = clientStmts.sort((a, b) => (b.generatedAt?.seconds || 0) - (a.generatedAt?.seconds || 0))[0];
+                        const lastStmt = clientStmts.sort((a, b) => new Date(b.generatedAt || 0).getTime() - new Date(a.generatedAt || 0).getTime())[0];
                         if (unpaid.length > 0) {
                             statusText = '未付账单'; statusClass = 'danger';
                             statusExtra = '$' + fmt(unpaid.reduce((sum, s) => sum + (s.totalAmount || 0), 0));
@@ -239,7 +239,7 @@
 
                 html += '<div class="client-orders" id="co-' + uid + '">';
                 d.quotes.slice(0, 20).forEach(o => {
-                    const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
                     const s = o.status || 'pending';
                     const total = o.totalPrice || 0;
                     const dpPct = o.depositPercent || depositPct || 0;
@@ -276,7 +276,9 @@
             if (isNaN(val) || val < 0 || val > 100) { alert('请输入 0-100 的有效比例'); return; }
             btn.disabled = true; btn.textContent = '...';
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), { depositPercent: val });
+                const profile = allProfiles.find(p => p.uid === uid);
+                if (!profile) { alert('客户不存在'); btn.disabled = false; btn.textContent = '保存'; return; }
+                await updateDoc(doc(db, 'clientProfiles', profile._id), { depositPercent: val });
                 allProfiles.forEach(p => { if (p.uid === uid) p.depositPercent = val; });
                 Object.values(clientDataMap).forEach(d => { if (d.profile.uid === uid) d.profile.depositPercent = val; });
                 btn.classList.add('saved');
@@ -339,7 +341,7 @@
                     html += '</div>';
                     html += '<div class="client-orders" id="co-' + c.uid + '">';
                     c.quotes.slice(0, 10).forEach(o => {
-                        const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
                         const s = o.status || 'pending';
                         html += '<div class="co-row">';
                         html += '<span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</span>';
@@ -368,6 +370,15 @@
         });
 
         await loadData();
+
+        // Real-time subscription: auto-refresh when admin changes client profiles
+        let _reloadTimer = null;
+        subscribe('clientProfiles', (e) => {
+            if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                clearTimeout(_reloadTimer);
+                _reloadTimer = setTimeout(() => loadData(), 300);
+            }
+        });
     </script>
 </body>
 </html>

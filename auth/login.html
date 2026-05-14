@@ -182,59 +182,65 @@
             margin-top: 24px;
             line-height: 1.6;
         }
+
+        .lang-switch {
+            position: absolute; top: 16px; right: 16px;
+            font-size: 12px; color: #999; border: 1px solid #e8e8e8;
+            border-radius: 6px; padding: 4px 8px; background: #fff;
+            cursor: pointer; outline: none;
+        }
     </style>
 </head>
 <body>
     <div class="bg-gradient"></div>
 
     <div class="container">
+        <select class="lang-switch" onchange="switchLang(this.value)">
+            <option value="zh">中文</option>
+            <option value="en">EN</option>
+        </select>
         <div class="logo">
             <div class="logo-icon">
                 <svg viewBox="0 0 24 24">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
             </div>
-            <h1>报价系统</h1>
-            <p class="subtitle">登录您的账户</p>
+            <h1 data-i18n="app_name">报价系统</h1>
+            <p class="subtitle" data-i18n="login_title">登录您的账户</p>
         </div>
 
         <div class="error" id="error"></div>
 
         <form id="loginForm">
             <div class="form-group">
-                <label>邮箱</label>
-                <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
+                <label data-i18n="login_email_label">邮箱</label>
+                <input type="email" id="email" data-i18n-placeholder="login_email_placeholder" placeholder="name@example.com" autocomplete="email" required>
             </div>
             <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="password" placeholder="输入密码" autocomplete="current-password" required>
+                <label data-i18n="login_password_label">密码</label>
+                <input type="password" id="password" data-i18n-placeholder="login_password_placeholder" placeholder="输入密码" autocomplete="current-password" required>
             </div>
-            <button type="submit" class="btn">登录</button>
+            <button type="submit" class="btn" data-i18n="login_btn">登录</button>
         </form>
 
-        <div class="divider"><span>OR</span></div>
-
-        <button class="btn btn-outline" onclick="googleLogin()">
-            Google 账号登录
-        </button>
-
-        <p class="footer-note">
-            后续将接入 Firebase Authentication<br>
-            当前输入任意邮箱密码即可进入
-        </p>
-
         <p style="text-align:center;margin-top:16px;font-size:14px;color:#999;">
-            没有账户？<a href="register.html" style="color:#6366f1;text-decoration:none;font-weight:500;">去注册</a>
+            <span data-i18n="login_no_account">没有账户？</span><a href="register.html" style="color:#6366f1;text-decoration:none;font-weight:500;" data-i18n="login_to_register">去注册</a>
         </p>
+
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
+    <script src="../shared/i18n.js" type="module"></script>
     <script type="module">
-        import { auth } from "../shared/firebase-init.js";
-        import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
+        import { auth, signInWithEmailAndPassword } from "../shared/pocketbase-init.js?v=2";
+        import { t, setLang, getLang } from "../shared/i18n.js";
 
         const form = document.getElementById('loginForm');
         const error = document.getElementById('error');
         const submitBtn = form.querySelector('button[type="submit"]');
+
+        // 初始化语言选择器的当前值
+        document.querySelector('.lang-switch').value = getLang();
 
         function isSalesAccount(email) {
             const local = email.split('@')[0].toLowerCase();
@@ -251,55 +257,39 @@
             const password = document.getElementById('password').value;
 
             if (!email || !password) {
-                showError('请输入邮箱和密码');
+                showError(t('login_error_empty'));
                 return;
             }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = '登录中...';
+            submitBtn.textContent = t('login_btn_loading');
             error.style.display = 'none';
 
             try {
                 await signInWithEmailAndPassword(auth, email, password);
                 redirectByRole(email);
             } catch (err) {
-                console.error('登录错误码:', err.code, '完整错误:', err);
-                showError(firebaseErrorMessage(err.code));
+                console.error('Login error:', err);
+                showError(pbErrorMessage(err));
                 submitBtn.disabled = false;
-                submitBtn.textContent = '登录';
+                submitBtn.textContent = t('login_btn');
             }
         });
-
-        window.googleLogin = async function() {
-            error.style.display = 'none';
-            try {
-                const provider = new GoogleAuthProvider();
-                const result = await signInWithPopup(auth, provider);
-                redirectByRole(result.user.email);
-            } catch (err) {
-                if (err.code !== 'auth/popup-closed-by-user') {
-                    showError(firebaseErrorMessage(err.code));
-                }
-            }
-        };
 
         function showError(msg) {
             error.textContent = msg;
             error.style.display = 'block';
         }
 
-        function firebaseErrorMessage(code) {
+        function pbErrorMessage(err) {
+            const data = err.data || {};
+            const code = data.code || err.status || 0;
             const map = {
-                'auth/user-not-found': '该邮箱未注册',
-                'auth/wrong-password': '密码错误',
-                'auth/invalid-email': '邮箱格式不正确',
-                'auth/invalid-credential': '邮箱或密码错误',
-                'auth/too-many-requests': '登录尝试次数过多，请稍后再试',
-                'auth/email-already-in-use': '该邮箱已被注册',
-                'auth/weak-password': '密码强度不够（至少6位）',
-                'auth/popup-blocked': '浏览器拦截了弹窗，请允许弹窗后重试'
+                400: t('login_error_wrong'),
+                404: t('login_error_not_found'),
+                429: t('login_error_rate_limit'),
             };
-            return map[code] || '登录失败，请重试';
+            return map[code] || (err.message || t('login_error_default'));
         }
     </script>
 </body>

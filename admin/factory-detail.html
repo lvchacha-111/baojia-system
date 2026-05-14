@@ -387,9 +387,9 @@
         <div class="merge-dialog" id="mergeDialog"></div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -403,7 +403,7 @@
         let order = null;
         let allCustomerQuotes = [];
         try {
-            const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', orderId));
+            const snap = await getDoc(doc(db, 'users', user.id, 'quotes', orderId));
             if (!snap.exists()) {
                 document.getElementById('tab-process').innerHTML = '<p style="text-align:center;padding:60px;color:#999">订单不存在</p>';
                 throw new Error('订单不存在');
@@ -425,7 +425,7 @@
                 profSnap.forEach(d => {
                     const data = d.data();
                     customerPayment = {
-                        uid: d.id,
+                        uid: data.uid || d.id,
                         paymentMethod: data.paymentMethod || null,
                         creditLimit: data.creditLimit || null,
                         creditUsed: data.creditUsed || 0,
@@ -438,7 +438,7 @@
         if (!order.process || !order.process.steps || order.process.steps.length === 0) {
             order.process = { steps: DEFAULT_STEPS.map(name => ({ name, done: false })), confirmed: true };
             if (!order.processPublished) {
-                updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), {
+                updateDoc(doc(db, 'users', user.id, 'quotes', orderId), {
                     process: order.process,
                     processPublished: true,
                     status: 'in_production'
@@ -446,20 +446,21 @@
                 order.processPublished = true;
                 order.status = 'in_production';
                 if (order.publishedTo) {
-                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), {
+                    const clientRecordId = order.publishedToRecordId || orderId;
+                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', clientRecordId), {
                         process: order.process,
                         status: 'in_production'
                     }).catch(() => {});
                 }
             } else {
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { process: order.process });
+                await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { process: order.process });
             }
         }
 
         const custName = order.customerName;
         if (custName) {
             try {
-                const ref = collection(db, 'users', user.uid, 'quotes');
+                const ref = collection(db, 'users', user.id, 'quotes');
                 const q = query(ref, orderBy('createdAt', 'desc'));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
@@ -488,9 +489,10 @@
 
         async function saveProcess() {
             try {
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { process: order.process });
+                await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { process: order.process });
                 if (order.publishedTo && order.processPublished) {
-                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), { process: order.process }).catch(() => {});
+                    const clientRecordId2 = order.publishedToRecordId || orderId;
+                    updateDoc(doc(db, 'users', order.publishedTo, 'quotes', clientRecordId2), { process: order.process }).catch(() => {});
                 }
             } catch (e) { console.error('保存失败:', e); alert('保存失败'); }
         }
@@ -501,7 +503,7 @@
             if (!confirm('确认向客户催收尾款 $' + rmAmt.toFixed(2) + '？\n\n小铃铛将通知客户支付尾款。')) return;
             if (btn) { btn.disabled = true; btn.textContent = '推送中...'; }
             try {
-                const { addDoc, collection, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const { addDoc, collection, serverTimestamp } = await import("../shared/pocketbase-init.js");
                 await addDoc(collection(db, 'notifications'), {
                     clientUid: order.publishedTo || '',
                     type: 'bill',
@@ -525,7 +527,7 @@
             const o = order;
             const proc = o.process;
             const pct = calcProgress(proc, o.status);
-            const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
             const statusLabels = { confirmed:'已确认', in_production:'生产中', completed:'已完成' };
             const st = o.status || 'in_production';
 
@@ -650,9 +652,10 @@
                     this.textContent = '处理中...';
                     this.disabled = true;
                     try {
-                        await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { status: 'completed' });
+                        await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { status: 'completed' });
                         if (order.publishedTo) {
-                            updateDoc(doc(db, 'users', order.publishedTo, 'quotes', orderId), { status: 'completed' }).catch(() => {});
+                            const clientRecordId3 = order.publishedToRecordId || orderId;
+                            updateDoc(doc(db, 'users', order.publishedTo, 'quotes', clientRecordId3), { status: 'completed' }).catch(() => {});
                         }
                         order.status = 'completed';
                         renderProcessTab();
@@ -757,7 +760,7 @@
                         const mergedIds = (ship && ship.mergedOrderIds) ? ship.mergedOrderIds : [];
                         const allOrderIds = [orderId, ...mergedIds];
                         for (const oid of allOrderIds) {
-                            const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                            const oref = doc(db, 'users', user.id, 'quotes', oid);
                             const osnap = await getDoc(oref);
                             if (osnap.exists()) {
                                 const odata = osnap.data();
@@ -777,7 +780,7 @@
                                         const idx = existing.findIndex(s => s.id === shipId);
                                         if (idx >= 0) { existing[idx].publishedToClient = true; }
                                         else {
-                                            const salesSnap = await getDoc(doc(db, 'users', user.uid, 'quotes', oid));
+                                            const salesSnap = await getDoc(doc(db, 'users', user.id, 'quotes', oid));
                                             if (salesSnap.exists()) {
                                                 const sdata = salesSnap.data();
                                                 if (sdata.shipments) {
@@ -894,11 +897,11 @@
 
                 if (!order.shipments) order.shipments = [];
                 order.shipments.push(shipment);
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), { shipments: order.shipments });
+                await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { shipments: order.shipments });
 
                 if (_shipMergeIds.length > 0) {
                     for (const oid of _shipMergeIds) {
-                        const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                        const oref = doc(db, 'users', user.id, 'quotes', oid);
                         const osnap = await getDoc(oref);
                         if (osnap.exists()) {
                             const existing = osnap.data().shipments || [];
@@ -939,7 +942,7 @@
                     h += '<p style="text-align:center;color:#999;padding:20px">没有找到其他订单</p>';
                 }
                 filtered.forEach(q => {
-                    const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
                     const sel = selectedIds.has(q.id);
                     h += '<div class="merge-list-item' + (sel ? ' selected' : '') + '" data-merge-id="' + q.id + '">';
                     h += '<div class="info">';
@@ -1021,7 +1024,7 @@
             const mergedIds = (ship.mergedOrderIds) ? ship.mergedOrderIds : [];
             const allOrderIds = [orderId, ...mergedIds];
             for (const oid of allOrderIds) {
-                const oref = doc(db, 'users', user.uid, 'quotes', oid);
+                const oref = doc(db, 'users', user.id, 'quotes', oid);
                 const osnap = await getDoc(oref);
                 if (osnap.exists()) {
                     const existing = osnap.data().shipments || [];
@@ -1061,7 +1064,7 @@
                     order.shipments.forEach(s => { if (s.mergedOrderIds) s.mergedOrderIds.forEach(id => allMergedIds.add(id)); });
                     const allOrderIds = [orderId, ...Array.from(allMergedIds)];
                     for (const oid of allOrderIds) {
-                        await updateDoc(doc(db, 'users', user.uid, 'quotes', oid), { shipments: order.shipments });
+                        await updateDoc(doc(db, 'users', user.id, 'quotes', oid), { shipments: order.shipments });
                     }
                     renderTrackingTab();
                 }

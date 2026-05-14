@@ -190,9 +190,9 @@
         </div>
     </main>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, collection, getDocs, doc, updateDoc, query, orderBy } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -213,7 +213,7 @@
                     if (data.name) clientPoolMap[data.name] = { paymentMethod: data.paymentMethod || null, creditLimit: data.creditLimit || null, creditUsed: data.creditUsed || 0 };
                 });
 
-                const ref = collection(db, 'users', user.uid, 'quotes');
+                const ref = collection(db, 'users', user.id, 'quotes');
                 const q = query(ref, orderBy('createdAt', 'desc'));
                 const snapshot = await getDocs(q);
 
@@ -288,7 +288,7 @@
                 html += '</div>';
 
                 quotes.forEach(q => {
-                    const date = q.createdAt ? new Date(q.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
                     const pct = calcProgress(q.process, q.status);
 
                     html += '<div class="quote-card" data-qid="' + q.id + '">';

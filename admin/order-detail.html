@@ -536,9 +536,9 @@
         <div class="chat-dialog" style="width:440px" id="accountDialog2"></div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, getCurrentUser, db } from "../shared/firebase-init.js";
-        import { doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, onSnapshot, collection, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, getCurrentUser, db, doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, collection, query, orderBy, where, getDocs, subscribe } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; }
@@ -592,11 +592,11 @@
             try {
                 const q = query(collection(db, 'clientProfiles'), where('name', '==', emailPrefix2));
                 const snap = await getDocs(q);
-                snap.forEach(d => { clientProfile2 = { uid: d.id, ...d.data() }; });
+                snap.forEach(d => { clientProfile2 = { ...d.data(), id: d.id, uid: d.data().uid || d.id }; });
                 if (!clientProfile2) {
                     const allSnap = await getDocs(collection(db, 'clientProfiles'));
                     allSnap.forEach(d => {
-                        if (d.data().contactEmail === user.email) clientProfile2 = { uid: d.id, ...d.data() };
+                        if (d.data().contactEmail === user.email) clientProfile2 = { ...d.data(), id: d.id, uid: d.data().uid || d.id };
                     });
                 }
                 updateHeaderFromProfile2();
@@ -621,11 +621,11 @@
         async function loadNotifications() {
             try {
                 const q = query(collection(db, 'notifications'),
-                    where('clientUid', '==', user.uid));
+                    where('clientUid', '==', user.id));
                 const snap = await getDocs(q);
                 notifList = [];
                 snap.forEach(d => { notifList.push({ id: d.id, ...d.data() }); });
-                notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                notifList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
                 updateBellBadge();
                 renderNotifList();
             } catch (e) { /* ignore */ }
@@ -649,7 +649,7 @@
             }
             let html = '';
             notifList.forEach(n => {
-                const time = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                const time = n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
                 const icon = typeIcons[n.type] || typeIcons.system;
                 html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-link="' + escHTML2(n.link || '') + '" onclick="clickNotif(this)">';
                 html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
@@ -671,7 +671,7 @@
             const nid = el.dataset.nid;
             const link = el.dataset.link;
             try {
-                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js");
                 await updateDoc(doc(db, 'notifications', nid), { read: true });
                 const n = notifList.find(x => x.id === nid);
                 if (n) n.read = true;
@@ -683,7 +683,7 @@
 
         window.markAllNotifRead = async function() {
             try {
-                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js");
                 const unread = notifList.filter(n => !n.read);
                 await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
                 unread.forEach(n => n.read = true);
@@ -765,14 +765,14 @@
                 const contactEmail = document.getElementById('acctEmail2').value.trim();
                 const country = document.getElementById('acctCountry2').value.trim();
                 if (clientProfile2 && clientProfile2.uid) {
-                    await updateDoc(doc(db, 'clientProfiles', clientProfile2.uid), { company, contactEmail, country });
+                    await updateDoc(doc(db, 'clientProfiles', clientProfile2.id), { company, contactEmail, country });
                 } else {
-                    const { setDoc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
-                    await setDoc(doc(db, 'clientProfiles', user.uid), {
+                    const { setDoc } = await import("../shared/pocketbase-init.js");
+                    await setDoc(doc(db, 'clientProfiles', user.id), {
                         name: user.email.split('@')[0], company, contactEmail, country,
                         registeredAt: new Date()
                     });
-                    clientProfile2 = { uid: user.uid, name: user.email.split('@')[0], company, contactEmail, country };
+                    clientProfile2 = { uid: user.id, name: user.email.split('@')[0], company, contactEmail, country };
                 }
                 clientProfile2.company = company;
                 clientProfile2.contactEmail = contactEmail;
@@ -800,7 +800,7 @@
         // Load order
         let order = null;
         try {
-            const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', orderId));
+            const snap = await getDoc(doc(db, 'users', user.id, 'quotes', orderId));
             if (!snap.exists()) {
                 document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>订单不存在</p></div>';
                 throw new Error('订单不存在');
@@ -822,7 +822,8 @@
                 profSnap.forEach(d => {
                     const data = d.data();
                     customerPayment = {
-                        uid: d.id,
+                        id: d.id,
+                        uid: data.uid || d.id,
                         paymentMethod: data.paymentMethod || null,
                         creditLimit: data.creditLimit || null,
                         creditUsed: data.creditUsed || 0,
@@ -852,7 +853,7 @@
         // ---- Render order detail tab ----
         function renderDetail() {
             const o = order;
-            const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
             const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
             const st = o.status || 'pending';
 
@@ -983,7 +984,7 @@
             document.getElementById('tab-process').innerHTML = html;
         }
 
-        let _chatPollInterval = null;
+        let _chatUnsub = null; // real-time subscription for chat messages
         let _bgPollInterval = null;
 
         // Initial render
@@ -999,11 +1000,12 @@
                     if (!order || !order.id) return;
                     // Check customer's own copy first, fall back to sales copy
                     let newStatus = null;
-                    const snap = await getDoc(doc(db, 'users', user.uid, 'quotes', order.id));
+                    const snap = await getDoc(doc(db, 'users', user.id, 'quotes', order.id));
                     if (snap.exists()) {
                         newStatus = snap.data().status || 'pending';
                     } else if (order.publishedByUid) {
-                        const salesSnap = await getDoc(doc(db, 'users', order.publishedByUid, 'quotes', order.id));
+                        const salesRid = order.originalRecordId || order.id;
+                        const salesSnap = await getDoc(doc(db, 'users', order.publishedByUid, 'quotes', salesRid));
                         if (salesSnap.exists()) newStatus = salesSnap.data().status || 'pending';
                     }
                     if (!newStatus || newStatus === _lastStatus) return;
@@ -1109,7 +1111,7 @@
                 if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
                     const previousUsed = customerPayment.creditUsed || 0;
                     const newUsed = previousUsed + (order.totalPrice || 0);
-                    await updateDoc(doc(db, 'clientProfiles', customerPayment.uid), { creditUsed: newUsed });
+                    await updateDoc(doc(db, 'clientProfiles', customerPayment.id), { creditUsed: newUsed });
                     customerPayment.creditUsed = newUsed;
                     await addDoc(collection(db, 'creditTransactions'), {
                         clientUid: customerPayment.uid,
@@ -1134,7 +1136,7 @@
                     updateData.remainderPaid = false;
                 }
 
-                await updateDoc(doc(db, 'users', user.uid, 'quotes', orderId), updateData);
+                await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), updateData);
                 order.status = 'confirmed';
                 order.process = proc;
                 if (isPrepaid || isFull) {
@@ -1158,7 +1160,8 @@
                         } else {
                             syncData.status = 'in_production';
                         }
-                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', orderId), syncData);
+                        const salesRid2 = order.originalRecordId || orderId;
+                        await updateDoc(doc(db, 'users', order.publishedByUid, 'quotes', salesRid2), syncData);
                     } catch (e) { console.error('同步确认到销售端失败:', e); }
                 }
 
@@ -1198,8 +1201,8 @@
 
         // ---- Chat ----
         function formatChatTime(ts) {
-            if (!ts || !ts.seconds) return '';
-            const d = new Date(ts.seconds * 1000);
+            if (!ts) return '';
+            const d = new Date(ts);
             const now = new Date();
             const isToday = d.toDateString() === now.toDateString();
             if (isToday) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -1229,13 +1232,12 @@
             document.getElementById('chatMessages').innerHTML = '<div class="empty">Loading...</div>';
 
             // Mark unread for customer as false
-            setDoc(doc(db, 'users', user.uid, 'conversations', 'main'), { unreadForCustomer: false }, { merge: true }).catch(() => {});
+            setDoc(doc(db, 'users', user.id, 'conversations', 'main'), { unreadForCustomer: false }, { merge: true }).catch(() => {});
 
-            // Poll messages every 2 seconds
             const pollMessages = async () => {
                 if (!document.getElementById('chatOverlay').classList.contains('show')) return;
                 try {
-                    const q = query(collection(db, 'users', user.uid, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
+                    const q = query(collection(db, 'users', user.id, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
                     const snap = await getDocs(q);
                     const msgs = [];
                     snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
@@ -1245,21 +1247,25 @@
                 }
             };
             pollMessages();
-            if (_chatPollInterval) clearInterval(_chatPollInterval);
-            _chatPollInterval = setInterval(pollMessages, 1000);
+
+            // Replace 1s polling with real-time subscription
+            if (_chatUnsub) _chatUnsub();
+            _chatUnsub = subscribe('messages', () => {
+                pollMessages();
+            });
         };
 
         window.closeChat = function() {
             document.getElementById('chatOverlay').classList.remove('show');
-            if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
+            if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
         };
 
-        // Background poll for unread messages from sales (shows indicator on button)
+        // Background listener for unread messages from sales (shows indicator on button)
         function startBackgroundChatPoll() {
             if (_bgPollInterval) clearInterval(_bgPollInterval);
             const checkUnread = async () => {
                 try {
-                    const convSnap = await getDoc(doc(db, 'users', user.uid, 'conversations', 'main'));
+                    const convSnap = await getDoc(doc(db, 'users', user.id, 'conversations', 'main'));
                     const link = document.getElementById('confusedLink');
                     if (!link) return;
                     if (convSnap.exists() && convSnap.data().unreadForCustomer) {
@@ -1272,7 +1278,8 @@
                 } catch (e) { /* ignore */ }
             };
             checkUnread();
-            _bgPollInterval = setInterval(checkUnread, 3000);
+            // Poll every 5s — subscribeRecord can't be used because the record may not exist yet
+            _bgPollInterval = setInterval(checkUnread, 5000);
         }
 
         window.sendChatMessage = async function() {
@@ -1328,8 +1335,8 @@
                 };
 
                 // Write to customer's own space
-                await setDoc(doc(db, 'users', user.uid, 'conversations', 'main'), convData, { merge: true });
-                await addDoc(collection(db, 'users', user.uid, 'conversations', 'main', 'messages'), {
+                await setDoc(doc(db, 'users', user.id, 'conversations', 'main'), convData, { merge: true });
+                await addDoc(collection(db, 'users', user.id, 'conversations', 'main', 'messages'), {
                     from: user.email,
                     text,
                     timestamp: serverTimestamp()

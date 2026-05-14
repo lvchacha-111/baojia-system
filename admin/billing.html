@@ -307,9 +307,9 @@
         </div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, doc, updateDoc, query, where, orderBy, addDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, collection, getDocs, doc, updateDoc, query, where, orderBy, addDoc, serverTimestamp, getDoc } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -335,7 +335,7 @@
                 allClients = []; creditClients = []; monthlyClients = []; prepaidClients = []; fullClients = [];
                 profSnap.forEach(d => {
                     const data = d.data();
-                    const c = { uid: d.id, ...data };
+                    const c = { ...data, _id: d.id, uid: data.uid || d.id };
                     allClients.push(c);
                     if (data.paymentMethod === 'credit') creditClients.push(c);
                     if (data.paymentMethod === 'monthly') monthlyClients.push(c);
@@ -469,7 +469,7 @@
                 if (unfinalized.length === 0) continue;
                 pendingHtml += '<h4 style="font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:10px;margin-top:16px">' + esc(c.name || '未命名') + ' <span style="font-weight:400;color:#999;font-size:12px">' + unfinalized.length + ' 笔待完结</span></h4>';
                 unfinalized.forEach(o => {
-                    const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
                     const pm = c.paymentMethod || '';
                     const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
                     pendingHtml += '<div class="pending-row"><div class="pending-info"><span>' + esc(o.quoteNumber || '-') + '</span> <span style="color:#888">' + esc(o.productName || '-') + '</span><br><span class="pending-meta">' + date + ' · $' + (o.totalPrice || 0).toLocaleString() + ' · ' + (pmLabels[pm] || pm) + '</span></div><button class="btn-finalize-sm" onclick="finalizeOrder2(\'' + c.uid + '\',\'' + o.id + '\',' + (o.totalPrice || 0) + ', this)">标记完结</button></div>';
@@ -526,7 +526,7 @@
             if (orders.length === 0) { el.innerHTML = '<div style="padding:12px;color:#999;font-size:12px">暂无订单</div>'; return; }
 
             el.innerHTML = orders.map(o => {
-                const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
                 const done = o.finalized;
                 let actionHtml = '';
                 if (done) {
@@ -554,7 +554,8 @@
                     if (osnap.exists()) {
                         const odata = osnap.data();
                         if (odata.publishedByUid) {
-                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', orderId), {
+                            const salesRid = odata.originalRecordId || orderId;
+                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', salesRid), {
                                 finalized: true, finalizedAt: serverTimestamp()
                             }).catch(() => {});
                         }
@@ -565,7 +566,7 @@
                 const c = creditClients.find(c => c.uid === clientUid);
                 if (c) {
                     const newUsed = Math.max(0, (c.creditUsed || 0) - totalPrice);
-                    await updateDoc(doc(db, 'clientProfiles', clientUid), { creditUsed: newUsed });
+                    await updateDoc(doc(db, 'clientProfiles', c._id), { creditUsed: newUsed });
                     c.creditUsed = newUsed;
                 }
 
@@ -602,7 +603,8 @@
                     if (osnap.exists()) {
                         const odata = osnap.data();
                         if (odata.publishedByUid) {
-                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', orderId), { finalized: true, finalizedAt: serverTimestamp() }).catch(() => {});
+                            const salesRid2 = odata.originalRecordId || orderId;
+                            updateDoc(doc(db, 'users', odata.publishedByUid, 'quotes', salesRid2), { finalized: true, finalizedAt: serverTimestamp() }).catch(() => {});
                         }
                     }
                 } catch (e) { /* ignore */ }
@@ -611,7 +613,7 @@
                 const c = allClients.find(c => c.uid === clientUid);
                 if (c && c.paymentMethod === 'credit') {
                     const newUsed = Math.max(0, (c.creditUsed || 0) - totalPrice);
-                    await updateDoc(doc(db, 'clientProfiles', clientUid), { creditUsed: newUsed });
+                    await updateDoc(doc(db, 'clientProfiles', c._id), { creditUsed: newUsed });
                     c.creditUsed = newUsed;
                     creditClients.forEach(cc => { if (cc.uid === clientUid) cc.creditUsed = newUsed; });
                 }
@@ -660,7 +662,7 @@
             btn.disabled = true; btn.textContent = '处理中...';
             try {
                 // Update client creditUsed
-                await updateDoc(doc(db, 'clientProfiles', rechargeUid), { creditUsed: newUsed });
+                await updateDoc(doc(db, 'clientProfiles', c._id), { creditUsed: newUsed });
                 c.creditUsed = newUsed;
                 // Record transaction
                 await addDoc(collection(db, 'creditTransactions'), {
@@ -702,12 +704,12 @@
                 const snap = await getDocs(q);
                 const txns = [];
                 snap.forEach(d => { txns.push(d.data()); });
-                txns.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                txns.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
                 if (txns.length === 0) {
                     el.innerHTML = '<div style="padding:12px;color:#999;font-size:12px">暂无充值记录</div>';
                 } else {
                     el.innerHTML = txns.map(t => {
-                        const time = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleString('zh-CN') : '';
+                        const time = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN') : '';
                         return '<div class="txn-row"><span class="txn-amount">+$' + fmt(t.amount || 0) + '</span><span class="txn-note">' + esc(t.note || '') + '</span><span class="txn-time">' + time + '</span></div>';
                     }).join('');
                 }
@@ -721,8 +723,8 @@
             if (currentFilter !== 'all') filtered = allStatements.filter(s => s.status === currentFilter);
             if (filtered.length === 0) { container.innerHTML = '<div class="no-data">暂无账单</div>'; return; }
             container.innerHTML = filtered.map(s => {
-                const date = s.generatedAt ? new Date(s.generatedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
-                const paidDate = s.paidAt ? new Date(s.paidAt.seconds * 1000).toLocaleDateString('zh-CN') : '';
+                const date = s.generatedAt ? new Date(s.generatedAt).toLocaleDateString('zh-CN') : '-';
+                const paidDate = s.paidAt ? new Date(s.paidAt).toLocaleDateString('zh-CN') : '';
                 let html = '<div class="statement-card">';
                 html += '<div class="stmt-top"><span class="stmt-client">' + esc(s.clientName || '未命名') + '</span>';
                 const statusLabels = { pending: '待付款', confirming: '待确认', paid: '已付款', settled: '已结清' };
@@ -766,7 +768,7 @@
                 html += '<div class="recon-group-header"><span>' + esc(c.name || '未命名') + ' · ' + orders.length + ' 笔</span>';
                 html += '<label><input type="checkbox" onchange="toggleClientOrders(this, \'' + c.uid + '\')"> 全选</label></div>';
                 orders.forEach(o => {
-                    const date = o.finalizedAt ? new Date(o.finalizedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = o.finalizedAt ? new Date(o.finalizedAt).toLocaleDateString('zh-CN') : '-';
                     html += '<div class="recon-row">';
                     html += '<input type="checkbox" class="recon-cb-' + c.uid + '" data-oid="' + o.id + '" data-price="' + (o.totalPrice || 0) + '">';
                     html += '<div class="recon-info"><span>' + esc(o.quoteNumber || '-') + '</span> <span style="color:#888">' + esc(o.productName || '-') + '</span><br><span class="recon-meta">完结: ' + date + ' · $' + (o.totalPrice || 0).toLocaleString() + '</span></div>';
@@ -914,7 +916,7 @@
                 html += '<div class="prepaid-group">';
                 html += '<div class="prepaid-group-header"><span>' + esc(c.name || '未命名') + ' · 预付款 ' + dpPct + '%</span><span style="font-weight:400;font-size:11px;color:#999">' + orders.length + ' 笔订单</span></div>';
                 orders.forEach(o => {
-                    const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
                     const total = o.totalPrice || 0;
                     const depositAmt = o.depositAmount || Math.round(total * dpPct / 100 * 100) / 100;
                     const remainAmt = o.remainderAmount || Math.round((total - depositAmt) * 100) / 100;
@@ -966,13 +968,16 @@
                 if (o) { o.depositPaid = true; o.depositPaidAt = { seconds: Date.now() / 1000 }; }
                 // Sync to salesperson copy
                 if (o && o.publishedByUid) {
-                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { depositPaid: true, depositPaidAt: serverTimestamp() }).catch(() => {});
+                    const salesRid3 = o.originalRecordId || orderId;
+                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', salesRid3), { depositPaid: true, depositPaidAt: serverTimestamp() }).catch(() => {});
                 }
+                const isFullPay = o && o.depositPercent === 100;
                 await addDoc(collection(db, 'notifications'), {
-                    clientUid: clientUid, type: 'system', title: '定金已确认',
-                    body: '管理员已确认收到您的预付款定金，订单将进入生产。',
+                    clientUid: clientUid, type: 'system',
+                    title: isFullPay ? '全款已确认' : '定金已确认',
+                    body: isFullPay ? '管理员已确认收到您的全款，订单将进入生产。' : '管理员已确认收到您的预付款定金，订单将进入生产。',
                     read: false, createdAt: serverTimestamp(),
-                    link: 'prepaid-bills.html'
+                    link: isFullPay ? 'full-bills.html' : 'prepaid-bills.html'
                 }).catch(() => {});
                 renderPrepaidAdminTab();
                 renderOverview();
@@ -989,7 +994,8 @@
                 if (o) { o.remainderPaid = true; o.remainderPaidAt = { seconds: Date.now() / 1000 }; }
                 // Sync to salesperson copy
                 if (o && o.publishedByUid) {
-                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', orderId), { remainderPaid: true, remainderPaidAt: serverTimestamp() }).catch(() => {});
+                    const salesRid4 = o.originalRecordId || orderId;
+                    await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', salesRid4), { remainderPaid: true, remainderPaidAt: serverTimestamp() }).catch(() => {});
                 }
                 await addDoc(collection(db, 'notifications'), {
                     clientUid: clientUid, type: 'system', title: '尾款已确认',
@@ -1015,7 +1021,7 @@
                 html += '<div class="prepaid-group">';
                 html += '<div class="prepaid-group-header"><span>' + esc(c.name || '未命名') + ' · 全款</span><span style="font-weight:400;font-size:11px;color:#999">' + orders.length + ' 笔订单</span></div>';
                 orders.forEach(o => {
-                    const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
                     const total = o.totalPrice || 0;
                     const fullPaid = o.depositPaid;
                     const clientConfirmed = o.clientConfirmedDeposit;
@@ -1041,8 +1047,8 @@
 
         window.onClientPmChange = async function(uid, pm) {
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), { paymentMethod: pm || null });
                 const c = allClients.find(c => c.uid === uid);
+                await updateDoc(doc(db, 'clientProfiles', c._id), { paymentMethod: pm || null });
                 if (c) { c.paymentMethod = pm || null; if (pm !== 'credit') { c.creditLimit = null; c.creditUsed = 0; } }
                 // Refresh client lists
                 creditClients = allClients.filter(c => c.paymentMethod === 'credit');
@@ -1078,8 +1084,8 @@
         window.saveCreditLimit = async function(uid, val) {
             const limit = parseFloat(val) || 0;
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), { creditLimit: limit });
                 const c = allClients.find(c => c.uid === uid);
+                await updateDoc(doc(db, 'clientProfiles', c._id), { creditLimit: limit });
                 if (c) c.creditLimit = limit;
                 creditClients.forEach(c => { if (c.uid === uid) c.creditLimit = limit; });
                 renderCreditTab();
@@ -1091,8 +1097,8 @@
             const day = parseInt(val);
             if (isNaN(day) || day < 1 || day > 28) return;
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), { billingDay: day });
                 const c = allClients.find(c => c.uid === uid);
+                await updateDoc(doc(db, 'clientProfiles', c._id), { billingDay: day });
                 if (c) c.billingDay = day;
                 monthlyClients.forEach(c => { if (c.uid === uid) c.billingDay = day; });
                 renderAllClientsTab();
@@ -1129,8 +1135,8 @@
                 const periodOrders = [];
                 orders.forEach(o => {
                     if (!o.finalized || o.statementId || o.settled) return;
-                    if (!o.finalizedAt || !o.finalizedAt.seconds) return;
-                    const fd = new Date(o.finalizedAt.seconds * 1000).toISOString().split('T')[0];
+                    if (!o.finalizedAt) return;
+                    const fd = new Date(o.finalizedAt).toISOString().split('T')[0];
                     if (fd >= period.start && fd < period.end) periodOrders.push({ id: o.id, quoteNumber: o.quoteNumber || '-', totalPrice: o.totalPrice || 0, confirmedAt: fd });
                 });
                 if (periodOrders.length === 0) continue;
@@ -1175,8 +1181,8 @@
                     const periodOrders = [];
                     orders.forEach(o => {
                         if (!o.finalized || o.statementId || o.settled) return;
-                        if (!o.finalizedAt || !o.finalizedAt.seconds) return;
-                        const fd = new Date(o.finalizedAt.seconds * 1000).toISOString().split('T')[0];
+                        if (!o.finalizedAt) return;
+                        const fd = new Date(o.finalizedAt).toISOString().split('T')[0];
                         if (fd >= period.start && fd < period.end) periodOrders.push({ id: o.id, quoteNumber: o.quoteNumber || '-', totalPrice: o.totalPrice || 0, confirmedAt: fd });
                     });
                     if (periodOrders.length === 0) continue;

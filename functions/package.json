@@ -1,0 +1,13 @@
+{
+  "name": "yijiao-tracking-proxy",
+  "version": "1.0.0",
+  "description": "DHL/FedEx tracking API proxy",
+  "main": "index.js",
+  "engines": {
+    "node": "18"
+  },
+  "dependencies": {
+    "firebase-admin": "^11.11.0",
+    "firebase-functions": "^4.9.0"
+  }
+}

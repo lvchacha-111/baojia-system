@@ -660,9 +660,9 @@
         </div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/firebase-init.js";
-        import { collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc, onSnapshot, setDoc, addDoc, serverTimestamp, where, limit } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, getCurrentUser, logout as firebaseLogout, db, collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc, setDoc, addDoc, serverTimestamp, where, limit, subscribe, getDoc } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) {
@@ -672,6 +672,58 @@
         document.getElementById('userEmail').textContent = user.email;
 
         const isAdmin = user.email === 'sales01@test.com';
+
+        // Admin tool: migrate old published orders (fix ownerUid for client visibility)
+        window.migrateOldOrders = async function() {
+            if (!isAdmin) { alert('仅管理员可操作'); return; }
+            if (!confirm('将修复旧报价的客户端可见性问题。\n为已发布但缺少ownerUid的报价创建客户端副本。')) return;
+            let created = 0, skipped = 0;
+            try {
+                const allSnap = await getDocs(collection(db, 'quotes'));
+                const publishedOrders = [];
+                allSnap.forEach(d => {
+                    const data = d.data();
+                    if (data.published && data.publishedTo) {
+                        publishedOrders.push({ id: d.id, ...data });
+                    }
+                });
+
+                const copyFields = ['productId','productName','usageArea','fontPrices','surfaceColor','surfacePrice',
+                    'paint','paintPrice','power','powerPrice','fixing','laborFee','totalLetterPrice','freight',
+                    'totalPrice','svgContent','depositPercent','depositAmount','remainderAmount',
+                    'depositPaid','depositPaidAt','remainderPaid','remainderPaidAt',
+                    'clientConfirmedDeposit','clientConfirmedDepositAt','clientConfirmedRemainder','clientConfirmedRemainderAt',
+                    'finalized','finalizedAt','process','shipments','status','quoteNumber','customerName',
+                    'publishedByUid','publishedBy','publishedAt','createdAt'];
+
+                for (const order of publishedOrders) {
+                    if (order.ownerUid === order.publishedTo) { skipped++; continue; }
+                    const existSnap = await getDocs(query(
+                        collection(db, 'quotes'),
+                        where('originalRecordId', '==', order.id)
+                    ));
+                    if (!existSnap.empty) { skipped++; continue; }
+
+                    const orderDoc = { ownerUid: order.publishedTo, originalRecordId: order.id };
+                    for (const f of copyFields) {
+                        if (order[f] !== undefined) orderDoc[f] = order[f];
+                    }
+
+                    const ref = await addDoc(collection(db, 'quotes'), orderDoc);
+
+                    await updateDoc(doc(db, 'quotes', order.id), {
+                        publishedToRecordId: ref.id,
+                        publishedToUid: order.publishedTo
+                    });
+
+                    created++;
+                }
+                alert('迁移完成！新建客户端副本 ' + created + ' 条，跳过 ' + skipped + ' 条（已有副本或无需迁移）。');
+            } catch (e) {
+                alert('迁移失败: ' + (e.message || '未知错误'));
+                console.error(e);
+            }
+        };
 
         // Admin tool: clear all quotes
         window.clearAllQuotes = async function() {
@@ -685,8 +737,8 @@
                     for (const d of snap.docs) {
                         await deleteDoc(doc(db, 'users', client.uid, 'quotes', d.id));
                         const data = d.data();
-                        if (data.publishedByUid) {
-                            try { await deleteDoc(doc(db, 'users', data.publishedByUid, 'quotes', d.id)); } catch(e){}
+                        if (data.publishedByUid && data.originalRecordId) {
+                            try { await deleteDoc(doc(db, 'users', data.publishedByUid, 'quotes', data.originalRecordId)); } catch(e){}
                         }
                         deleted++;
                     }
@@ -740,7 +792,7 @@
                 snapshot.forEach(d => {
                     const data = d.data();
                     if (!isAdmin && data.assignedTo !== user.email) return;
-                    allClients.push({ uid: d.id, ...data });
+                    allClients.push({ ...data, _id: d.id, uid: data.uid || d.id });
                 });
                 allClients.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
 
@@ -772,7 +824,10 @@
                 }
             };
             pollConversations();
-            setInterval(pollConversations, 3000);
+            // Real-time subscription instead of 3s polling
+            subscribe('conversations', () => {
+                pollConversations();
+            });
         }
 
 
@@ -861,7 +916,7 @@
             }
 
             const date = client.registeredAt
-                ? new Date(client.registeredAt.seconds * 1000).toLocaleDateString('zh-CN')
+                ? new Date(client.registeredAt).toLocaleDateString('zh-CN')
                 : '-';
 
             let html = '<button class="detail-close" onclick="closeDetail()">×</button>';
@@ -878,7 +933,7 @@
             html += '<div class="detail-row"><span class="label">公司名称</span><span class="value">' + escHTML(client.company || '-') + '</span></div>';
             html += '<div class="detail-row"><span class="label">负责销售</span>';
             if (isAdmin) {
-                html += '<select class="detail-select" onchange="changeAssignment(\'' + uid + '\', this.value)" style="font-size:13px">';
+                html += '<select class="detail-select" onchange="changeAssignment(\'' + client._id + '\', this.value)" style="font-size:13px">';
                 html += '<option value="">未分配</option>';
                 for (let i = 1; i <= 15; i++) {
                     const email = 'sales' + String(i).padStart(2, '0') + '@test.com';
@@ -941,7 +996,7 @@
                 html += '<div class="no-orders">暂无订单</div>';
             } else {
                 orders.forEach(o => {
-                    const d = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const d = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
                     const pubLabel = o.publishedBy
                         ? '<span class="order-publisher">' + escHTML(o.publishedBy.split('@')[0]) + '</span>'
                         : '';
@@ -969,7 +1024,7 @@
             container.innerHTML = html;
 
             // Set payment save uid for admin editing
-            window._pmSaveUid = uid;
+            window._pmSaveUid = client._id;
 
             // Credit limit auto-save on input change
             const clInput = document.getElementById('editCreditLimit');
@@ -1038,7 +1093,7 @@
             _activeOrder = o;
             window._activeOrder = o;
             const container = document.getElementById('detailContainer');
-            const date = o.createdAt ? new Date(o.createdAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
             const total = editable
                 ? (Number(o.totalLetterPrice||0) + Number(o.surfacePrice||0) + Number(o.paintPrice||0) + Number(o.powerPrice||0) + Number(o.laborFee||0) + Number(o.freight?.price||0)).toFixed(2)
                 : (o.totalPrice||0).toFixed(2);
@@ -1214,10 +1269,10 @@
 
             if (editable) {
                 // Non-admin sales can only delete unpublished orders
-                const canDelete = isAdmin || !o.published;
+                const canDelete = isAdmin || !o.publishedByUid;
                 html += '<div class="btn-row-detail">';
                 if (canDelete) {
-                    html += '<button class="btn-delete-detail" onclick="deleteOrder(\'' + clientUid + '\',\'' + o.id + '\',\'' + (o.publishedByUid||'') + '\',\'' + escHTML(o.quoteNumber||'') + '\')">删除订单</button>';
+                    html += '<button class="btn-delete-detail" onclick="deleteOrder(\'' + clientUid + '\',\'' + o.id + '\',\'' + (o.publishedByUid||'') + '\',\'' + (o.originalRecordId||'') + '\',\'' + escHTML(o.quoteNumber||'') + '\')">删除订单</button>';
                 } else {
                     html += '<span style="font-size:12px;color:#999">已发布，不可删除</span>';
                 }
@@ -1249,14 +1304,13 @@
             try {
                 await updateDoc(doc(db, 'users', clientUid, 'quotes', orderId), updateData);
 
-                // Sync status to client copy if publishedByUid exists
-                if (updateData.status && originalOrder.publishedByUid) {
+                // Sync changes to the salesperson's copy
+                if (originalOrder.publishedByUid) {
                     try {
-                        await updateDoc(doc(db, 'users', originalOrder.publishedByUid, 'quotes', orderId), {
-                            status: updateData.status
-                        });
+                        const salesRecordId = originalOrder.originalRecordId || orderId;
+                        await updateDoc(doc(db, 'users', originalOrder.publishedByUid, 'quotes', salesRecordId), updateData);
                     } catch (syncErr) {
-                        console.error('同步到客户端失败:', syncErr);
+                        console.error('同步到业务员端失败:', syncErr);
                     }
                 }
 
@@ -1333,16 +1387,16 @@
             await performSave(clientUid, orderId, updateData, originalOrder);
         };
 
-        window.deleteOrder = async function(clientUid, orderId, pubUid, qNum) {
+        window.deleteOrder = async function(clientUid, orderId, pubUid, pubRecordId, qNum) {
             const label = qNum || orderId;
             if (!confirm('确定要删除订单 ' + label + ' 吗？此操作不可恢复，将从业务员端和客户端同步删除。')) return;
             try {
                 // 1. Delete from current view (client's copy)
                 await deleteDoc(doc(db, 'users', clientUid, 'quotes', orderId));
                 // 2. Delete from sales person's copy if published
-                if (pubUid) {
+                if (pubUid && pubRecordId) {
                     try {
-                        await deleteDoc(doc(db, 'users', pubUid, 'quotes', orderId));
+                        await deleteDoc(doc(db, 'users', pubUid, 'quotes', pubRecordId));
                     } catch (e) { console.error('同步删除业务员端失败:', e); }
                 }
                 showClientDetail(clientUid);
@@ -1352,14 +1406,14 @@
             }
         };
 
-        window.changeAssignment = async function(uid, newSales) {
+        window.changeAssignment = async function(recordId, newSales) {
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), { assignedTo: newSales || null });
-                const client = allClients.find(c => c.uid === uid);
+                await updateDoc(doc(db, 'clientProfiles', recordId), { assignedTo: newSales || null });
+                const client = allClients.find(c => c._id === recordId);
                 if (client) client.assignedTo = newSales || null;
                 // Reload sidebar if non-admin (assignment change might remove client from view)
                 if (!isAdmin && newSales && newSales !== user.email) {
-                    allClients = allClients.filter(c => c.uid !== uid);
+                    allClients = allClients.filter(c => c._id !== recordId);
                     renderClientList(allClients);
                 }
             } catch (e) {
@@ -1377,8 +1431,8 @@
             savePaymentMethod();
         };
         window.savePaymentMethod = async function() {
-            const uid = window._pmSaveUid;
-            if (!uid) return;
+            const recordId = window._pmSaveUid;
+            if (!recordId) return;
             const sel = document.getElementById('editPaymentMethod');
             const creditInput = document.getElementById('editCreditLimit');
             if (!sel) return;
@@ -1388,8 +1442,8 @@
                 update.creditLimit = parseFloat(creditInput?.value) || 0;
             }
             try {
-                await updateDoc(doc(db, 'clientProfiles', uid), update);
-                const name = allClients.find(c => c.uid === uid)?.name;
+                await updateDoc(doc(db, 'clientProfiles', recordId), update);
+                const name = allClients.find(c => c._id === recordId)?.name;
                 if (name) {
                     if (!clientPaymentMap[name]) clientPaymentMap[name] = {};
                     clientPaymentMap[name].paymentMethod = pm;
@@ -1417,8 +1471,8 @@
         let _chatPollInterval = null;
 
         function formatChatTime(ts) {
-            if (!ts || !ts.seconds) return '';
-            const d = new Date(ts.seconds * 1000);
+            if (!ts) return '';
+            const d = new Date(ts);
             const now = new Date();
             const isToday = d.toDateString() === now.toDateString();
             if (isToday) return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -1467,6 +1521,7 @@
                 }
             };
             pollMessages();
+            if (_chatPollInterval) clearInterval(_chatPollInterval);
             _chatPollInterval = setInterval(pollMessages, 1000);
         };
 
@@ -1524,6 +1579,15 @@
         // Initial load
         loadPaymentMethods();
         loadClients();
+
+        // Real-time subscription: auto-refresh when admin changes client profiles
+        let _reloadTimer = null;
+        subscribe('clientProfiles', (e) => {
+            if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                clearTimeout(_reloadTimer);
+                _reloadTimer = setTimeout(() => { loadPaymentMethods(); loadClients(); }, 300);
+            }
+        });
 
         window.logout = async function() {
             await firebaseLogout();

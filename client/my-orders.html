@@ -375,6 +375,12 @@
             pointer-events: none; z-index: 300;
         }
         .status-help:hover .help-tip { display: block; }
+
+        .lang-switch {
+            font-size: 12px; color: #999; border: 1px solid #e8e8e8;
+            border-radius: 6px; padding: 4px 8px; background: #fff;
+            cursor: pointer; outline: none;
+        }
     </style>
 </head>
 <body>
@@ -382,10 +388,14 @@
 
     <header class="header">
         <div class="header-left">
-            <a href="user.html" class="btn-back">← 返回</a>
-            <span class="header-title">我的订单</span>
+            <a href="user.html" class="btn-back" data-i18n="back">← 返回</a>
+            <span class="header-title" data-i18n="orders_title">我的订单</span>
         </div>
         <div class="header-right">
+            <select class="lang-switch" onchange="switchLang(this.value)">
+                <option value="zh">中文</option>
+                <option value="en">EN</option>
+            </select>
             <div class="header-user-area" id="headerUserArea">
                 <span class="header-pm-tag" id="headerPmTag" style="display:none"></span>
                 <div class="header-user-text">
@@ -403,27 +413,27 @@
                 </button>
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="notif-header">
-                        <span>消息通知</span>
-                        <button class="notif-mark-all" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
+                        <span data-i18n="orders_notifications">消息通知</span>
+                        <button class="notif-mark-all" onclick="event.stopPropagation();markAllNotifRead()" data-i18n="orders_mark_all_read">全部已读</button>
                     </div>
                     <div class="notif-list" id="notifList"></div>
                 </div>
             </div>
-            <button class="btn-logout" onclick="logout()">退出</button>
+            <button class="btn-logout" onclick="logout()" data-i18n="user_logout">退出</button>
         </div>
     </header>
 
     <main class="main">
         <div class="greeting">
-            <h2>我的订单</h2>
-            <p>查看您的订单和报价</p>
+            <h2 data-i18n="orders_title">我的订单</h2>
+            <p data-i18n="orders_greeting_subtitle">查看您的订单和报价</p>
         </div>
 
         <div class="filter-bar">
             <select class="filter-month" id="filterMonth" onchange="applyFilters()">
-                <option value="">全部月份</option>
+                <option value="" data-i18n="orders_all_months">全部月份</option>
             </select>
-            <input class="filter-search" id="filterSearch" type="text" placeholder="搜索报价号或产品名称..." oninput="applyFilters()">
+            <input class="filter-search" id="filterSearch" type="text" data-i18n-placeholder="orders_search_placeholder" placeholder="搜索报价号或产品名称..." oninput="applyFilters()">
         </div>
         <div class="filter-result" id="filterResult"></div>
 
@@ -436,8 +446,8 @@
                         <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
                 </div>
-                <h3>暂无订单</h3>
-                <p>您的订单将在这里显示</p>
+                <h3 data-i18n="orders_empty_title">暂无订单</h3>
+                <p data-i18n="orders_empty_subtitle">您的订单将在这里显示</p>
             </div>
         </div>
     </main>
@@ -452,13 +462,23 @@
         <div class="detail-container" id="accountContainer"></div>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
+    <script src="../shared/i18n.js" type="module"></script>
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/firebase-init.js";
-        import { collection, getDocs, query, orderBy, updateDoc, doc, where, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/pocketbase-init.js";
+        import { t, getLang } from "../shared/i18n.js";
+
+        document.querySelector('.lang-switch').value = getLang();
+        import { collection, getDocs, query, orderBy, updateDoc, doc, where, getDoc } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) {
             window.location.href = '../auth/login.html';
+        }
+        // Guard: salesperson accounts should not use client pages
+        if (user.email && /^sales\d{2}@test\.com$/.test(user.email)) {
+            alert('当前登录的是业务员账号（' + user.email + '），请退出后用客户账号登录。即将跳转到业务员工作台。');
+            window.location.href = '../admin/myorders.html';
         }
 
         // Set initial header with email
@@ -478,7 +498,7 @@
 
             const pm = p ? p.paymentMethod : null;
             if (pm) {
-                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
+                const pmLabels = { monthly: t('pay_monthly'), credit: t('pay_credit'), pay_before_ship: t('pay_before_ship'), prepaid: t('pay_prepaid'), full: t('pay_full') };
                 pmTag.style.display = '';
 
                 // Build popup
@@ -491,16 +511,16 @@
                     const limit = p.creditLimit || 0;
                     const used = p.creditUsed || 0;
                     if (limit > 0 && used >= limit) {
-                        warnHtml = '<span class="header-pm-warn danger" title="额度已用完，请充值">!</span>';
-                        labelText = '已用完';
+                        warnHtml = '<span class="header-pm-warn danger" title="' + t('orders_exhausted_title') + '">!</span>';
+                        labelText = t('orders_exhausted');
                         tagClass = 'header-pm-tag exhausted';
                     } else if (limit > 0 && used >= limit * 2 / 3) {
-                        warnHtml = '<span class="header-pm-warn" title="额度即将用完，请充值">!</span>';
+                        warnHtml = '<span class="header-pm-warn" title="' + t('orders_almost_exhausted_title') + '">!</span>';
                     }
                     popupHtml = '<div class="header-pm-popup"><div class="popup-row">';
-                    popupHtml += '<div><div class="popup-label">总额度</div><div class="popup-val">$' + fmt(limit) + '</div></div>';
+                    popupHtml += '<div><div class="popup-label">' + t('orders_credit_limit') + '</div><div class="popup-val">$' + fmt(limit) + '</div></div>';
                     popupHtml += '<div class="popup-divider">/</div>';
-                    popupHtml += '<div><div class="popup-label">已用额度</div><div class="popup-val">$' + fmt(used) + '</div></div>';
+                    popupHtml += '<div><div class="popup-label">' + t('orders_used') + '</div><div class="popup-val">$' + fmt(used) + '</div></div>';
                     popupHtml += '</div></div>';
                 } else {
                     popupHtml = '<div class="header-pm-popup"><div style="font-size:13px">' + (pmLabels[pm] || pm) + '</div></div>';
@@ -517,13 +537,13 @@
                 const q = query(collection(db, 'clientProfiles'), where('name', '==', emailPrefix));
                 const snap = await getDocs(q);
                 snap.forEach(d => {
-                    clientProfile = { uid: d.id, ...d.data() };
+                    clientProfile = { ...d.data(), id: d.id, uid: d.data().uid || d.id };
                 });
                 if (!clientProfile) {
                     const allSnap = await getDocs(collection(db, 'clientProfiles'));
                     allSnap.forEach(d => {
                         if (d.data().contactEmail === user.email) {
-                            clientProfile = { uid: d.id, ...d.data() };
+                            clientProfile = { ...d.data(), id: d.id, uid: d.data().uid || d.id };
                         }
                     });
                 }
@@ -543,11 +563,11 @@
         async function loadNotifications() {
             try {
                 const q = query(collection(db, 'notifications'),
-                    where('clientUid', '==', user.uid));
+                    where('clientUid', '==', user.id));
                 const snap = await getDocs(q);
                 notifList = [];
                 snap.forEach(d => { notifList.push({ id: d.id, ...d.data() }); });
-                notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                notifList.sort((a, b) => (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime()));
                 updateBellBadge();
                 renderNotifList();
             } catch (e) { /* ignore */ }
@@ -566,12 +586,12 @@
             const container = document.getElementById('notifList');
             if (!container) return;
             if (notifList.length === 0) {
-                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>暂无消息</p></div>';
+                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>' + t('no_data') + '</p></div>';
                 return;
             }
             let html = '';
             notifList.forEach(n => {
-                const time = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                const time = n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
                 const icon = typeIcons[n.type] || typeIcons.system;
                 html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-link="' + escHTML(n.link || '') + '" onclick="clickNotif(this)">';
                 html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
@@ -593,7 +613,7 @@
             const nid = el.dataset.nid;
             const link = el.dataset.link;
             try {
-                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js");
                 await updateDoc(doc(db, 'notifications', nid), { read: true });
                 const n = notifList.find(x => x.id === nid);
                 if (n) n.read = true;
@@ -605,7 +625,7 @@
 
         window.markAllNotifRead = async function() {
             try {
-                const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js");
                 const unread = notifList.filter(n => !n.read);
                 await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
                 unread.forEach(n => n.read = true);
@@ -627,29 +647,39 @@
 
         let loadError = null;
         try {
-            const q = query(collection(db, 'users', user.uid, 'quotes'), orderBy('publishedAt', 'desc'));
+            const q = query(collection(db, 'users', user.id, 'quotes'), orderBy('createdAt', 'desc'));
             const snapshot = await getDocs(q);
             allOrders = [];
             snapshot.forEach(d => { allOrders.push({ id: d.id, ...d.data() }); });
         } catch (e) {
             console.error('加载订单失败:', e);
-            loadError = e.message || '未知错误';
+            loadError = e.message || t('orders_error_unknown');
         }
 
         // Build month dropdown from actual orders
+        function formatMonthKey(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        }
+        function formatMonthDisplay(d) {
+            const lang = getLang();
+            if (lang === 'en') {
+                return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+            }
+            return d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+        }
         function buildMonthOptions() {
-            const months = new Set();
+            const monthMap = new Map();
             allOrders.forEach(o => {
-                if (o.publishedAt) {
-                    const d = new Date(o.publishedAt.seconds * 1000);
-                    months.add(d.getFullYear() + '年' + (d.getMonth() + 1) + '月');
+                if (o.createdAt) {
+                    const d = new Date(o.createdAt);
+                    monthMap.set(formatMonthKey(d), d);
                 }
             });
             const sel = document.getElementById('filterMonth');
             const currentVal = sel.value;
-            sel.innerHTML = '<option value="">全部月份</option>';
-            Array.from(months).sort().reverse().forEach(m => {
-                sel.innerHTML += '<option value="' + m + '">' + m + '</option>';
+            sel.innerHTML = '<option value="">' + t('orders_all_months') + '</option>';
+            Array.from(monthMap.entries()).sort((a, b) => b[0].localeCompare(a[0])).forEach(([key, d]) => {
+                sel.innerHTML += '<option value="' + key + '">' + formatMonthDisplay(d) + '</option>';
             });
             sel.value = currentVal;
         }
@@ -661,9 +691,9 @@
             const searchVal = document.getElementById('filterSearch').value.trim().toLowerCase();
             return allOrders.filter(o => {
                 if (monthVal) {
-                    if (!o.publishedAt) return false;
-                    const d = new Date(o.publishedAt.seconds * 1000);
-                    const m = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+                    if (!o.createdAt) return false;
+                    const d = new Date(o.createdAt);
+                    const m = formatMonthKey(d);
                     if (m !== monthVal) return false;
                 }
                 if (searchVal) {
@@ -686,35 +716,35 @@
                 container.querySelectorAll('.order-card').forEach(c => c.remove());
                 result.textContent = '';
                 if (loadError) {
-                    empty.querySelector('h3').textContent = '加载失败';
-                    empty.querySelector('p').innerHTML = '<span style="color:#dc2626">' + loadError + '</span><br><span style="font-size:11px;color:#aaa">UID: ' + user.uid + '</span>';
+                    empty.querySelector('h3').textContent = t('orders_load_fail');
+                    empty.querySelector('p').innerHTML = '<span style="color:#dc2626">' + loadError + '</span><br><span style="font-size:11px;color:#aaa">UID: ' + user.id + '</span>';
                 } else {
-                    empty.querySelector('h3').textContent = '暂无订单';
-                    empty.querySelector('p').innerHTML = '您的订单将在这里显示<br><span style="font-size:11px;color:#aaa">UID: ' + user.uid + '</span>';
+                    empty.querySelector('h3').textContent = t('orders_no_orders');
+                    empty.querySelector('p').innerHTML = t('orders_no_orders') + '<br><span style="font-size:11px;color:#aaa">UID: ' + user.id + '</span>';
                 }
                 return;
             }
 
             if (filtered.length === 0) {
                 empty.style.display = '';
-                empty.querySelector('h3').textContent = '没有匹配的订单';
-                empty.querySelector('p').textContent = '尝试更换筛选条件';
+                empty.querySelector('h3').textContent = t('orders_no_match');
+                empty.querySelector('p').textContent = t('no_results');
                 container.querySelectorAll('.order-card').forEach(c => c.remove());
-                result.textContent = '共 0 条结果';
+                result.textContent = t('total_results', { count: 0 });
                 return;
             }
 
             empty.style.display = 'none';
-            result.textContent = '共 ' + filtered.length + ' 条' + (filtered.length !== allOrders.length ? '（筛选自 ' + allOrders.length + ' 条）' : '');
+            result.textContent = t('total_results', { count: filtered.length }) + (filtered.length !== allOrders.length ? ' (' + t('filter') + ' ' + allOrders.length + ')' : '');
 
             let html = '';
             filtered.forEach(o => {
-                const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
-                const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
+                const statusLabels = { pending: t('orders_status_pending'), confirmed: t('orders_status_confirmed'), in_production: t('orders_status_production'), completed: t('orders_status_completed'), shipped: t('orders_status_completed'), signed: t('orders_status_completed') };
                 const s = o.status || 'pending';
                 html += '<div class="order-card" data-oid="' + o.id + '">';
                 html += '<div class="order-left">';
-                html += '<div class="order-number">' + escHTML(o.quoteNumber || '-') + '<span class="status-badge status-' + s + '">' + (statusLabels[s] || '待确认') + '</span>' + (o.finalized ? ' <span class="payment-status-tag finalized">已完结</span>' : '') + '</div>';
+                html += '<div class="order-number">' + escHTML(o.quoteNumber || '-') + '<span class="status-badge status-' + s + '">' + (statusLabels[s] || t('orders_status_pending')) + '</span>' + (o.finalized ? ' <span class="payment-status-tag finalized">' + t('orders_status_completed') + '</span>' : '') + '</div>';
                 html += '<div class="order-meta">' + escHTML(o.productName || '-') + ' · ' + date + '</div>';
                 if (o.depositPercent || o.depositAmount) {
                     const dpPct = o.depositPercent || 0;
@@ -725,21 +755,21 @@
                     let prepaidHtml = '<div class="order-sales" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">';
                     if (dpPct === 100) {
                         if (dpPaid) {
-                            prepaidHtml += '<span style="color:#16a34a">全款已付 ✓</span>';
+                            prepaidHtml += '<span style="color:#16a34a">' + t('orders_payment_full_paid') + ' ✓</span>';
                         } else {
-                            prepaidHtml += '<span style="color:#dc2626;font-weight:500">待付全款 $' + fmt(total) + '</span>';
+                            prepaidHtml += '<span style="color:#dc2626;font-weight:500">' + t('orders_payment_full_pending') + ' $' + fmt(total) + '</span>';
                         }
                     } else {
                         if (dpPaid) {
-                            prepaidHtml += '<span style="color:#16a34a">定金已付 ✓</span>';
+                            prepaidHtml += '<span style="color:#16a34a">' + t('orders_payment_deposit_paid') + ' ✓</span>';
                         } else {
-                            prepaidHtml += '<span style="color:#dc2626;font-weight:500">待付定金 $' + fmt(dpAmt) + '</span>';
+                            prepaidHtml += '<span style="color:#dc2626;font-weight:500">' + t('orders_payment_deposit_pending') + ' $' + fmt(dpAmt) + '</span>';
                         }
                         const rmPaid = o.remainderPaid;
                         if (rmPaid) {
-                            prepaidHtml += '<span style="color:#16a34a">尾款已付 ✓</span>';
+                            prepaidHtml += '<span style="color:#16a34a">' + t('orders_payment_balance_paid') + ' ✓</span>';
                         } else if (dpPaid) {
-                            prepaidHtml += '<span style="color:#f59e0b;font-weight:500">待付尾款 $' + fmt(rmAmt) + '</span>';
+                            prepaidHtml += '<span style="color:#f59e0b;font-weight:500">' + t('orders_payment_balance_pending') + ' $' + fmt(rmAmt) + '</span>';
                         }
                     }
                     prepaidHtml += '</div>';
@@ -752,13 +782,13 @@
                 if (o.shipments && o.shipments.length > 0) {
                     const latestShip = o.shipments[o.shipments.length - 1];
                     if (latestShip.publishedToClient) {
-                        const ts = latestShip.trackingData ? (latestShip.trackingData.statusText || '运输中') : '已发货';
-                        html += '<div class="order-sales" style="color:#6366f1">快递：' + escHTML(ts) + '</div>';
+                        const ts = latestShip.trackingData ? (latestShip.trackingData.statusText || t('orders_status_shipping')) : t('orders_status_shipped');
+                        html += '<div class="order-sales" style="color:#6366f1">' + t('orders_courier') + '：' + escHTML(ts) + '</div>';
                     }
                 }
                 html += '</div>';
                 if (o.publishedBy) {
-                    html += '<div class="order-sales">负责销售: ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
+                    html += '<div class="order-sales">' + t('orders_sales_rep') + ': ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
                 }
                 html += '<div class="order-price">¥' + (o.totalPrice || 0).toFixed(2) + '</div>';
                 html += '</div>';
@@ -786,61 +816,63 @@
 
         renderOrders();
 
+        window.addEventListener('langChanged', () => {
+            buildMonthOptions();
+            renderOrders();
+            updateHeaderFromProfile();
+        });
+
         function showOrderDetail(o) {
             const container = document.getElementById('detailContainer');
-            const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = o.createdAt ? new Date(o.createdAt).toLocaleDateString('zh-CN') : '-';
             let html = '<button class="detail-close" onclick="document.getElementById(\'detailOverlay\').classList.remove(\'show\')">×</button>';
-            const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+            const statusLabels = { pending: t('orders_status_pending'), confirmed: t('orders_status_confirmed'), in_production: t('orders_status_production'), completed: t('orders_status_completed'), shipped: t('orders_status_completed'), signed: t('orders_status_completed') };
             const st = o.status || 'pending';
             html += '<div class="detail-header" style="text-align:center;margin-bottom:24px;padding:20px;background:#f8f9fa;border-radius:10px">';
-            html += '<div style="font-size:13px;color:#999">报价编号</div>';
+            html += '<div style="font-size:13px;color:#999">' + t('orders_quote_number_label') + '</div>';
             html += '<div style="font-size:20px;font-weight:700;color:#1a1a1a;margin-top:4px">' + escHTML(o.quoteNumber || '-') + '</div>';
-            html += '<div style="font-size:13px;margin-top:8px"><span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span><span class="status-help">?<span class="help-tip">销售报价 → 客户确认 → 工厂排工序 → 生产中 → 已完成<br>待确认 → 已确认 → 生产中 → 生产中 → 已完成</span></span></div>';
+            html += '<div style="font-size:13px;margin-top:8px"><span class="status-badge status-' + st + '">' + (statusLabels[st] || t('orders_status_pending')) + '</span></div>';
             html += '<div style="font-size:14px;color:#666;margin-top:6px">' + date + '</div>';
             if (o.publishedBy) {
-                html += '<div style="font-size:13px;color:#888;margin-top:4px">负责销售: ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
+                html += '<div style="font-size:13px;color:#888;margin-top:4px">' + t('orders_sales_rep') + ': ' + escHTML(o.publishedBy.split('@')[0]) + '</div>';
             }
             html += '</div>';
 
-            html += '<div class="detail-section"><h4>产品信息</h4>';
-            html += '<div class="detail-row"><span class="label">产品ID</span><span class="value">' + escHTML(o.productId || '-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">产品名称</span><span class="value">' + escHTML(o.productName || '-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">使用区域</span><span class="value">' + escHTML(o.usageArea || '-') + '</span></div>';
+            html += '<div class="detail-section"><h4>' + t('orders_product_name') + '</h4>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_product_name') + '</span><span class="value">' + escHTML(o.productId || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_product_name') + '</span><span class="value">' + escHTML(o.productName || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_area') + '</span><span class="value">' + escHTML(o.usageArea || '-') + '</span></div>';
             html += '</div>';
 
             if (o.fontPrices && o.fontPrices.length > 0) {
-                html += '<div class="detail-section"><h4>字体明细</h4>';
+                html += '<div class="detail-section"><h4>' + t('orders_freight') + '</h4>';
                 o.fontPrices.forEach(f => {
-                    html += '<div class="detail-row"><span class="label">长' + (f.length||0).toFixed(2) + '×宽' + (f.width||0).toFixed(2) + '×厚' + (f.thickness||0) + 'mm × ' + (f.quantity||0) + '个</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
+                    html += '<div class="detail-row"><span class="label">' + t('orders_length') + (f.length||0).toFixed(2) + '×' + t('orders_width') + (f.width||0).toFixed(2) + '×' + t('orders_thickness') + (f.thickness||0) + 'mm × ' + (f.quantity||0) + t('orders_pieces') + '</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
                 });
                 html += '</div>';
             }
 
-            html += '<div class="detail-section"><h4>配置</h4>';
-            html += '<div class="detail-row"><span class="label">表面颜色</span><span class="value">' + escHTML(o.surfaceColor||'-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">喷漆标准</span><span class="value">' + escHTML(o.paint||'-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value">' + escHTML(o.power||'-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">固定方式</span><span class="value">' + escHTML(o.fixing||'-') + '</span></div>';
+            html += '<div class="detail-section"><h4>' + t('orders_fixing') + '</h4>';
+            html += '<div class="detail-row"><span class="label">' + t('user_surface') + '</span><span class="value">' + escHTML(o.surfaceColor||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_paint_standard') + '</span><span class="value">' + escHTML(o.paint||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_power') + '</span><span class="value">' + escHTML(o.power||'-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_fixing') + '</span><span class="value">' + escHTML(o.fixing||'-') + '</span></div>';
             html += '</div>';
 
-            html += '<div class="detail-section"><h4>价格明细</h4>';
-            html += '<div class="detail-row"><span class="label">产品总价</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="detail-row"><span class="label">表面处理</span><span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="detail-row"><span class="label">喷漆费用</span><span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="detail-row"><span class="label">开关电源</span><span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span></div>';
-            if (o.laborFee > 0) html += '<div class="detail-row"><span class="label">人工费</span><span class="value">¥' + o.laborFee.toFixed(2) + '</span></div>';
+            html += '<div class="detail-section"><h4>' + t('user_total_price') + '</h4>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_total_price') + '</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
+            if (o.laborFee > 0) html += '<div class="detail-row"><span class="label">' + t('orders_freight') + '</span><span class="value">¥' + o.laborFee.toFixed(2) + '</span></div>';
             html += '</div>';
 
             if (o.freight) {
-                html += '<div class="detail-section"><h4>运费</h4>';
-                html += '<div class="detail-row"><span class="label">目的地</span><span class="value">' + escHTML(o.freight.destination||'-') + '</span></div>';
-                html += '<div class="detail-row"><span class="label">运费</span><span class="value">¥' + o.freight.price.toFixed(2) + '</span></div>';
+                html += '<div class="detail-section"><h4>' + t('orders_freight') + '</h4>';
+                html += '<div class="detail-row"><span class="label">' + t('orders_payment_status') + '</span><span class="value">¥' + o.freight.price.toFixed(2) + '</span></div>';
                 html += '</div>';
             }
 
             if (o.process && o.process.steps && o.process.steps.length > 0) {
                 const pct = calcProgress(o.process, o.status);
-                html += '<div class="detail-section"><h4>作业流程</h4>';
+                html += '<div class="detail-section"><h4>' + t('orders_status') + '</h4>';
                 html += '<div class="progress-wrap" style="margin-bottom:12px"><div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div>';
                 html += '<div style="font-size:13px">';
                 o.process.steps.forEach(s => {
@@ -850,7 +882,7 @@
             }
 
             if (o.svgContent) {
-                html += '<div class="detail-section"><h4>矢量图</h4>';
+                html += '<div class="detail-section"><h4>' + t('orders_vector') + '</h4>';
                 html += '<div class="svg-preview-box">' + o.svgContent + '</div>';
                 html += '</div>';
             }
@@ -859,13 +891,13 @@
             if (o.shipments && o.shipments.length > 0) {
                 o.shipments.forEach(ship => {
                     if (!ship.publishedToClient) return;
-                    html += '<div class="detail-section"><h4>快递进度</h4>';
-                    html += '<div class="detail-row"><span class="label">快递单号</span><span class="value">' + escHTML(ship.trackingNumber) + '</span></div>';
+                    html += '<div class="detail-section"><h4>' + t('orders_status') + '</h4>';
+                    html += '<div class="detail-row"><span class="label">' + t('orders_quote_number') + '</span><span class="value">' + escHTML(ship.trackingNumber) + '</span></div>';
                     if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
-                        html += '<div class="detail-row"><span class="label">合并发货</span><span class="value" style="color:#6366f1">' + escHTML(ship.mergedOrderNumbers.join('、')) + '</span></div>';
+                        html += '<div class="detail-row"><span class="label">' + t('orders_merge_shipping') + '</span><span class="value" style="color:#6366f1">' + escHTML(ship.mergedOrderNumbers.join(', ')) + '</span></div>';
                     }
-                    html += '<div class="detail-row"><span class="label">承运商</span><span class="value">' + escHTML(ship.carrier || 'DHL') + '</span></div>';
-                    html += '<div class="detail-row"><span class="label">发货时间</span><span class="value">' + escHTML(ship.shipDate || '-') + '</span></div>';
+                    html += '<div class="detail-row"><span class="label">' + t('orders_save_changes') + '</span><span class="value">' + escHTML(ship.carrier || 'DHL') + '</span></div>';
+                    html += '<div class="detail-row"><span class="label">' + t('orders_created_at') + '</span><span class="value">' + escHTML(ship.shipDate || '-') + '</span></div>';
                     if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
                         html += '<div style="margin-top:10px;font-size:13px">';
                         ship.trackingData.events.forEach(ev => {
@@ -881,7 +913,7 @@
                 });
             }
 
-            html += '<div class="detail-total"><small>总价</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
+            html += '<div class="detail-total"><small>' + t('orders_total_label') + '</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
 
             container.innerHTML = html;
             document.getElementById('detailOverlay').classList.add('show');
@@ -914,7 +946,7 @@
             const container = document.getElementById('accountContainer');
             const p = clientProfile || {};
             const pm = p.paymentMethod || '';
-            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
+            const pmLabels = { monthly: t('pay_monthly'), credit: t('pay_credit'), pay_before_ship: t('pay_before_ship'), prepaid: t('pay_prepaid'), full: t('pay_full') };
 
             let html = '<button class="detail-close" onclick="closeAccount()">×</button>';
             html += '<div class="detail-header">';
@@ -922,35 +954,35 @@
             html += '<div class="meta">' + escHTML(user.email) + '</div>';
             html += '</div>';
 
-            html += '<div class="detail-section"><h4>账户信息</h4>';
-            html += '<div class="detail-row"><span class="label">客户名称</span><span class="value">' + escHTML(p.name || '-') + '</span></div>';
-            html += '<div class="detail-row"><span class="label">公司名称</span>';
-            html += '<input class="account-input" id="acctCompany" value="' + escHTML(p.company || '') + '" placeholder="公司名称">';
+            html += '<div class="detail-section"><h4>' + t('orders_account_info') + '</h4>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_customer_name_label') + '</span><span class="value">' + escHTML(p.name || '-') + '</span></div>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_company_label') + '</span>';
+            html += '<input class="account-input" id="acctCompany" value="' + escHTML(p.company || '') + '" placeholder="' + t('orders_company_label') + '">';
             html += '</div>';
-            html += '<div class="detail-row"><span class="label">联系邮箱</span>';
-            html += '<input class="account-input" id="acctEmail" value="' + escHTML(p.contactEmail || '') + '" placeholder="联系邮箱">';
+            html += '<div class="detail-row"><span class="label">' + t('orders_contact_email_label') + '</span>';
+            html += '<input class="account-input" id="acctEmail" value="' + escHTML(p.contactEmail || '') + '" placeholder="' + t('orders_contact_email_label') + '">';
             html += '</div>';
-            html += '<div class="detail-row"><span class="label">国家/地区</span>';
-            html += '<input class="account-input" id="acctCountry" value="' + escHTML(p.country || '') + '" placeholder="国家">';
+            html += '<div class="detail-row"><span class="label">' + t('orders_country_label') + '</span>';
+            html += '<input class="account-input" id="acctCountry" value="' + escHTML(p.country || '') + '" placeholder="' + t('orders_country_label') + '">';
             html += '</div>';
             html += '</div>';
 
-            html += '<div class="detail-section"><h4>付款信息</h4>';
-            html += '<div class="detail-row"><span class="label">付款方式</span><span class="value">';
-            html += pm ? '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>' : '未设置';
+            html += '<div class="detail-section"><h4>' + t('orders_payment_info') + '</h4>';
+            html += '<div class="detail-row"><span class="label">' + t('orders_payment_method_label') + '</span><span class="value">';
+            html += pm ? '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>' : t('orders_not_set');
             html += '</span></div>';
             if (pm === 'credit') {
                 const limit = p.creditLimit || 0;
                 const used = p.creditUsed || 0;
                 const remain = Math.max(0, limit - used);
-                html += '<div class="detail-row"><span class="label">信用额度</span><span class="value">总额 $' + fmt(limit) + '</span></div>';
-                html += '<div class="detail-row"><span class="label">已用额度</span><span class="value">$' + fmt(used) + '</span></div>';
-                html += '<div class="detail-row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + fmt(remain) + '</span></div>';
+                html += '<div class="detail-row"><span class="label">' + t('orders_credit_limit') + '</span><span class="value">' + t('orders_credit_total') + ' $' + fmt(limit) + '</span></div>';
+                html += '<div class="detail-row"><span class="label">' + t('orders_used') + '</span><span class="value">$' + fmt(used) + '</span></div>';
+                html += '<div class="detail-row"><span class="label">' + t('orders_remaining') + '</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + fmt(remain) + '</span></div>';
             }
             html += '</div>';
 
             html += '<div style="text-align:right;margin-top:16px">';
-            html += '<button class="btn-save-account" id="btnSaveAccount" onclick="saveAccount()">保存修改</button>';
+            html += '<button class="btn-save-account" id="btnSaveAccount" onclick="saveAccount()">' + t('orders_save_account') + '</button>';
             html += '</div>';
 
             container.innerHTML = html;
@@ -965,36 +997,36 @@
 
         window.saveAccount = async function() {
             const btn = document.getElementById('btnSaveAccount');
-            btn.textContent = '保存中...';
+            btn.textContent = t('orders_saving');
             btn.disabled = true;
             try {
                 const company = document.getElementById('acctCompany').value.trim();
                 const contactEmail = document.getElementById('acctEmail').value.trim();
                 const country = document.getElementById('acctCountry').value.trim();
 
-                if (clientProfile && clientProfile.uid) {
-                    await updateDoc(doc(db, 'clientProfiles', clientProfile.uid), {
+                if (clientProfile && clientProfile.id) {
+                    await updateDoc(doc(db, 'clientProfiles', clientProfile.id), {
                         company, contactEmail, country
                     });
                 } else {
                     // No profile yet - create one
-                    const { setDoc } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js");
-                    await setDoc(doc(db, 'clientProfiles', user.uid), {
+                    const { setDoc } = await import("../shared/pocketbase-init.js");
+                    await setDoc(doc(db, 'clientProfiles', user.id), {
                         name: user.email.split('@')[0],
                         company, contactEmail, country,
                         registeredAt: new Date()
                     });
-                    clientProfile = { uid: user.uid, name: user.email.split('@')[0], company, contactEmail, country };
+                    clientProfile = { id: user.id, name: user.email.split('@')[0], company, contactEmail, country };
                 }
                 clientProfile.company = company;
                 clientProfile.contactEmail = contactEmail;
                 clientProfile.country = country;
-                btn.textContent = '已保存';
-                setTimeout(() => { btn.textContent = '保存修改'; btn.disabled = false; }, 1500);
+                btn.textContent = t('orders_saved');
+                setTimeout(() => { btn.textContent = t('orders_save_account'); btn.disabled = false; }, 1500);
             } catch (e) {
                 console.error('保存失败:', e);
-                alert('保存失败: ' + (e.message || ''));
-                btn.textContent = '保存修改';
+                alert(t('orders_save_fail') + ': ' + (e.message || ''));
+                btn.textContent = t('orders_save_account');
                 btn.disabled = false;
             }
         };

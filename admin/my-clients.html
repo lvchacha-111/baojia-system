@@ -89,9 +89,9 @@
         <div id="clientsContainer"><div class="no-data">加载中...</div></div>
     </main>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser, collection, getDocs, query, where, orderBy, subscribe } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -109,7 +109,7 @@
             try {
                 const cpSnap = await getDocs(collection(db, 'clientProfiles'));
                 const profiles = [];
-                cpSnap.forEach(d => { profiles.push({ uid: d.id, ...d.data() }); });
+                cpSnap.forEach(d => { profiles.push({ ...d.data(), uid: d.data().uid || d.id }); });
 
                 const stmtSnap = await getDocs(collection(db, 'billingStatements'));
                 const statements = [];
@@ -133,7 +133,7 @@
                     if (pm === 'monthly') {
                         const clientStmts = statements.filter(s => s.clientUid === clientUid);
                         const unpaid = clientStmts.filter(s => s.status === 'pending' || s.status === 'confirming');
-                        const lastStmt = clientStmts.sort((a, b) => (b.generatedAt?.seconds || 0) - (a.generatedAt?.seconds || 0))[0];
+                        const lastStmt = clientStmts.sort((a, b) => new Date(b.generatedAt || 0).getTime() - new Date(a.generatedAt || 0).getTime())[0];
                         if (unpaid.length > 0) {
                             statusText = '未付账单';
                             statusClass = 'danger';
@@ -247,7 +247,7 @@
 
                     html += '<div class="client-orders" id="co-' + c.uid + '">';
                     c.quotes.slice(0, 10).forEach(o => {
-                        const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
                         const s = o.status || 'pending';
                         html += '<div class="co-row">';
                         html += '<span>' + esc(o.quoteNumber || '-') + ' · ' + esc(o.productName || '-') + ' · ' + date + '</span>';
@@ -282,6 +282,15 @@
         });
 
         await loadData();
+
+        // Real-time subscription: auto-refresh when admin changes client profiles
+        let _reloadTimer = null;
+        subscribe('clientProfiles', (e) => {
+            if (e.action === 'create' || e.action === 'update' || e.action === 'delete') {
+                clearTimeout(_reloadTimer);
+                _reloadTimer = setTimeout(() => loadData(), 300);
+            }
+        });
     </script>
 </body>
 </html>

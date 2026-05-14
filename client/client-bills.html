@@ -222,12 +222,14 @@
         <div id="billsContainer"><div class="no-data">加载中...</div></div>
     </main>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser } from "../shared/pocketbase-init.js";
+        import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp, getDoc } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
+        if (user.email && /^sales\d{2}@test\.com$/.test(user.email)) { alert('当前登录的是业务员账号，请退出后用客户账号登录。'); window.location.href = '../admin/myorders.html'; }
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -236,11 +238,11 @@
         async function loadClientProfile() {
             try {
                 const snap = await getDocs(query(collection(db, 'clientProfiles'), where('name', '==', user.email.split('@')[0])));
-                snap.forEach(d => { clientProfile = { uid: d.id, ...d.data() }; });
+                snap.forEach(d => { clientProfile = { ...d.data(), id: d.id, uid: d.data().uid || d.id }; });
                 if (!clientProfile) {
                     const allSnap = await getDocs(collection(db, 'clientProfiles'));
                     allSnap.forEach(d => {
-                        if (d.data().contactEmail === user.email) clientProfile = { uid: d.id, ...d.data() };
+                        if (d.data().contactEmail === user.email) clientProfile = { ...d.data(), id: d.id, uid: d.data().uid || d.id };
                     });
                 }
             } catch (e) { console.warn('加载账户信息失败:', e); }
@@ -253,14 +255,14 @@
         async function loadBills() {
             try {
                 const q = query(collection(db, 'billingStatements'),
-                    where('clientUid', '==', user.uid));
+                    where('clientUid', '==', user.id));
                 const snap = await getDocs(q);
                 allStatements = [];
                 snap.forEach(d => { allStatements.push({ id: d.id, ...d.data() }); });
                 // Sort client-side to avoid composite index
                 allStatements.sort((a, b) => {
-                    const ta = a.generatedAt ? a.generatedAt.seconds : 0;
-                    const tb = b.generatedAt ? b.generatedAt.seconds : 0;
+                    const ta = new Date(a.generatedAt || 0).getTime();
+                    const tb = new Date(b.generatedAt || 0).getTime();
                     return tb - ta;
                 });
                 renderBills();
@@ -330,7 +332,7 @@
                 const [y, m] = month.split('-');
                 html += '<div class="month-group"><div class="month-label">' + y + '年' + parseInt(m) + '月</div>';
                 statements.forEach(s => {
-                    const date = s.generatedAt ? new Date(s.generatedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                    const date = s.generatedAt ? new Date(s.generatedAt).toLocaleDateString('zh-CN') : '-';
                     const statusLabels = { pending: '待付款', confirming: '待确认', paid: '已付款', settled: '已结清' };
                     const isPending = s.status === 'pending';
                     html += '<div class="bill-card" onclick="toggleBillDetail(this)">';
@@ -346,7 +348,7 @@
                     html += '<div class="bill-detail">';
                     const orderStatusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
                     (s.orders || []).forEach(o => {
-                        const oDate = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+                        const oDate = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
                         const oStatus = o.status || 'pending';
                         html += '<div class="bill-detail-row">';
                         html += '<div class="bd-top">';
@@ -446,11 +448,11 @@
         async function loadNotifications() {
             try {
                 const q = query(collection(db, 'notifications'),
-                    where('clientUid', '==', user.uid));
+                    where('clientUid', '==', user.id));
                 const snap = await getDocs(q);
                 notifList = [];
                 snap.forEach(d => { notifList.push({ id: d.id, ...d.data() }); });
-                notifList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                notifList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
                 updateBellBadge();
                 renderNotifList();
             } catch (e) { /* ignore */ }
@@ -474,7 +476,7 @@
             }
             let html = '';
             notifList.forEach(n => {
-                const time = n.createdAt ? new Date(n.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                const time = n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
                 const icon = typeIcons[n.type] || typeIcons.system;
                 html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-link="' + esc(n.link || '') + '" onclick="clickNotif(this)">';
                 html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
@@ -557,18 +559,18 @@
             let txnsHtml = '';
             try {
                 const q = query(collection(db, 'creditTransactions'),
-                    where('clientUid', '==', user.uid));
+                    where('clientUid', '==', user.id));
                 const snap = await getDocs(q);
                 const txns = [];
                 snap.forEach(d => { txns.push(d.data()); });
-                txns.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+                txns.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
                 if (txns.length === 0) {
                     txnsHtml = '<div class="no-data"><p style="font-size:13px">暂无额度变动记录</p></div>';
                 } else {
                     txns.forEach(t => {
                         const isRecharge = t.type === 'recharge' || t.amount > 0;
-                        const time = t.createdAt ? new Date(t.createdAt.seconds * 1000).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                        const time = t.createdAt ? new Date(t.createdAt).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
                         txnsHtml += '<div class="txn-card">';
                         txnsHtml += '<div class="txn-icon ' + (isRecharge ? 'recharge' : 'deduction') + '">' + (isRecharge ? '↓' : '↑') + '</div>';
                         txnsHtml += '<div class="txn-info">';

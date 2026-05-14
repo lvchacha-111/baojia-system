@@ -97,19 +97,21 @@
 
     <div class="notif-toast" id="toast"></div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser } from "../shared/firebase-init.js";
-        import { collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, db, getCurrentUser } from "../shared/pocketbase-init.js";
+        import { collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, addDoc } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
+        if (user.email && /^sales\d{2}@test\.com$/.test(user.email)) { alert('当前登录的是业务员账号，请退出后用客户账号登录。'); window.location.href = '../admin/myorders.html'; }
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
         let allOrders = [];
         let depositPercent = 0;
-        let clientUid = user.uid;
+        let clientUid = user.id;
 
         function showToast(msg) {
             const t = document.getElementById('toast');
@@ -122,7 +124,7 @@
                 const profSnap = await getDocs(query(collection(db, 'clientProfiles'), where('contactEmail', '==', user.email)));
                 profSnap.forEach(d => {
                     const data = d.data();
-                    clientUid = d.id;
+                    clientUid = data.uid || user.id;
                     depositPercent = data.depositPercent || 0;
                 });
 
@@ -168,7 +170,7 @@
         }
 
         function renderOrderCard(o, section) {
-            const date = o.publishedAt ? new Date(o.publishedAt.seconds * 1000).toLocaleDateString('zh-CN') : '-';
+            const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
             const total = o.totalPrice || 0;
             const dpPct = o.depositPercent || depositPercent || 0;
             const dpAmt = o.depositAmount || Math.round(total * dpPct / 100 * 100) / 100;

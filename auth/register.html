@@ -110,116 +110,430 @@
         .footer-link { text-align: center; margin-top: 24px; font-size: 14px; color: #999; }
         .footer-link a { color: #6366f1; text-decoration: none; font-weight: 500; }
         .footer-link a:hover { text-decoration: underline; }
+
+        .captcha-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+        .captcha-question { flex-shrink: 0; background: #f0f0f0; padding: 8px 16px; border-radius: 8px;
+            font-size: 18px; font-weight: 600; letter-spacing: 2px; user-select: none; color: #1a1a1a; }
+        .captcha-input { width: 80px; text-align: center; }
+        .captcha-refresh { flex-shrink: 0; background: none; border: 1.5px solid #e8e8e8; border-radius: 8px;
+            width: 36px; height: 36px; cursor: pointer; font-size: 16px; color: #999; display: flex;
+            align-items: center; justify-content: center; transition: all 0.2s; }
+        .captcha-refresh:hover { border-color: #6366f1; color: #6366f1; background: #fafafa; }
+
+        .pw-strength { display: flex; gap: 4px; margin-top: 6px; }
+        .pw-strength .bar { flex: 1; height: 3px; border-radius: 2px; background: #e8e8e8; transition: background 0.3s; }
+        .pw-strength .bar.low { background: #dc2626; }
+        .pw-strength .bar.mid { background: #f59e0b; }
+        .pw-strength .bar.high { background: #16a34a; }
+        .pw-label { font-size: 11px; color: #999; margin-top: 4px; }
+
+        .checkbox-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
+        .checkbox-row input[type=checkbox] { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; accent-color: #6366f1; }
+        .checkbox-row label { font-size: 13px; color: #666; line-height: 1.5; font-weight: 400; }
+        .checkbox-row label a { color: #6366f1; text-decoration: none; }
+        .checkbox-row label a:hover { text-decoration: underline; }
+
+        .hp-field { position: absolute; left: -9999px; opacity: 0; height: 0; width: 0; overflow: hidden; }
+
+        .verify-prompt { display: none; text-align: center; }
+        .verify-prompt.show { display: block; }
+        .verify-prompt .icon { width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+        .verify-prompt .icon svg { width: 28px; height: 28px; stroke: #6366f1; fill: none; stroke-width: 2; }
+        .verify-prompt h2 { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+        .verify-prompt .desc { font-size: 14px; color: #888; margin-bottom: 24px; line-height: 1.6; }
+        .verify-prompt .btn-row { display: flex; gap: 10px; }
+        .verify-prompt .btn-outline { flex: 1; height: 44px; line-height: 44px; background: #fff; color: #1a1a1a; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; text-align: center; transition: all 0.2s; }
+        .verify-prompt .btn-outline:hover { background: #fafafa; }
+        .verify-prompt .btn-primary { flex: 1; height: 44px; line-height: 44px; background: #1a1a1a; color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .verify-prompt .btn-primary:hover { background: #333; }
+        .verify-prompt .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .verify-prompt .send-msg { margin-top: 10px; font-size: 13px; min-height: 20px; }
+
+        .lang-switch {
+            position: absolute; top: 16px; right: 16px;
+            font-size: 12px; color: #999; border: 1px solid #e8e8e8;
+            border-radius: 6px; padding: 4px 8px; background: #fff;
+            cursor: pointer; outline: none;
+        }
     </style>
 </head>
 <body>
     <div class="bg-gradient"></div>
 
     <div class="container">
+        <select class="lang-switch" onchange="switchLang(this.value)">
+            <option value="zh">中文</option>
+            <option value="en">EN</option>
+        </select>
         <div class="logo">
             <div class="logo-icon">
                 <svg viewBox="0 0 24 24">
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                 </svg>
             </div>
-            <h1>创建账户</h1>
-            <p class="subtitle">注册报价系统账户</p>
+            <h1 data-i18n="register_title">创建账户</h1>
+            <p class="subtitle" data-i18n="register_subtitle">注册报价系统账户</p>
         </div>
 
         <div class="error" id="error"></div>
 
         <form id="registerForm">
+            <!-- Honeypot 反机器人 -->
+            <div class="hp-field"><input type="text" id="hpField" tabindex="-1" autocomplete="off"></div>
+
             <div class="form-group">
-                <label>邮箱</label>
-                <input type="email" id="email" placeholder="name@example.com" autocomplete="email" required>
+                <label data-i18n="register_email_label">邮箱</label>
+                <input type="email" id="email" data-i18n-placeholder="register_email_placeholder" placeholder="name@example.com" autocomplete="email" required>
             </div>
             <div class="form-group">
-                <label>密码</label>
-                <input type="password" id="password" placeholder="至少6位" autocomplete="new-password" required>
+                <label data-i18n="register_password_label">密码</label>
+                <input type="password" id="password" data-i18n-placeholder="register_password_placeholder" placeholder="至少8位" autocomplete="new-password" required>
             </div>
             <div class="form-group">
-                <label>确认密码</label>
-                <input type="password" id="confirmPassword" placeholder="再次输入密码" autocomplete="new-password" required>
+                <label data-i18n="register_confirm_label">确认密码</label>
+                <input type="password" id="confirmPassword" data-i18n-placeholder="register_confirm_placeholder" placeholder="再次输入密码" autocomplete="new-password" required>
+                <div class="pw-strength"><span class="bar"></span><span class="bar"></span><span class="bar"></span></div>
+                <div class="pw-label" id="pwLabel"></div>
+                <div class="pw-label" id="matchLabel" style="margin-top:2px"></div>
             </div>
 
             <div class="form-group">
-                <label>姓名</label>
-                <input type="text" id="displayName" placeholder="您的姓名" autocomplete="name" required>
+                <label data-i18n="register_name_label">姓名</label>
+                <input type="text" id="displayName" data-i18n-placeholder="register_name_placeholder" placeholder="您的姓名" autocomplete="name" required>
             </div>
 
             <div class="form-group">
-                <label>国家/地区</label>
+                <label data-i18n="register_country_label">国家/地区</label>
                 <div class="searchable-select" id="countrySelect">
-                    <input type="text" id="countryInput" placeholder="输入搜索国家..." autocomplete="off" required>
+                    <input type="text" id="countryInput" data-i18n-placeholder="register_country_placeholder" placeholder="输入搜索国家..." autocomplete="off" required>
                     <input type="hidden" id="country" value="">
                     <div class="dropdown" id="countryDropdown"></div>
                 </div>
-                <div class="form-hint">输入关键词搜索选择</div>
             </div>
 
             <div class="form-group">
-                <label>联系邮箱</label>
-                <input type="email" id="contactEmail" placeholder="您的联系邮箱" autocomplete="email">
+                <label><span data-i18n="register_company_label">公司名称</span> <span style="color:#999;font-weight:400;">（<span data-i18n="register_company_placeholder">选填</span>）</span></label>
+                <input type="text" id="company" data-i18n-placeholder="register_company_placeholder" placeholder="公司名称（选填）" autocomplete="organization">
             </div>
 
+            <!-- 验证码 -->
             <div class="form-group">
-                <label>公司名称 <span style="color:#999;font-weight:400;">（选填）</span></label>
-                <input type="text" id="company" placeholder="公司名称（选填）" autocomplete="organization">
+                <label data-i18n="register_captcha_label">验证码</label>
+                <div class="captcha-row">
+                    <span class="captcha-question" id="captchaQuestion"></span>
+                    <span style="font-size:16px;color:#999;">=</span>
+                    <input type="number" id="captchaInput" class="captcha-input" placeholder="?" autocomplete="off" required>
+                    <button type="button" class="captcha-refresh" id="captchaRefresh" data-i18n="register_captcha_change" title="换一题">↻</button>
+                </div>
             </div>
 
-            <button type="submit" class="btn">注册</button>
+            <!-- 同意条款 -->
+            <div class="checkbox-row">
+                <input type="checkbox" id="agreeTerms" required>
+                <label for="agreeTerms"><span data-i18n="register_agree_terms">我已阅读并同意</span> <a href="../legal/terms.html" target="_blank" data-i18n="register_terms">服务条款</a> <span data-i18n="register_and">和</span> <a href="../legal/privacy.html" target="_blank" data-i18n="register_privacy">隐私政策</a></label>
+            </div>
+
+            <button type="submit" class="btn" data-i18n="register_btn">注册</button>
         </form>
 
-        <p class="footer-link">
-            已有账户？<a href="login.html">去登录</a>
+        <!-- 注册成功后显示 -->
+        <div class="verify-prompt" id="verifyPrompt">
+            <div class="icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+            </div>
+            <h2 data-i18n="register_success_title">注册成功</h2>
+            <p class="desc"><span data-i18n="register_success_msg">验证邮件已发送至</span> <strong id="verifyEmail"></strong><br><span data-i18n="register_verify_hint">请检查邮箱并点击验证链接</span></p>
+            <div class="btn-row">
+                <a href="login.html" class="btn-outline" data-i18n="register_go_login">去登录</a>
+                <button class="btn-primary" id="resendVerifyBtn" data-i18n="register_resend_verify">重新发送</button>
+            </div>
+            <div class="send-msg" id="sendMsg"></div>
+        </div>
+
+        <p class="footer-link" id="footerLink">
+            <span data-i18n="register_has_account">已有账户？</span><a href="login.html" data-i18n="register_to_login">去登录</a>
         </p>
     </div>
 
+    <script src="../shared/pocketbase.umd.js"></script>
+    <script src="../shared/i18n.js" type="module"></script>
     <script type="module">
-        import { auth, db } from "../shared/firebase-init.js";
-        import { createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-auth.js";
-        import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+        import { auth, createUserWithEmailAndPassword, requestVerification, pb } from "../shared/pocketbase-init.js?v=2";
+        import { t, setLang, getLang } from "../shared/i18n.js";
+
+        // 初始化语言选择器
+        document.querySelector('.lang-switch').value = getLang();
+
+        // ---- 验证码 ----
+        let captchaAnswer = 0;
+        function generateCaptcha() {
+            const a = Math.floor(Math.random() * 10) + 1;
+            const b = Math.floor(Math.random() * 10) + 1;
+            captchaAnswer = a + b;
+            document.getElementById('captchaQuestion').textContent = a + ' + ' + b;
+            document.getElementById('captchaInput').value = '';
+        }
+        generateCaptcha();
+        document.getElementById('captchaRefresh').addEventListener('click', generateCaptcha);
+
+        // ---- 密码强度 ----
+        const pwInput = document.getElementById('password');
+        const pwBars = document.querySelectorAll('.pw-strength .bar');
+        const pwLabel = document.getElementById('pwLabel');
+        function updatePwStrength() {
+            const v = pwInput.value;
+            let score = 0;
+            if (v.length >= 8) score++;
+            if (v.length >= 12) score++;
+            if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+            if (/\d/.test(v)) score++;
+            if (/[^a-zA-Z0-9]/.test(v)) score++;
+            const level = score <= 1 ? 'low' : score <= 3 ? 'mid' : 'high';
+            const textKey = score <= 1 ? 'register_strength_weak' : score <= 3 ? 'register_strength_medium' : 'register_strength_strong';
+            pwBars.forEach((b, i) => { b.className = 'bar ' + (i < score ? level : ''); });
+            pwLabel.textContent = v ? t('register_password_label') + '：' + t(textKey) : '';
+            checkMatch();
+        }
+        pwInput.addEventListener('input', updatePwStrength);
+        window.addEventListener('langChanged', updatePwStrength);
+
+        const confirmInput = document.getElementById('confirmPassword');
+        const matchLabel = document.getElementById('matchLabel');
+        function checkMatch() {
+            const pw = pwInput.value;
+            const cf = confirmInput.value;
+            if (!cf) { matchLabel.textContent = ''; return; }
+            if (pw === cf) {
+                matchLabel.textContent = t('register_match_yes');
+                matchLabel.style.color = '#16a34a';
+            } else {
+                matchLabel.textContent = t('register_match_no');
+                matchLabel.style.color = '#dc2626';
+            }
+        }
+        confirmInput.addEventListener('input', checkMatch);
+        window.addEventListener('langChanged', checkMatch);
 
         const COUNTRIES = [
-            '中国','美国','日本','韩国','英国','法国','德国','意大利','西班牙','葡萄牙',
-            '俄罗斯','加拿大','澳大利亚','新西兰','巴西','阿根廷','墨西哥','印度','印度尼西亚',
-            '泰国','越南','马来西亚','新加坡','菲律宾','缅甸','柬埔寨','老挝','文莱','东帝汶',
-            '巴基斯坦','孟加拉国','斯里兰卡','尼泊尔','阿富汗','伊朗','伊拉克','沙特阿拉伯',
-            '阿联酋','卡塔尔','科威特','阿曼','巴林','也门','约旦','黎巴嫩','以色列','巴勒斯坦',
-            '土耳其','埃及','南非','尼日利亚','肯尼亚','埃塞俄比亚','坦桑尼亚','加纳','摩洛哥',
-            '阿尔及利亚','突尼斯','利比亚','苏丹','安哥拉','刚果','喀麦隆','科特迪瓦','塞内加尔',
-            '乌克兰','波兰','罗马尼亚','捷克','匈牙利','奥地利','瑞士','荷兰','比利时','卢森堡',
-            '丹麦','瑞典','挪威','芬兰','冰岛','爱尔兰','希腊','保加利亚','克罗地亚','塞尔维亚',
-            '斯洛伐克','斯洛文尼亚','立陶宛','拉脱维亚','爱沙尼亚','白俄罗斯','摩尔多瓦','格鲁吉亚',
-            '亚美尼亚','阿塞拜疆','哈萨克斯坦','乌兹别克斯坦','土库曼斯坦','吉尔吉斯斯坦','塔吉克斯坦',
-            '蒙古','朝鲜','智利','秘鲁','哥伦比亚','委内瑞拉','古巴','巴拿马','哥斯达黎加','牙买加',
-            '中国香港','中国澳门','中国台湾','波多黎各','关岛','斐济','巴布亚新几内亚','马尔代夫',
-            '毛里求斯','塞舌尔','冰岛','马耳他','塞浦路斯','巴哈马','百慕大','开曼群岛','英属维尔京群岛',
-            '洪都拉斯','危地马拉','萨尔瓦多','尼加拉瓜','玻利维亚','乌拉圭','巴拉圭','厄瓜多尔',
-            '多米尼加','海地','巴林','特立尼达和多巴哥','苏里南','圭亚那','法属圭亚那','留尼汪',
-            '毛里塔尼亚','马里','尼日尔','乍得','索马里','吉布提','厄立特里亚','布基纳法索',
-            '贝宁','多哥','加蓬','赤道几内亚','中非','南苏丹','卢旺达','布隆迪','乌干达',
-            '马拉维','赞比亚','津巴布韦','博茨瓦纳','纳米比亚','莫桑比克','马达加斯加','科摩罗',
-            '莱索托','斯威士兰','冈比亚','几内亚','几内亚比绍','塞拉利昂','利比里亚','佛得角'
+            { zh: '中国', en: 'China' },
+            { zh: '美国', en: 'United States' },
+            { zh: '日本', en: 'Japan' },
+            { zh: '韩国', en: 'South Korea' },
+            { zh: '英国', en: 'United Kingdom' },
+            { zh: '法国', en: 'France' },
+            { zh: '德国', en: 'Germany' },
+            { zh: '意大利', en: 'Italy' },
+            { zh: '西班牙', en: 'Spain' },
+            { zh: '葡萄牙', en: 'Portugal' },
+            { zh: '俄罗斯', en: 'Russia' },
+            { zh: '加拿大', en: 'Canada' },
+            { zh: '澳大利亚', en: 'Australia' },
+            { zh: '新西兰', en: 'New Zealand' },
+            { zh: '巴西', en: 'Brazil' },
+            { zh: '阿根廷', en: 'Argentina' },
+            { zh: '墨西哥', en: 'Mexico' },
+            { zh: '印度', en: 'India' },
+            { zh: '印度尼西亚', en: 'Indonesia' },
+            { zh: '泰国', en: 'Thailand' },
+            { zh: '越南', en: 'Vietnam' },
+            { zh: '马来西亚', en: 'Malaysia' },
+            { zh: '新加坡', en: 'Singapore' },
+            { zh: '菲律宾', en: 'Philippines' },
+            { zh: '缅甸', en: 'Myanmar' },
+            { zh: '柬埔寨', en: 'Cambodia' },
+            { zh: '老挝', en: 'Laos' },
+            { zh: '文莱', en: 'Brunei' },
+            { zh: '东帝汶', en: 'East Timor' },
+            { zh: '巴基斯坦', en: 'Pakistan' },
+            { zh: '孟加拉国', en: 'Bangladesh' },
+            { zh: '斯里兰卡', en: 'Sri Lanka' },
+            { zh: '尼泊尔', en: 'Nepal' },
+            { zh: '阿富汗', en: 'Afghanistan' },
+            { zh: '伊朗', en: 'Iran' },
+            { zh: '伊拉克', en: 'Iraq' },
+            { zh: '沙特阿拉伯', en: 'Saudi Arabia' },
+            { zh: '阿联酋', en: 'UAE' },
+            { zh: '卡塔尔', en: 'Qatar' },
+            { zh: '科威特', en: 'Kuwait' },
+            { zh: '阿曼', en: 'Oman' },
+            { zh: '巴林', en: 'Bahrain' },
+            { zh: '也门', en: 'Yemen' },
+            { zh: '约旦', en: 'Jordan' },
+            { zh: '黎巴嫩', en: 'Lebanon' },
+            { zh: '以色列', en: 'Israel' },
+            { zh: '巴勒斯坦', en: 'Palestine' },
+            { zh: '土耳其', en: 'Turkey' },
+            { zh: '埃及', en: 'Egypt' },
+            { zh: '南非', en: 'South Africa' },
+            { zh: '尼日利亚', en: 'Nigeria' },
+            { zh: '肯尼亚', en: 'Kenya' },
+            { zh: '埃塞俄比亚', en: 'Ethiopia' },
+            { zh: '坦桑尼亚', en: 'Tanzania' },
+            { zh: '加纳', en: 'Ghana' },
+            { zh: '摩洛哥', en: 'Morocco' },
+            { zh: '阿尔及利亚', en: 'Algeria' },
+            { zh: '突尼斯', en: 'Tunisia' },
+            { zh: '利比亚', en: 'Libya' },
+            { zh: '苏丹', en: 'Sudan' },
+            { zh: '安哥拉', en: 'Angola' },
+            { zh: '刚果', en: 'Congo' },
+            { zh: '喀麦隆', en: 'Cameroon' },
+            { zh: '科特迪瓦', en: "Côte d'Ivoire" },
+            { zh: '塞内加尔', en: 'Senegal' },
+            { zh: '乌克兰', en: 'Ukraine' },
+            { zh: '波兰', en: 'Poland' },
+            { zh: '罗马尼亚', en: 'Romania' },
+            { zh: '捷克', en: 'Czech Republic' },
+            { zh: '匈牙利', en: 'Hungary' },
+            { zh: '奥地利', en: 'Austria' },
+            { zh: '瑞士', en: 'Switzerland' },
+            { zh: '荷兰', en: 'Netherlands' },
+            { zh: '比利时', en: 'Belgium' },
+            { zh: '卢森堡', en: 'Luxembourg' },
+            { zh: '丹麦', en: 'Denmark' },
+            { zh: '瑞典', en: 'Sweden' },
+            { zh: '挪威', en: 'Norway' },
+            { zh: '芬兰', en: 'Finland' },
+            { zh: '冰岛', en: 'Iceland' },
+            { zh: '爱尔兰', en: 'Ireland' },
+            { zh: '希腊', en: 'Greece' },
+            { zh: '保加利亚', en: 'Bulgaria' },
+            { zh: '克罗地亚', en: 'Croatia' },
+            { zh: '塞尔维亚', en: 'Serbia' },
+            { zh: '斯洛伐克', en: 'Slovakia' },
+            { zh: '斯洛文尼亚', en: 'Slovenia' },
+            { zh: '立陶宛', en: 'Lithuania' },
+            { zh: '拉脱维亚', en: 'Latvia' },
+            { zh: '爱沙尼亚', en: 'Estonia' },
+            { zh: '白俄罗斯', en: 'Belarus' },
+            { zh: '摩尔多瓦', en: 'Moldova' },
+            { zh: '格鲁吉亚', en: 'Georgia' },
+            { zh: '亚美尼亚', en: 'Armenia' },
+            { zh: '阿塞拜疆', en: 'Azerbaijan' },
+            { zh: '哈萨克斯坦', en: 'Kazakhstan' },
+            { zh: '乌兹别克斯坦', en: 'Uzbekistan' },
+            { zh: '土库曼斯坦', en: 'Turkmenistan' },
+            { zh: '吉尔吉斯斯坦', en: 'Kyrgyzstan' },
+            { zh: '塔吉克斯坦', en: 'Tajikistan' },
+            { zh: '蒙古', en: 'Mongolia' },
+            { zh: '朝鲜', en: 'North Korea' },
+            { zh: '智利', en: 'Chile' },
+            { zh: '秘鲁', en: 'Peru' },
+            { zh: '哥伦比亚', en: 'Colombia' },
+            { zh: '委内瑞拉', en: 'Venezuela' },
+            { zh: '古巴', en: 'Cuba' },
+            { zh: '巴拿马', en: 'Panama' },
+            { zh: '哥斯达黎加', en: 'Costa Rica' },
+            { zh: '牙买加', en: 'Jamaica' },
+            { zh: '中国香港', en: 'Hong Kong, China' },
+            { zh: '中国澳门', en: 'Macau, China' },
+            { zh: '中国台湾', en: 'Taiwan, China' },
+            { zh: '波多黎各', en: 'Puerto Rico' },
+            { zh: '关岛', en: 'Guam' },
+            { zh: '斐济', en: 'Fiji' },
+            { zh: '巴布亚新几内亚', en: 'Papua New Guinea' },
+            { zh: '马尔代夫', en: 'Maldives' },
+            { zh: '毛里求斯', en: 'Mauritius' },
+            { zh: '塞舌尔', en: 'Seychelles' },
+            { zh: '马耳他', en: 'Malta' },
+            { zh: '塞浦路斯', en: 'Cyprus' },
+            { zh: '巴哈马', en: 'Bahamas' },
+            { zh: '百慕大', en: 'Bermuda' },
+            { zh: '开曼群岛', en: 'Cayman Islands' },
+            { zh: '英属维尔京群岛', en: 'British Virgin Islands' },
+            { zh: '洪都拉斯', en: 'Honduras' },
+            { zh: '危地马拉', en: 'Guatemala' },
+            { zh: '萨尔瓦多', en: 'El Salvador' },
+            { zh: '尼加拉瓜', en: 'Nicaragua' },
+            { zh: '玻利维亚', en: 'Bolivia' },
+            { zh: '乌拉圭', en: 'Uruguay' },
+            { zh: '巴拉圭', en: 'Paraguay' },
+            { zh: '厄瓜多尔', en: 'Ecuador' },
+            { zh: '多米尼加', en: 'Dominican Republic' },
+            { zh: '海地', en: 'Haiti' },
+            { zh: '特立尼达和多巴哥', en: 'Trinidad and Tobago' },
+            { zh: '苏里南', en: 'Suriname' },
+            { zh: '圭亚那', en: 'Guyana' },
+            { zh: '法属圭亚那', en: 'French Guiana' },
+            { zh: '留尼汪', en: 'Réunion' },
+            { zh: '毛里塔尼亚', en: 'Mauritania' },
+            { zh: '马里', en: 'Mali' },
+            { zh: '尼日尔', en: 'Niger' },
+            { zh: '乍得', en: 'Chad' },
+            { zh: '索马里', en: 'Somalia' },
+            { zh: '吉布提', en: 'Djibouti' },
+            { zh: '厄立特里亚', en: 'Eritrea' },
+            { zh: '布基纳法索', en: 'Burkina Faso' },
+            { zh: '贝宁', en: 'Benin' },
+            { zh: '多哥', en: 'Togo' },
+            { zh: '加蓬', en: 'Gabon' },
+            { zh: '赤道几内亚', en: 'Equatorial Guinea' },
+            { zh: '中非', en: 'Central African Republic' },
+            { zh: '南苏丹', en: 'South Sudan' },
+            { zh: '卢旺达', en: 'Rwanda' },
+            { zh: '布隆迪', en: 'Burundi' },
+            { zh: '乌干达', en: 'Uganda' },
+            { zh: '马拉维', en: 'Malawi' },
+            { zh: '赞比亚', en: 'Zambia' },
+            { zh: '津巴布韦', en: 'Zimbabwe' },
+            { zh: '博茨瓦纳', en: 'Botswana' },
+            { zh: '纳米比亚', en: 'Namibia' },
+            { zh: '莫桑比克', en: 'Mozambique' },
+            { zh: '马达加斯加', en: 'Madagascar' },
+            { zh: '科摩罗', en: 'Comoros' },
+            { zh: '莱索托', en: 'Lesotho' },
+            { zh: '斯威士兰', en: 'Eswatini' },
+            { zh: '冈比亚', en: 'Gambia' },
+            { zh: '几内亚', en: 'Guinea' },
+            { zh: '几内亚比绍', en: 'Guinea-Bissau' },
+            { zh: '塞拉利昂', en: 'Sierra Leone' },
+            { zh: '利比里亚', en: 'Liberia' },
+            { zh: '佛得角', en: 'Cape Verde' },
+            { zh: '安道尔', en: 'Andorra' },
+            { zh: '列支敦士登', en: 'Liechtenstein' },
+            { zh: '摩纳哥', en: 'Monaco' },
+            { zh: '圣马力诺', en: 'San Marino' },
+            { zh: '梵蒂冈', en: 'Vatican City' },
+            { zh: '波斯尼亚和黑塞哥维那', en: 'Bosnia and Herzegovina' },
+            { zh: '黑山', en: 'Montenegro' },
+            { zh: '北马其顿', en: 'North Macedonia' },
+            { zh: '阿尔巴尼亚', en: 'Albania' },
+            { zh: '科索沃', en: 'Kosovo' },
+            { zh: '冰岛', en: 'Iceland' }
         ];
+
+        function countryName(c) { return getLang() === 'en' ? c.en : c.zh; }
 
         // ---- country searchable select ----
         const countryInput = document.getElementById('countryInput');
         const countryHidden = document.getElementById('country');
         const countryDropdown = document.getElementById('countryDropdown');
 
+        function getCurrentCountryName() {
+            // 将存储的 Chinese name 映射回对象
+            const stored = countryHidden.value;
+            if (!stored) return '';
+            const entry = COUNTRIES.find(c => c.zh === stored);
+            return entry ? countryName(entry) : stored;
+        }
+
         function filterCountries(query) {
             const q = query.toLowerCase();
-            return COUNTRIES.filter(c => c.toLowerCase().includes(q));
+            return COUNTRIES.filter(c => c.zh.includes(q) || c.en.toLowerCase().includes(q));
         }
 
         function renderCountryList(filtered) {
+            const currentName = getCurrentCountryName();
             if (filtered.length === 0) {
-                countryDropdown.innerHTML = '<div class="no-result">未找到匹配国家</div>';
+                countryDropdown.innerHTML = '<div class="no-result">' + t('no_results') + '</div>';
             } else {
-                countryDropdown.innerHTML = filtered.map(c =>
-                    '<div class="item' + (c === countryHidden.value ? ' selected' : '') + '" data-val="' + c + '">' + c + '</div>'
-                ).join('');
+                countryDropdown.innerHTML = filtered.map(c => {
+                    const name = countryName(c);
+                    return '<div class="item' + (c.zh === countryHidden.value ? ' selected' : '') + '" data-val="' + c.zh + '">' + name + '</div>';
+                }).join('');
             }
             countryDropdown.classList.add('show');
         }
@@ -236,8 +550,7 @@
         countryInput.addEventListener('blur', function() {
             setTimeout(() => {
                 countryDropdown.classList.remove('show');
-                if (countryHidden.value) countryInput.value = countryHidden.value;
-                else countryInput.value = '';
+                countryInput.value = getCurrentCountryName();
             }, 150);
         });
 
@@ -259,7 +572,7 @@
                 e.preventDefault();
                 if (items[idx]) {
                     countryHidden.value = items[idx].dataset.val;
-                    countryInput.value = items[idx].dataset.val;
+                    countryInput.value = items[idx].textContent;
                     countryDropdown.classList.remove('show');
                 }
             }
@@ -269,8 +582,17 @@
             const item = e.target.closest('.item');
             if (item) {
                 countryHidden.value = item.dataset.val;
-                countryInput.value = item.dataset.val;
+                countryInput.value = item.textContent;
                 countryDropdown.classList.remove('show');
+            }
+        });
+
+        // 语言切换时刷新国家列表
+        window.addEventListener('langChanged', function() {
+            countryInput.value = getCurrentCountryName();
+            if (countryDropdown.classList.contains('show')) {
+                const q = countryInput.value.trim();
+                renderCountryList(q ? filterCountries(q) : COUNTRIES);
             }
         });
 
@@ -286,46 +608,120 @@
             const confirm = document.getElementById('confirmPassword').value;
             const name = document.getElementById('displayName').value.trim();
             const country = document.getElementById('country').value;
-            const contactEmail = document.getElementById('contactEmail').value.trim();
             const company = document.getElementById('company').value.trim();
 
-            if (!email || !password) { showError('请输入邮箱和密码'); return; }
-            if (password.length < 6) { showError('密码至少需要6位'); return; }
-            if (password !== confirm) { showError('两次输入的密码不一致'); return; }
-            if (!name) { showError('请输入姓名'); return; }
-            if (!country) { showError('请选择国家/地区'); return; }
+            if (!email || !password) { showError(t('register_error_empty')); return; }
+            if (password.length < 8) { showError(t('register_error_password_short')); return; }
+            if (password !== confirm) { showError(t('register_error_match')); return; }
+            if (!name) { showError(t('register_blank_field')); return; }
+            if (!country) { showError(t('register_country_label') + t('register_blank_field')); return; }
+
+            // Honeypot 检查
+            if (document.getElementById('hpField').value) {
+                showError(t('try_again'));
+                return;
+            }
+
+            // 验证码检查
+            const captchaVal = parseInt(document.getElementById('captchaInput').value);
+            if (isNaN(captchaVal) || captchaVal !== captchaAnswer) {
+                showError(t('register_error_captcha'));
+                generateCaptcha();
+                return;
+            }
+
+            // 条款检查
+            if (!document.getElementById('agreeTerms').checked) {
+                showError(t('register_error_terms'));
+                return;
+            }
 
             submitBtn.disabled = true;
-            submitBtn.textContent = '注册中...';
+            submitBtn.textContent = t('register_btn_loading');
             error.style.display = 'none';
 
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, password);
-                await setDoc(doc(db, 'clientProfiles', cred.user.uid), {
-                    name,
-                    country,
-                    contactEmail: contactEmail || email,
+                const uid = cred.id;
+                await pb.collection('client_profiles').create({
+                    uid, name, country,
+                    contactEmail: email,
                     company,
-                    registeredAt: serverTimestamp()
+                    registeredAt: new Date().toISOString()
                 });
-                window.location.href = '../client/user.html';
+                // 注册成功 → 发送验证邮件 → 隐藏表单 → 显示验证提示
+                document.getElementById('registerForm').style.display = 'none';
+                document.getElementById('footerLink').style.display = 'none';
+                document.getElementById('verifyEmail').textContent = email;
+                document.getElementById('verifyPrompt').classList.add('show');
+                requestVerification(email).catch(() => {
+                    const sendMsg = document.getElementById('sendMsg');
+                    sendMsg.textContent = t('register_resend_verify');
+                    sendMsg.style.color = '#dc2626';
+                });
             } catch (err) {
-                showError(errMsg(err.code));
+                console.error('Register error:', err.status, err.message);
+                showError(pbErrMsg(err));
                 submitBtn.disabled = false;
-                submitBtn.textContent = '注册';
+                submitBtn.textContent = t('register_btn');
+            }
+        });
+
+        // 重新发送验证邮件
+        document.getElementById('resendVerifyBtn').addEventListener('click', async function() {
+            const email = document.getElementById('verifyEmail').textContent;
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = t('register_btn_loading');
+            const msg = document.getElementById('sendMsg');
+            try {
+                await requestVerification(email);
+                msg.textContent = t('register_resend_sent');
+                msg.style.color = '#16a34a';
+                btn.textContent = t('register_resend_sent');
+            } catch (e) {
+                msg.textContent = t('register_rate_limit');
+                msg.style.color = '#dc2626';
+                btn.textContent = t('register_resend_verify');
+                btn.disabled = false;
             }
         });
 
         function showError(msg) { error.textContent = msg; error.style.display = 'block'; }
 
-        function errMsg(code) {
-            const map = {
-                'auth/email-already-in-use': '该邮箱已被注册',
-                'auth/invalid-email': '邮箱格式不正确',
-                'auth/weak-password': '密码强度不够（至少6位）',
-                'auth/too-many-requests': '操作太频繁，请稍后再试'
+        function pbErrMsg(err) {
+            const responseData = err.data || {};
+            const fieldErrors = responseData.data || responseData;
+            const fieldLabels = {
+                email: t('register_email_label'),
+                password: t('register_password_label'),
+                passwordConfirm: t('register_confirm_label'),
+                name: t('register_name_label'),
+                country: t('register_country_label')
             };
-            return map[code] || '注册失败，请重试';
+            const msgMap = {
+                'Value must be unique.': t('register_already_exists'),
+                'Must be at least 8 character(s).': t('register_error_password_short'),
+                'Cannot be blank.': t('register_blank_field'),
+                'Invalid email format.': t('register_invalid_email'),
+            };
+            const msgs = [];
+            for (const [field, val] of Object.entries(fieldErrors)) {
+                if (val && val.message) {
+                    const label = fieldLabels[field] || field;
+                    const text = msgMap[val.message] || val.message;
+                    msgs.push(label + '：' + text);
+                }
+            }
+            if (msgs.length) return msgs.join('；');
+
+            const code = err.status || 0;
+            const map = {
+                400: err.message || t('register_default_error'),
+                403: t('register_no_permission'),
+                429: t('register_rate_limit'),
+            };
+            return map[code] || (err.message || t('register_default_error'));
         }
     </script>
 </body>
