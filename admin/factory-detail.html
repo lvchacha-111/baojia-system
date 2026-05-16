@@ -145,14 +145,6 @@
             background: #dc2626; color: #fff; border-color: #dc2626;
         }
 
-        .btn-collect-remainder {
-            font-size: 12px; padding: 5px 14px; border-radius: 6px;
-            border: none; background: #f59e0b; color: #fff; cursor: pointer;
-            font-weight: 500; white-space: nowrap; margin-left: 8px;
-        }
-        .btn-collect-remainder:hover { background: #d97706; }
-        .btn-collect-remainder:disabled { opacity: 0.5; cursor: default; }
-
         .shipment-type-row {
             display: flex; align-items: center; gap: 12px;
             margin-top: 8px;
@@ -318,26 +310,6 @@
         .empty-tracking .icon { font-size: 48px; margin-bottom: 12px; }
         .empty-tracking p { font-size: 14px; }
 
-        .payment-tag {
-            display: inline-block; font-size: 10px; font-weight: 500;
-            padding: 2px 6px; border-radius: 3px;
-        }
-        .payment-tag.monthly { background: #eff6ff; color: #2563eb; }
-        .payment-tag.credit { background: #f3e8ff; color: #7c3aed; }
-        .payment-tag.pay_before_ship { background: #fff7ed; color: #c2410c; }
-        .payment-tag.prepaid { background: #f0fdf4; color: #16a34a; }
-        .payment-tag.full { background: #fef2f2; color: #dc2626; }
-        .payment-status {
-            font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px;
-        }
-        .payment-status.paid { background: #f0fdf4; color: #16a34a; }
-        .payment-status.unpaid { background: #fef2f2; color: #dc2626; }
-        .payment-warn {
-            background: #fef3c7; border: 1px solid #fcd34d;
-            border-radius: 10px; padding: 12px 16px;
-            font-size: 13px; color: #92400e; margin-bottom: 12px;
-            display: flex; align-items: center; gap: 12px;
-        }
         .btn-mark-paid {
             height: 30px; padding: 0 14px; border-radius: 6px;
             border: none; background: #16a34a; color: #fff;
@@ -345,6 +317,33 @@
             white-space: nowrap; margin-left: auto;
         }
         .btn-mark-paid:hover { background: #15803d; }
+        .btn-collect-remainder {
+            height: 30px; padding: 0 14px; border-radius: 6px;
+            border: none; background: #f59e0b; color: #fff;
+            font-size: 12px; font-weight: 500; cursor: pointer;
+            white-space: nowrap; margin-left: 8px;
+        }
+        .btn-collect-remainder:hover { background: #d97706; }
+        .payment-tag {
+            display: inline-block; font-size: 11px; padding: 2px 8px;
+            border-radius: 10px; font-weight: 500;
+        }
+        .payment-tag.monthly { background: #f0fdf4; color: #16a34a; }
+        .payment-tag.credit { background: #eef2ff; color: #6366f1; }
+        .payment-tag.pay_before_ship { background: #fef3c7; color: #b45309; }
+        .payment-tag.prepaid { background: #fce7f3; color: #be185d; }
+        .payment-tag.full { background: #fee2e2; color: #dc2626; }
+        .payment-status {
+            display: inline-block; font-size: 11px; padding: 2px 8px;
+            border-radius: 10px; font-weight: 500;
+        }
+        .payment-status.paid { background: #f0fdf4; color: #16a34a; }
+        .payment-status.unpaid { background: #fef2f2; color: #dc2626; }
+        .payment-warn {
+            font-size: 12px; color: #b45309; background: #fffbeb;
+            border: 1px solid #fde68a; border-radius: 8px;
+            padding: 10px 14px; margin-bottom: 16px; line-height: 1.6;
+        }
         .step-item.locked { opacity: 0.5; pointer-events: none; }
         .step-item.locked .step-check {
             border-color: #ddd; background: #f5f5f5; cursor: not-allowed;
@@ -389,7 +388,7 @@
 
     <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, db, getCurrentUser, doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where } from "../shared/pocketbase-init.js";
+        import { auth, db, getCurrentUser, doc, getDoc, updateDoc, collection, getDocs, query, orderBy, where, auditLog, getAuditLogs } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; throw new Error('未登录'); }
@@ -417,24 +416,6 @@
             }
         }
 
-        // Load customer payment method from clientProfiles
-        let customerPayment = null;
-        if (order.customerName) {
-            try {
-                const profSnap = await getDocs(query(collection(db, 'clientProfiles'), where('name', '==', order.customerName)));
-                profSnap.forEach(d => {
-                    const data = d.data();
-                    customerPayment = {
-                        uid: data.uid || d.id,
-                        paymentMethod: data.paymentMethod || null,
-                        creditLimit: data.creditLimit || null,
-                        creditUsed: data.creditUsed || 0,
-                        depositPercent: data.depositPercent || 0
-                    };
-                });
-            } catch (e) { console.warn('加载客户付款方式失败:', e); }
-        }
-
         if (!order.process || !order.process.steps || order.process.steps.length === 0) {
             order.process = { steps: DEFAULT_STEPS.map(name => ({ name, done: false })), confirmed: true };
             if (!order.processPublished) {
@@ -444,6 +425,7 @@
                     status: 'in_production'
                 });
                 order.processPublished = true;
+                const oldStatus = order.status;
                 order.status = 'in_production';
                 if (order.publishedTo) {
                     const clientRecordId = order.publishedToRecordId || orderId;
@@ -452,9 +434,20 @@
                         status: 'in_production'
                     }).catch(() => {});
                 }
+                auditLog(orderId, 'status_change', '状态', oldStatus, 'in_production');
             } else {
                 await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { process: order.process });
             }
+        }
+
+        let customerPayment = null;
+        if (order.publishedTo) {
+            try {
+                const cpSnap = await getDoc(doc(db, 'users', order.publishedTo, 'clientProfiles', order.publishedTo));
+                if (cpSnap.exists()) {
+                    customerPayment = cpSnap.data();
+                }
+            } catch (e) { /* ignore */ }
         }
 
         const custName = order.customerName;
@@ -611,7 +604,38 @@
             html += '<button class="btn-mark-complete" id="btnMarkComplete">标记为已完成</button>';
             html += '</div>';
 
+            // Internal notes (sales-only)
+            html += '<div class="section">';
+            html += '<h4>内部备注 <span style="font-weight:400;font-size:11px;color:#999">(仅销售可见)</span></h4>';
+            html += '<textarea id="factoryNotes" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid #e8e8e8;border-radius:8px;font-size:13px;color:#1a1a1a;background:#fafafa;outline:none;resize:vertical;font-family:inherit;line-height:1.5" placeholder="添加内部备注...">' + esc(o.notes || '') + '</textarea>';
+            html += '</div>';
+
+            // Audit log section
+            html += '<div class="section">';
+            html += '<h4>修改日志 <span style="font-weight:400;font-size:11px;color:#999">(仅销售可见)</span></h4>';
+            html += '<div id="auditLogList" style="max-height:300px;overflow-y:auto"></div>';
+            html += '</div>';
+
             document.getElementById('tab-process').innerHTML = html;
+
+            // Auto-save notes on blur
+            const fnotes = document.getElementById('factoryNotes');
+            if (fnotes) {
+                fnotes.addEventListener('blur', async function() {
+                    const v = this.value;
+                    const oldNotes = order.notes || '';
+                    if (v === oldNotes) return;
+                    order.notes = v;
+                    try {
+                        await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { notes: v });
+                        if (order.publishedTo) {
+                            const cid = order.publishedToRecordId || orderId;
+                            await updateDoc(doc(db, 'users', order.publishedTo, 'quotes', cid), { notes: v });
+                        }
+                        auditLog(orderId, 'note_update', '备注', oldNotes || '空', v);
+                    } catch (e) { console.warn('备注保存失败:', e); }
+                });
+            }
 
             document.querySelectorAll('#stepList .step-check').forEach(btn => {
                 btn.addEventListener('click', function(e) {
@@ -627,6 +651,8 @@
                     }
                     renderProcessProgress();
                     saveProcess();
+                    const stepDone = order.process.steps[idx].done;
+                    auditLog(orderId, 'process_update', stepName, !stepDone ? '未完成' : '已完成', stepDone ? '已完成' : '重新打开');
                     // Show/hide "收尾款" button for prepaid when first 3 steps done
                     if (pm === 'prepaid' && depositPaid && !remainderPaid) {
                         const first3Done = order.process.steps.slice(0, 3).every(s => s.done);
@@ -652,12 +678,14 @@
                     this.textContent = '处理中...';
                     this.disabled = true;
                     try {
+                        const oldStatus = order.status || 'in_production';
                         await updateDoc(doc(db, 'users', user.id, 'quotes', orderId), { status: 'completed' });
                         if (order.publishedTo) {
                             const clientRecordId3 = order.publishedToRecordId || orderId;
                             updateDoc(doc(db, 'users', order.publishedTo, 'quotes', clientRecordId3), { status: 'completed' }).catch(() => {});
                         }
                         order.status = 'completed';
+                        auditLog(orderId, 'status_change', '状态', oldStatus, 'completed');
                         renderProcessTab();
                     } catch (err) {
                         alert('操作失败');
@@ -674,6 +702,47 @@
                     }, 5000);
                 }
             });
+
+            // Load audit log
+            loadAuditLog();
+        }
+
+        async function loadAuditLog() {
+            const container = document.getElementById('auditLogList');
+            if (!container) return;
+            try {
+                const logs = await getAuditLogs(orderId);
+                if (!logs.length) {
+                    container.innerHTML = '<div style="text-align:center;color:#ccc;font-size:13px;padding:12px">暂无修改记录</div>';
+                    return;
+                }
+                const actionLabels = {
+                    status_change: '状态变更',
+                    field_update: '字段修改',
+                    note_update: '备注修改',
+                    tracking_update: '物流更新',
+                    shipment_update: '发货更新',
+                    process_update: '工序变更'
+                };
+                container.innerHTML = logs.map(l => {
+                    const t = l.created ? new Date(l.created).toLocaleString('zh-CN') : '';
+                    const action = actionLabels[l.action] || l.action;
+                    const who = (l.changedBy || '').split('@')[0];
+                    let detail = '';
+                    if (l.field) detail += ' <b>' + esc(l.field) + '</b>';
+                    if (l.oldValue && l.newValue) {
+                        detail += '：' + esc(l.oldValue) + ' → ' + esc(l.newValue);
+                    }
+                    return '<div style="padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:12px;line-height:1.6">' +
+                        '<span style="color:#6366f1;font-weight:500">' + esc(action) + '</span>' +
+                        '<span style="color:#999;margin-left:8px">' + esc(t) + '</span>' +
+                        '<span style="color:#bbb;margin-left:8px">by ' + esc(who) + '</span>' +
+                        '<div style="color:#666;margin-top:2px">' + detail + '</div>' +
+                        '</div>';
+                }).join('');
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center;color:#ccc;font-size:13px;padding:12px">加载失败</div>';
+            }
         }
 
         function renderProcessProgress() {
@@ -706,11 +775,9 @@
                 html += '<button class="btn-add-shipment" id="btnAddShipment">+ 录入快递单号</button>';
             } else {
                 shipments.forEach(ship => {
-                    const statusText = ship.trackingData ? (ship.trackingData.statusText || '运输中') : '等待查询';
                     html += '<div class="shipment-card">';
                     html += '<div class="ship-top">';
                     html += '<span class="carrier-tag carrier-' + (ship.carrier || 'dhl').toLowerCase() + '">' + esc(ship.carrier || 'DHL') + '</span>';
-                    html += '<span style="font-size:12px;color:#999">状态：' + statusText + '</span>';
                     html += '<div style="display:flex;gap:8px">';
                     html += '<button class="btn-refresh-tracking" data-ship-id="' + ship.id + '">刷新物流</button>';
                     if (!ship.publishedToClient) {
@@ -724,7 +791,7 @@
                     if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
                         html += '<div style="font-size:12px;color:#6366f1;margin:4px 0">合并发货：' + esc(ship.mergedOrderNumbers.join('、')) + '</div>';
                     }
-                    html += '<div class="ship-meta">发货时间：' + esc(ship.shipDate || '-') + ' · 预计送达：' + (ship.trackingData ? esc(ship.trackingData.estimatedDelivery || '-') : '-') + '</div>';
+                    html += '<div class="ship-meta">发货时间：' + esc(ship.shipDate || '-') + '</div>';
 
                     if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
                         html += '<div class="timeline">';
@@ -887,7 +954,7 @@
                 const shipment = {
                     id: shipId, trackingNumber: tn, carrier: carrier,
                     shipDate: shipDate, trackingData: td,
-                    publishedToClient: false, createdAt: new Date().toISOString()
+                    publishedToClient: true, createdAt: new Date().toISOString()
                 };
                 if (_shipMergeIds.length > 0) {
                     shipment.shipmentType = 'merged';
@@ -992,26 +1059,36 @@
         }
 
         async function fetchTrackingFromAPI(tn, carrier) {
-            const PROXY_URL = 'https://us-central1-yijiao001.cloudfunctions.net/trackPackage';
+            // Call PocketBase pb_hooks proxy → 17track API (server-side, no CORS issue)
+            const apiUrl = 'http://127.0.0.1:8090/api/track?type=' + encodeURIComponent(carrier || 'dhl') + '&postid=' + encodeURIComponent(tn);
             try {
-                const resp = await fetch(PROXY_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ trackingNumber: tn, carrier })
-                });
-                if (resp.ok) {
-                    const data = await resp.json();
+                const resp = await fetch(apiUrl);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                // 17track v2.4: { code:0, data:{ accepted:[{ track_info:{ latest_status, tracking:{ providers:[{ events }] } } }] } }
+                if (data.code === 0 && data.data && data.data.accepted && data.data.accepted.length > 0) {
+                    const ti = data.data.accepted[0].track_info;
+                    if (!ti) return { status: 'notfound', statusText: '未找到', estimatedDelivery: '', origin: '', destination: '', events: [], lastUpdated: new Date().toISOString() };
+                    const events = (ti.tracking && ti.tracking.providers && ti.tracking.providers[0] && ti.tracking.providers[0].events || []).map(function(d) {
+                        return { time: d.time_iso || '', location: d.location || '', description: d.description || '' };
+                    });
+                    const statusMap = { InfoReceived:'info_received', InTransit:'in_transit', OutForDelivery:'out_for_delivery', Delivered:'delivered', Exception:'exception' };
+                    const statusTextMap = { InfoReceived:'已收件', InTransit:'运输中', OutForDelivery:'派送中', Delivered:'已签收', Exception:'异常', Returning:'退回中', Returned:'已退回' };
+                    const mainStatus = ti.latest_status ? ti.latest_status.status : 'pending';
                     return {
-                        status: data.status || 'unknown',
-                        statusText: data.statusText || '运输中',
-                        estimatedDelivery: data.estimatedDelivery || '',
-                        origin: data.origin || '',
-                        destination: data.destination || '',
-                        events: data.events || [],
+                        status: statusMap[mainStatus] || 'pending',
+                        statusText: statusTextMap[mainStatus] || mainStatus || '运输中',
+                        estimatedDelivery: '',
+                        origin: (ti.shipping_info && ti.shipping_info.shipper_address && ti.shipping_info.shipper_address.city) || '',
+                        destination: (ti.shipping_info && ti.shipping_info.recipient_address && ti.shipping_info.recipient_address.city) || '',
+                        events: events,
                         lastUpdated: new Date().toISOString()
                     };
                 }
-            } catch (e) { console.warn('API查询失败，可稍后刷新', e); }
+                if (data.code !== 0 && data.msg) {
+                    console.warn('17track error:', data.code, data.msg);
+                }
+            } catch (e) { console.warn('物流查询失败，可稍后刷新', e); }
             return { status: 'pending', statusText: '等待查询', estimatedDelivery: '', origin: '', destination: '', events: [], lastUpdated: new Date().toISOString() };
         }
 

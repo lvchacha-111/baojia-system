@@ -538,7 +538,7 @@
 
     <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, getCurrentUser, db, doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, collection, query, orderBy, where, getDocs, subscribe } from "../shared/pocketbase-init.js";
+        import { auth, getCurrentUser, db, doc, getDoc, updateDoc, setDoc, addDoc, serverTimestamp, collection, query, orderBy, where, getDocs, subscribe, subscribeRecord } from "../shared/pocketbase-init.js";
 
         const user = await getCurrentUser();
         if (!user) { window.location.href = '../auth/login.html'; }
@@ -814,6 +814,20 @@
             }
         }
 
+        // Real-time tracking: subscribe to this order's changes so tracking tab auto-refreshes
+        if (order) {
+            subscribe('quotes', (data) => {
+                if ((data.action === 'update' || data.action === 'create') && data.record && data.record.id === orderId) {
+                    order = { id: data.record.id, ...data.record };
+                    // Refresh tracking tab if it's currently visible
+                    const trackingTab = document.getElementById('tab-tracking');
+                    if (trackingTab && trackingTab.classList.contains('active')) {
+                        renderTrackingTab();
+                    }
+                }
+            }, `id = "${orderId}"`);
+        }
+
         // Load customer payment method
         let customerPayment = null;
         if (order.customerName) {
@@ -985,6 +999,8 @@
         }
 
         let _chatUnsub = null; // real-time subscription for chat messages
+        let _chatConvId = null;
+        let _chatSalesEmail = null;
         let _bgPollInterval = null;
 
         // Initial render
@@ -1227,17 +1243,49 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        window.openChat = function() {
+        window.openChat = async function() {
             document.getElementById('chatOverlay').classList.add('show');
             document.getElementById('chatMessages').innerHTML = '<div class="empty">Loading...</div>';
 
-            // Mark unread for customer as false
-            setDoc(doc(db, 'users', user.id, 'conversations', 'main'), { unreadForCustomer: false }, { merge: true }).catch(() => {});
+            // Determine sales email
+            let salesEmail = order.publishedBy || '';
+            if (!salesEmail) {
+                try {
+                    const cpSnap = await getDocs(query(collection(db, 'clientProfiles'), where('uid', '==', user.id)));
+                    cpSnap.forEach(d => { if (!salesEmail && d.data().assignedTo) salesEmail = d.data().assignedTo; });
+                } catch (e) {}
+            }
+            _chatSalesEmail = salesEmail;
+
+            // Find or create conversation
+            try {
+                if (salesEmail) {
+                    const convSnap = await getDocs(query(
+                        collection(db, 'conversations'),
+                        where('ownerUid', '==', user.id),
+                        where('salesEmail', '==', salesEmail)
+                    ));
+                    convSnap.forEach(d => { _chatConvId = d.id; });
+                    if (!_chatConvId) {
+                        const newConv = await addDoc(collection(db, 'conversations'), {
+                            ownerUid: user.id, salesEmail, salesUid: '',
+                            customerEmail: user.email,
+                            customerName: order.customerName || '',
+                            lastMessage: '', lastTimestamp: new Date().toISOString(),
+                            unreadForSales: 0, unreadForCustomer: 0
+                        });
+                        _chatConvId = newConv.id;
+                    }
+                    // Mark unread as read
+                    updateDoc(doc(db, 'conversations', _chatConvId), { unreadForCustomer: 0 }).catch(() => {});
+                }
+            } catch (e) { console.warn('Chat init error:', e); }
 
             const pollMessages = async () => {
                 if (!document.getElementById('chatOverlay').classList.contains('show')) return;
                 try {
-                    const q = query(collection(db, 'users', user.id, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
+                    if (!_chatConvId) return;
+                    const q = query(collection(db, 'messages'), where('conversationId', '==', _chatConvId), orderBy('timestamp', 'asc'));
                     const snap = await getDocs(q);
                     const msgs = [];
                     snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
@@ -1248,7 +1296,7 @@
             };
             pollMessages();
 
-            // Replace 1s polling with real-time subscription
+            // Real-time subscription
             if (_chatUnsub) _chatUnsub();
             _chatUnsub = subscribe('messages', () => {
                 pollMessages();
@@ -1257,6 +1305,8 @@
 
         window.closeChat = function() {
             document.getElementById('chatOverlay').classList.remove('show');
+            _chatConvId = null;
+            _chatSalesEmail = null;
             if (_chatUnsub) { _chatUnsub(); _chatUnsub = null; }
         };
 
@@ -1265,10 +1315,17 @@
             if (_bgPollInterval) clearInterval(_bgPollInterval);
             const checkUnread = async () => {
                 try {
-                    const convSnap = await getDoc(doc(db, 'users', user.id, 'conversations', 'main'));
+                    let hasUnread = false;
+                    const convSnap = await getDocs(query(
+                        collection(db, 'conversations'),
+                        where('ownerUid', '==', user.id)
+                    ));
+                    convSnap.forEach(d => {
+                        if (d.data().unreadForCustomer > 0) hasUnread = true;
+                    });
                     const link = document.getElementById('confusedLink');
                     if (!link) return;
-                    if (convSnap.exists() && convSnap.data().unreadForCustomer) {
+                    if (hasUnread) {
                         link.classList.add('has-unread');
                         link.title = 'You have a new reply!';
                     } else {
@@ -1278,7 +1335,6 @@
                 } catch (e) { /* ignore */ }
             };
             checkUnread();
-            // Poll every 5s — subscribeRecord can't be used because the record may not exist yet
             _bgPollInterval = setInterval(checkUnread, 5000);
         }
 
@@ -1292,59 +1348,57 @@
             input.disabled = true;
 
             try {
-                // Determine sales email: from order, or look up from clientProfiles
-                let salesEmail = order.publishedBy || '';
-                if (!salesEmail && order.customerName) {
-                    try {
-                        const q = query(collection(db, 'clientProfiles'), where('name', '==', order.customerName));
-                        const snap = await getDocs(q);
-                        snap.forEach(d => {
-                            if (!salesEmail && d.data().assignedTo) salesEmail = d.data().assignedTo;
-                        });
-                    } catch (e) { console.error('查找销售失败:', e); }
+                // Determine sales email if not already set
+                if (!_chatSalesEmail) {
+                    _chatSalesEmail = order.publishedBy || '';
+                    if (!_chatSalesEmail) {
+                        const cpSnap = await getDocs(query(collection(db, 'clientProfiles'), where('uid', '==', user.id)));
+                        cpSnap.forEach(d => { if (!_chatSalesEmail && d.data().assignedTo) _chatSalesEmail = d.data().assignedTo; });
+                    }
                 }
 
-                // Find sales UID from clientProfiles
-                let salesUid = order.publishedByUid || '';
-                if (!salesUid) {
-                    try {
-                        const q = query(collection(db, 'clientProfiles'), where('name', '==', order.customerName));
-                        const snap = await getDocs(q);
-                        snap.forEach(d => { if (!salesUid) salesUid = d.id; });
-                    } catch (e) {}
-                }
-                // Use sales email prefix to find sales UID
-                if (!salesUid && salesEmail) {
-                    try {
-                        const usersSnap = await getDocs(collection(db, 'clientProfiles'));
-                        usersSnap.forEach(d => {
-                            if (d.data().name === salesEmail.split('@')[0]) salesUid = d.id;
+                // Find or create conversation
+                if (!_chatConvId && _chatSalesEmail) {
+                    const convSnap = await getDocs(query(
+                        collection(db, 'conversations'),
+                        where('ownerUid', '==', user.id),
+                        where('salesEmail', '==', _chatSalesEmail)
+                    ));
+                    convSnap.forEach(d => { _chatConvId = d.id; });
+                    if (!_chatConvId) {
+                        const newConv = await addDoc(collection(db, 'conversations'), {
+                            ownerUid: user.id, salesEmail: _chatSalesEmail, salesUid: '',
+                            customerEmail: user.email,
+                            customerName: order.customerName || '',
+                            lastMessage: '', lastTimestamp: new Date().toISOString(),
+                            unreadForSales: 0, unreadForCustomer: 0
                         });
-                    } catch (e) {}
+                        _chatConvId = newConv.id;
+                    }
                 }
 
-                // Store conversation under user's own doc space (guaranteed writable)
-                const convData = {
-                    salesEmail: salesEmail,
-                    salesUid: salesUid || salesEmail.replace(/[@.]/g, '_'),
-                    customerEmail: user.email,
-                    customerName: order.customerName || '',
+                if (!_chatConvId) {
+                    alert('无法找到客户经理，请稍后重试');
+                    return;
+                }
+
+                const now = new Date().toISOString();
+                await updateDoc(doc(db, 'conversations', _chatConvId), {
                     lastMessage: text,
-                    lastTimestamp: serverTimestamp(),
-                    unreadForSales: true
-                };
+                    lastTimestamp: now,
+                    unreadForSales: 1
+                });
 
-                // Write to customer's own space
-                await setDoc(doc(db, 'users', user.id, 'conversations', 'main'), convData, { merge: true });
-                await addDoc(collection(db, 'users', user.id, 'conversations', 'main', 'messages'), {
+                await addDoc(collection(db, 'messages'), {
+                    conversationId: _chatConvId,
                     from: user.email,
                     text,
-                    timestamp: serverTimestamp()
+                    timestamp: now
                 });
 
                 input.value = '';
                 input.style.height = '38px';
-                console.log('消息发送成功, salesEmail=' + salesEmail);
+                console.log('消息发送成功');
             } catch (err) {
                 console.error('发送消息失败:', err);
                 alert('发送失败，请重试: ' + (err.message || '未知错误'));
@@ -1421,6 +1475,7 @@
             this.style.height = '38px';
             this.style.height = Math.min(this.scrollHeight, 80) + 'px';
         });
+
     </script>
 </body>
 </html>

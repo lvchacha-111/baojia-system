@@ -24,7 +24,7 @@
         }
 
         .header {
-            position: relative; z-index: 1; flex-shrink: 0;
+            position: relative; z-index: 10; flex-shrink: 0;
             background: #fff;
             border-bottom: 1px solid #eee;
             padding: 0 32px; height: 56px;
@@ -50,7 +50,61 @@
 
         .header-right { display: flex; align-items: center; gap: 16px; }
 
-        .user-email { font-size: 13px; color: #999; }
+        .user-email {
+            font-size: 13px; color: #6366f1; text-decoration: none;
+            padding: 4px 8px; border-radius: 6px; transition: all 0.15s;
+        }
+        .user-email:hover { background: #eef2ff; }
+
+        .btn-freight {
+            font-size: 13px; color: #6366f1;
+            text-decoration: none;
+            padding: 6px 12px; border-radius: 6px; transition: all 0.15s;
+            border: 1px solid #e0e7ff; background: #eef2ff;
+        }
+        .btn-freight:hover { background: #e0e7ff; }
+
+        .header-bell { position: relative; cursor: pointer; padding: 6px; border-radius: 8px; border: none; background: none; }
+        .header-bell:hover { background: #f5f5f5; }
+        .header-bell svg { width: 20px; height: 20px; color: #666; display: block; }
+        .header-bell-badge { position: absolute; top: 1px; right: 1px; min-width: 16px; height: 16px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 700; border-radius: 8px; display: none; align-items: center; justify-content: center; padding: 0 4px; }
+        .header-bell-badge.show { display: flex; }
+        .notif-dropdown {
+            display: none; position: absolute; top: calc(100% + 8px); right: 0;
+            width: 380px; max-height: 480px; background: #fff; border-radius: 14px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12); border: 1px solid #eee;
+            z-index: 200; flex-direction: column; overflow: hidden;
+        }
+        .notif-dropdown.show { display: flex; }
+        .notif-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; border-bottom: 1px solid #f0f0f0;
+            font-size: 14px; font-weight: 600; color: #1a1a1a;
+        }
+        .notif-mark-all {
+            font-size: 12px; color: #6366f1; cursor: pointer; border: none; background: none; font-weight: 500;
+        }
+        .notif-mark-all:hover { color: #4f46e5; }
+        .notif-list { overflow-y: auto; max-height: 400px; }
+        .notif-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 18px; cursor: pointer; border-bottom: 1px solid #f9f9f9;
+            transition: background 0.1s; position: relative;
+        }
+        .notif-item:hover { background: #f8f9fa; }
+        .notif-item.unread { background: #fafaff; }
+        .notif-item.unread:hover { background: #f0f0ff; }
+        .notif-dot { width: 8px; height: 8px; border-radius: 50%; background: #6366f1; flex-shrink: 0; margin-top: 6px; }
+        .notif-dot.read { visibility: hidden; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+        .notif-body { font-size: 12px; color: #888; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .notif-time { font-size: 11px; color: #bbb; flex-shrink: 0; margin-top: 2px; }
+        .notif-empty { text-align: center; padding: 40px 20px; color: #ccc; font-size: 13px; }
+        .notif-empty svg { width: 36px; height: 36px; margin-bottom: 8px; color: #ddd; }
+        @media (max-width: 600px) {
+            .notif-dropdown { width: calc(100vw - 32px); right: -60px; }
+        }
 
         .btn-logout {
             font-size: 13px; color: #999;
@@ -525,6 +579,224 @@
         .payment-status-tag.finalized { background: #f0fdf4; color: #16a34a; }
         .payment-status-tag.active { background: #f5f5f5; color: #888; }
 
+        /* Salesperson business card popup */
+        .bizcard-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3); z-index: 300;
+            align-items: center; justify-content: center;
+        }
+        .bizcard-overlay.show { display: flex; }
+
+        .bizcard {
+            background: #fff; border-radius: 14px; padding: 28px;
+            width: 360px; max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .bizcard-name {
+            font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px;
+        }
+        .bizcard-email {
+            font-size: 13px; color: #999; margin-bottom: 16px;
+        }
+        .bizcard-section { margin-bottom: 12px; }
+        .bizcard-label {
+            font-size: 11px; color: #aaa; text-transform: uppercase; margin-bottom: 4px;
+        }
+        .bizcard-value { font-size: 14px; color: #333; }
+        .bizcard-contact-item {
+            display: inline-block; padding: 4px 10px; margin: 2px 4px 2px 0;
+            background: #f5f5f5; border-radius: 6px;
+            font-size: 13px; color: #555;
+        }
+        .bizcard-contact-item strong { color: #888; font-weight: 500; }
+        .bizcard-bio { font-size: 13px; color: #666; line-height: 1.6; }
+        .bizcard-close {
+            margin-top: 20px; text-align: right;
+        }
+        .bizcard-close button {
+            padding: 8px 20px; border-radius: 8px; border: 1px solid #e8e8e8;
+            background: #fff; color: #666; font-size: 13px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .bizcard-close button:hover { background: #f5f5f5; }
+
+        .salesperson-tag {
+            display: inline-block; font-size: 11px; color: #6366f1;
+            padding: 1px 6px; border-radius: 4px;
+            background: #eef2ff; cursor: pointer;
+            transition: all 0.15s; margin-left: 4px;
+        }
+        .salesperson-tag:hover { background: #e0e7ff; }
+
+        /* ---- Dashboard ---- */
+        .view-toggle-bar {
+            display: flex; gap: 4px; margin-bottom: 32px;
+            background: #f0f0f0; border-radius: 10px; padding: 4px;
+            width: fit-content;
+        }
+        .view-toggle-btn {
+            padding: 8px 20px; border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 500; cursor: pointer;
+            background: transparent; color: #888;
+            transition: all 0.2s;
+        }
+        .view-toggle-btn.active {
+            background: #fff; color: #1a1a1a;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .view-toggle-btn:hover:not(.active) { color: #555; }
+
+        .dash-stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 28px;
+        }
+        .dash-stat-card {
+            background: #fff; border-radius: 12px; border: 1px solid #eee;
+            padding: 20px 24px;
+        }
+        .dash-stat-label { font-size: 12px; color: #999; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dash-stat-value { font-size: 28px; font-weight: 700; color: #1a1a1a; letter-spacing: -0.5px; }
+        .dash-stat-sub { font-size: 12px; color: #bbb; margin-top: 4px; }
+
+        .dash-section {
+            background: #fff; border-radius: 14px; border: 1px solid #eee;
+            padding: 24px; margin-bottom: 20px;
+        }
+        .dash-section h3 {
+            font-size: 15px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .dash-two-col {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 20px; margin-bottom: 20px;
+        }
+        @media (max-width: 900px) { .dash-two-col { grid-template-columns: 1fr; } }
+
+        .dash-table { width: 100%; border-collapse: collapse; }
+        .dash-table th {
+            text-align: left; font-size: 11px; font-weight: 600;
+            color: #999; text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 8px 12px; border-bottom: 2px solid #f0f0f0;
+        }
+        .dash-table td {
+            padding: 10px 12px; border-bottom: 1px solid #f9f9f9;
+            font-size: 13px; color: #444;
+        }
+        .dash-table tr:hover td { background: #fafafa; }
+        .dash-table .rank { width: 28px; text-align: center; font-weight: 600; color: #ccc; }
+        .dash-table tr:nth-child(1) .rank { color: #f59e0b; }
+        .dash-table tr:nth-child(2) .rank { color: #94a3b8; }
+        .dash-table tr:nth-child(3) .rank { color: #d97706; }
+        .dash-table .money { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .dash-table .count { text-align: center; }
+
+        .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 180px; padding: 0 4px; }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        .bar-fill-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; }
+        .bar-fill {
+            width: 70%; max-width: 48px; min-width: 18px;
+            background: #6366f1; border-radius: 4px 4px 0 0;
+            transition: height 0.4s ease; position: relative;
+            cursor: pointer;
+        }
+        .bar-fill:hover { background: #4f46e5; }
+        .bar-fill.secondary { background: #e0e7ff; }
+        .bar-fill.secondary:hover { background: #c7d2fe; }
+        .bar-label { font-size: 10px; color: #999; margin-top: 6px; text-align: center; }
+        .bar-tooltip {
+            display: none; position: absolute; bottom: 100%;
+            left: 50%; transform: translateX(-50%);
+            background: #1a1a1a; color: #fff; font-size: 11px;
+            padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+            margin-bottom: 6px; pointer-events: none;
+        }
+        .bar-fill:hover .bar-tooltip { display: block; }
+
+        .status-bars { display: flex; gap: 12px; flex-wrap: wrap; }
+        .status-bar-item {
+            flex: 1; min-width: 100px; text-align: center;
+        }
+        .status-bar-num {
+            font-size: 22px; font-weight: 700; color: #1a1a1a;
+        }
+        .status-bar-label {
+            font-size: 11px; color: #999; margin-top: 2px;
+        }
+        .status-bar-track {
+            height: 4px; background: #eee; border-radius: 2px;
+            margin-top: 8px; overflow: hidden;
+        }
+        .status-bar-fill {
+            height: 100%; border-radius: 2px;
+        }
+        .status-bar-fill.pending { background: #eab308; }
+        .status-bar-fill.confirmed { background: #3b82f6; }
+        .status-bar-fill.in_production { background: #2563eb; }
+        .status-bar-fill.completed { background: #22c55e; }
+        .status-bar-fill.shipped { background: #a855f7; }
+        .status-bar-fill.signed { background: #16a34a; }
+
+        .status-bar-item { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; border-radius: 10px; padding: 12px 8px 10px; }
+        .status-bar-item:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+
+        /* Status drill-down modal */
+        .drilldown-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 110; overflow-y: auto;
+        }
+        .drilldown-overlay.show { display: block; }
+
+        .drilldown-dialog {
+            background: #fff; border-radius: 16px;
+            max-width: 900px; margin: 40px auto;
+            padding: 32px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .drilldown-close {
+            position: absolute; top: 16px; right: 16px;
+            width: 36px; height: 36px; border-radius: 10px;
+            border: none; background: #f5f5f5;
+            font-size: 20px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .drilldown-close:hover { background: #eee; color: #1a1a1a; }
+
+        .drilldown-dialog h3 {
+            font-size: 17px; font-weight: 600; color: #1a1a1a;
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .drilldown-table { width: 100%; border-collapse: collapse; }
+        .drilldown-table th {
+            text-align: left; font-size: 11px; font-weight: 600;
+            color: #999; text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 10px 14px; border-bottom: 2px solid #f0f0f0;
+            background: #fafafa;
+        }
+        .drilldown-table td {
+            padding: 10px 14px; border-bottom: 1px solid #f9f9f9;
+            font-size: 13px; color: #444;
+        }
+        .drilldown-table tr:hover td { background: #fafafa; }
+        .drilldown-table .order-link {
+            color: #6366f1; cursor: pointer; font-weight: 500;
+            text-decoration: none; transition: color 0.15s;
+        }
+        .drilldown-table .order-link:hover { color: #4f46e5; text-decoration: underline; }
+        .drilldown-table .money { text-align: right; font-weight: 600; }
+        .drilldown-summary {
+            font-size: 13px; color: #999; margin-top: 16px; padding-top: 12px;
+            border-top: 1px solid #f0f0f0;
+        }
+
         @media (max-width: 800px) {
             .layout { flex-direction: column; }
             .sidebar { width: 100%; max-height: 300px; border-right: none; border-bottom: 1px solid #eee; }
@@ -547,7 +819,24 @@
             <span class="header-title">报价系统</span>
         </div>
         <div class="header-right">
-            <span class="user-email" id="userEmail"></span>
+            <div style="position:relative">
+                <button class="header-bell" id="headerBell" title="通知" onclick="toggleNotif()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                    </svg>
+                    <span class="header-bell-badge" id="bellBadge">0</span>
+                </button>
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div class="notif-header">
+                        <span>消息通知</span>
+                        <button class="notif-mark-all" id="btnMarkAllRead" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
+                    </div>
+                    <div class="notif-list" id="notifList"></div>
+                </div>
+            </div>
+            <a href="freight-calculator.html" class="btn-freight">运费计算器</a>
+            <a href="profile.html" class="user-email" id="userEmail" title="编辑个人资料"></a>
             <button class="btn-logout" onclick="logout()">退出</button>
         </div>
     </header>
@@ -564,64 +853,114 @@
         </aside>
 
         <main class="main">
-            <div class="greeting">
-                <h2>工作台</h2>
-                <p>选择您需要的功能</p>
+            <div class="view-toggle-bar" id="viewToggleBar" style="display:none">
+                <button class="view-toggle-btn active" data-view="workbench" onclick="switchView('workbench')">工作台</button>
+                <button class="view-toggle-btn" data-view="dashboard" onclick="switchView('dashboard')">数据看板</button>
             </div>
 
-            <div class="card-grid">
-                <a href="quote.html" class="card">
-                    <div class="card-icon quote">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                        </svg>
-                    </div>
-                    <h3>报价</h3>
-                    <p>产品报价、运费计算、报价单生成</p>
-                    <span class="badge badge-ready">可用</span>
-                </a>
+            <div id="workbenchView">
+                <div class="greeting">
+                    <h2>工作台</h2>
+                    <p>选择您需要的功能</p>
+                </div>
 
-                <a href="factory.html" class="card">
-                    <div class="card-icon factory">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="2" y="7" width="20" height="15" rx="2"/>
-                            <path d="M8 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/>
-                        </svg>
-                    </div>
-                    <h3>作业流程</h3>
-                    <p>工序跟踪、生产管理、进度查询</p>
-                    <span class="badge badge-ready">可用</span>
-                </a>
+                <div class="card-grid">
+                    <a href="quote.html" class="card">
+                        <div class="card-icon quote">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                        </div>
+                        <h3>报价</h3>
+                        <p>产品报价、运费计算、报价单生成</p>
+                        <span class="badge badge-ready">可用</span>
+                    </a>
 
-                <a href="customers.html" class="card">
-                    <div class="card-icon client">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                            <circle cx="9" cy="7" r="4"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                    </div>
-                    <h3>我的客户</h3>
-                    <p>客户管理、历史报价、删除记录</p>
-                    <span class="badge badge-ready">可用</span>
-                </a>
+                    <a href="factory.html" class="card">
+                        <div class="card-icon factory">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="7" width="20" height="15" rx="2"/>
+                                <path d="M8 7V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v3"/>
+                            </svg>
+                        </div>
+                        <h3>作业流程</h3>
+                        <p>工序跟踪、生产管理、进度查询</p>
+                        <span class="badge badge-ready">可用</span>
+                    </a>
 
-                <a href="billing.html" class="card">
-                    <div class="card-icon finance">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="2" y="4" width="20" height="16" rx="2"/>
-                            <line x1="12" y1="8" x2="12" y2="16"/>
-                            <line x1="8" y1="12" x2="16" y2="12"/>
-                        </svg>
+                    <a href="customers.html" class="card">
+                        <div class="card-icon client">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                        </div>
+                        <h3>我的客户</h3>
+                        <p>客户管理、历史报价、删除记录</p>
+                        <span class="badge badge-ready">可用</span>
+                    </a>
+
+                    <a href="billing.html" class="card">
+                        <div class="card-icon finance">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                                <line x1="12" y1="8" x2="12" y2="16"/>
+                                <line x1="8" y1="12" x2="16" y2="12"/>
+                            </svg>
+                        </div>
+                        <h3>财务</h3>
+                        <p>月付结算、对账单生成、收款管理</p>
+                        <span class="badge badge-ready">可用</span>
+                    </a>
+                </div>
+            </div>
+
+            <div id="dashboardView" style="display:none">
+                <div class="dash-stats-row" id="dashStatsRow">
+                    <div class="dash-stat-card"><div class="dash-stat-label">总订单数</div><div class="dash-stat-value" id="dashTotalOrders">-</div></div>
+                    <div class="dash-stat-card"><div class="dash-stat-label">总销售额</div><div class="dash-stat-value" id="dashTotalRevenue">-</div></div>
+                    <div class="dash-stat-card"><div class="dash-stat-label">本月订单</div><div class="dash-stat-value" id="dashMonthOrders">-</div></div>
+                    <div class="dash-stat-card"><div class="dash-stat-label">本月销售额</div><div class="dash-stat-value" id="dashMonthRevenue">-</div><div class="dash-stat-sub" id="dashMonthSub"></div></div>
+                </div>
+
+                <div class="dash-two-col">
+                    <div class="dash-section">
+                        <h3>销售业绩排名</h3>
+                        <table class="dash-table">
+                            <thead><tr><th class="rank">#</th><th>销售</th><th class="count">订单数</th><th class="money">销售额</th></tr></thead>
+                            <tbody id="dashSalesTable"></tbody>
+                        </table>
                     </div>
-                    <h3>财务</h3>
-                    <p>月付结算、对账单生成、收款管理</p>
-                    <span class="badge badge-ready">可用</span>
-                </a>
+                    <div class="dash-section">
+                        <h3>月度趋势</h3>
+                        <div class="bar-chart" id="dashMonthChart"></div>
+                        <div style="display:flex;gap:16px;justify-content:center;margin-top:8px;font-size:11px;color:#999">
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#6366f1;vertical-align:middle;margin-right:4px"></span>销售额</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#e0e7ff;vertical-align:middle;margin-right:4px"></span>订单数</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dash-section">
+                    <h3>订单状态分布</h3>
+                    <div class="status-bars" id="dashStatusBars"></div>
+                </div>
+
+                <div class="dash-section">
+                    <h3>导出报表</h3>
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <input type="date" id="exportDateFrom" style="height:36px;padding:0 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;color:#333;background:#fafafa;outline:none">
+                        <span style="color:#999;font-size:13px">至</span>
+                        <input type="date" id="exportDateTo" style="height:36px;padding:0 10px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;color:#333;background:#fafafa;outline:none">
+                        <button onclick="exportOrdersCSV()" style="height:36px;padding:0 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer">导出 CSV</button>
+                        <span style="font-size:11px;color:#bbb">CSV 可用 Excel / WPS / Google Sheets 打开</span>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -643,6 +982,11 @@
         </div>
     </div>
 
+    <!-- Status drill-down overlay -->
+    <div class="drilldown-overlay" id="drilldownOverlay" onclick="if(event.target===this)closeStatusDrilldown()">
+        <div class="drilldown-dialog" id="drilldownDialog"></div>
+    </div>
+
     <!-- Chat overlay -->
     <div class="chat-overlay" id="chatOverlay">
         <div class="chat-dialog">
@@ -660,18 +1004,89 @@
         </div>
     </div>
 
+    <!-- Business card overlay -->
+    <div class="bizcard-overlay" id="bizcardOverlay" onclick="if(event.target===this)closeBizcard()">
+        <div class="bizcard" id="bizcardContent"></div>
+    </div>
+
     <script src="../shared/pocketbase.umd.js"></script>
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db, collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc, setDoc, addDoc, serverTimestamp, where, limit, subscribe, getDoc } from "../shared/pocketbase-init.js";
+        import { auth, getCurrentUser, logout as firebaseLogout, db, collection, getDocs, query, orderBy, updateDoc, deleteDoc, doc, setDoc, addDoc, serverTimestamp, where, limit, subscribe, getDoc, pb, auditLog } from "../shared/pocketbase-init.js";
+
 
         const user = await getCurrentUser();
         if (!user) {
             window.location.href = '../auth/login.html';
         }
 
-        document.getElementById('userEmail').textContent = user.email;
-
         const isAdmin = user.email === 'sales01@test.com';
+
+        // User profiles cache for real-time display
+        let userProfileMap = {};
+        async function loadUserProfiles() {
+            try {
+                const users = await pb.collection('users').getFullList({ fields: 'id,email,displayName,phone,contacts,bio' });
+                userProfileMap = {};
+                users.forEach(u => { userProfileMap[u.email] = u; });
+                updateHeaderDisplay();
+                if (allClients.length) renderClientList(allClients);
+            } catch (e) { console.warn('loadUserProfiles failed:', e); }
+        }
+
+        // Real-time subscription for user profile changes
+        // (users collection doesn't support direct realtime, poll every 30s)
+        const usersUnsub = setInterval(async () => {
+            try {
+                const users = await pb.collection('users').getFullList({ fields: 'id,email,displayName,phone,contacts,bio' });
+                const oldMap = JSON.stringify(userProfileMap);
+                userProfileMap = {};
+                users.forEach(u => { userProfileMap[u.email] = u; });
+                if (JSON.stringify(userProfileMap) !== oldMap) {
+                    updateHeaderDisplay();
+                    if (allClients.length) renderClientList(allClients);
+                }
+            } catch (e) { /* silent */ }
+        }, 30000);
+
+        function updateHeaderDisplay() {
+            const profile = userProfileMap[user.email];
+            const displayName = profile && profile.displayName;
+            const el = document.getElementById('userEmail');
+            if (displayName) {
+                el.textContent = displayName + ' (' + user.email + ')';
+            } else {
+                el.textContent = user.email;
+            }
+        }
+
+        function showBizcard(email) {
+            const profile = userProfileMap[email];
+            if (!profile) { alert('该业务员暂未填写资料'); return; }
+            const name = profile.displayName || email.split('@')[0];
+            const contacts = profile.contacts || [];
+            let contactHtml = '';
+            if (contacts.length > 0) {
+                contactHtml = '<div class="bizcard-section"><div class="bizcard-label">联系方式</div>' +
+                    contacts.map(c => '<span class="bizcard-contact-item"><strong>' + escHTML(c.type) + ':</strong> ' + escHTML(c.value) + '</span>').join('') +
+                    '</div>';
+            }
+            let phoneHtml = profile.phone ? '<div class="bizcard-section"><div class="bizcard-label">电话</div><div class="bizcard-value">' + escHTML(profile.phone) + '</div></div>' : '';
+            let bioHtml = profile.bio ? '<div class="bizcard-section"><div class="bizcard-label">简介</div><div class="bizcard-bio">' + escHTML(profile.bio) + '</div></div>' : '';
+            document.getElementById('bizcardContent').innerHTML = `
+                <div class="bizcard-name">${escHTML(name)}</div>
+                <div class="bizcard-email">${escHTML(email)}</div>
+                ${phoneHtml}
+                ${contactHtml}
+                ${bioHtml}
+                <div class="bizcard-close"><button onclick="closeBizcard()">关闭</button></div>
+            `;
+            document.getElementById('bizcardOverlay').classList.add('show');
+        }
+        window.showBizcard = showBizcard;
+
+        window.closeBizcard = function() {
+            document.getElementById('bizcardOverlay').classList.remove('show');
+        };
 
         // Admin tool: migrate old published orders (fix ownerUid for client visibility)
         window.migrateOldOrders = async function() {
@@ -796,9 +1211,6 @@
                 });
                 allClients.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'zh'));
 
-                // Start conversation listener for unread dots
-                startConversationListener();
-
                 renderClientList(allClients);
             } catch (e) {
                 console.error('加载客户列表失败:', e);
@@ -806,29 +1218,123 @@
             }
         }
 
-        function startConversationListener() {
-            const pollConversations = async () => {
-                try {
-                    unreadUids.clear();
-                    for (const client of allClients) {
-                        try {
-                            const convSnap = await getDoc(doc(db, 'users', client.uid, 'conversations', 'main'));
-                            if (convSnap.exists() && convSnap.data().unreadForSales) {
-                                unreadUids.add(client.uid);
-                            }
-                        } catch (e) { /* skip */ }
-                    }
-                    renderClientList(allClients);
-                } catch (err) {
-                    console.error('ConvListener error:', err);
-                }
-            };
-            pollConversations();
-            // Real-time subscription instead of 3s polling
-            subscribe('conversations', () => {
-                pollConversations();
-            });
+        // ---- Bell Notification (same pattern as client/user.html) ----
+        let notifList = [];
+
+        function updateBellBadge() {
+            const count = notifList.filter(function(n) { return !n.read; }).length;
+            const badge = document.getElementById('bellBadge');
+            if (badge) {
+                if (count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.classList.add('show'); }
+                else { badge.classList.remove('show'); }
+            }
         }
+
+        function renderNotifList() {
+            const container = document.getElementById('notifList');
+            if (!container) return;
+            if (notifList.length === 0) {
+                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>暂无新消息</p></div>';
+                return;
+            }
+            let html = '';
+            notifList.forEach(function(n) {
+                const time = n.createdAt ? new Date(n.createdAt).toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                html += '<div class="notif-item' + (n.read ? '' : ' unread') + '" data-nid="' + n.id + '" data-uid="' + escHTML(n._uid || '') + '" onclick="clickNotif(this)">';
+                html += '<div class="notif-dot' + (n.read ? ' read' : '') + '"></div>';
+                html += '<div style="flex-shrink:0;margin-top:2px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>';
+                html += '<div class="notif-content"><div class="notif-title">' + escHTML(n.title || '') + '</div>';
+                html += '<div class="notif-body">' + escHTML(n.body || '') + '</div></div>';
+                html += '<div class="notif-time">' + time + '</div>';
+                html += '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        window.toggleNotif = function() {
+            const dd = document.getElementById('notifDropdown');
+            dd.classList.toggle('show');
+        };
+
+        window.clickNotif = async function(el) {
+            const nid = el.dataset.nid;
+            const uid = el.dataset.uid;
+            document.getElementById('notifDropdown').classList.remove('show');
+            if (uid) {
+                const n = notifList.find(function(x) { return x.id === nid; });
+                if (n) n.read = true;
+                updateBellBadge();
+                renderNotifList();
+                const client = allClients.find(function(c) { return c.uid === uid; });
+                if (client) openChatForClient(uid, client.name || '');
+            }
+        };
+
+        window.markAllNotifRead = async function() {
+            notifList.forEach(function(n) { n.read = true; });
+            updateBellBadge();
+            renderNotifList();
+        };
+
+        window.dismissBellFor = function(uid) {
+            notifList = notifList.filter(function(n) { return n._uid !== uid; });
+            unreadUids.delete(uid);
+            updateBellBadge();
+            renderNotifList();
+            renderClientList(allClients);
+        };
+
+        // Close dropdown on outside click
+        document.addEventListener('click', function(e) {
+            const dd = document.getElementById('notifDropdown');
+            const bell = document.getElementById('headerBell');
+            if (dd && dd.classList.contains('show') && !dd.contains(e.target) && e.target !== bell && !bell.contains(e.target)) {
+                dd.classList.remove('show');
+            }
+        });
+
+        // Poll conversations for unread messages
+        async function loadBellNotifications() {
+            try {
+                unreadUids.clear();
+                const newNotifList = [];
+                const convSnap = await getDocs(query(
+                    collection(db, 'conversations'),
+                    where('salesEmail', '==', user.email)
+                ));
+                convSnap.forEach(function(d) {
+                    const data = d.data();
+                    if (data.unreadForSales > 0) {
+                        unreadUids.add(data.ownerUid);
+                        const client = allClients.find(function(c) { return c.uid === data.ownerUid; });
+                        const nid = 'chat_' + data.ownerUid;
+                        const prevItem = notifList.find(function(n) { return n.id === nid; });
+                        newNotifList.push({
+                            id: nid,
+                            _uid: data.ownerUid,
+                            _convId: d.id,
+                            type: 'chat',
+                            title: '客户' + (client ? client.name : (data.customerName || '未知客户')) + '发来消息，请注意查收',
+                            body: data.lastMessage || '',
+                            read: prevItem ? prevItem.read : false,
+                            createdAt: data.lastTimestamp || new Date().toISOString()
+                        });
+                    }
+                });
+                notifList = newNotifList;
+                updateBellBadge();
+                renderNotifList();
+                renderClientList(allClients);
+            } catch (err) {
+                console.error('Bell load error:', err);
+            }
+        }
+
+        loadBellNotifications();
+        setInterval(loadBellNotifications, 5000);
+        subscribe('conversations', function() {
+            loadBellNotifications();
+        }, 'salesEmail = "' + user.email + '"');
 
 
         function renderClientList(clients) {
@@ -841,8 +1347,10 @@
                 const name = c.name || '未命名';
                 const country = c.country || '-';
                 let nameHtml = escHTML(name);
-                if (isAdmin && c.assignedTo) {
-                    nameHtml += ' <span style="font-size:11px;color:#999;font-weight:400">(' + escHTML(c.assignedTo.split('@')[0]) + ')</span>';
+                if (c.assignedTo && (isAdmin || c.assignedTo !== user.email)) {
+                    const spProfile = userProfileMap[c.assignedTo];
+                    const spName = spProfile && spProfile.displayName ? spProfile.displayName : c.assignedTo.split('@')[0];
+                    nameHtml += ' <span class="salesperson-tag" onclick="event.stopPropagation();showBizcard(\'' + escHTML(c.assignedTo) + '\')" title="查看业务员资料">' + escHTML(spName) + '</span>';
                 }
                 const dotHtml = unreadUids.has(c.uid) ? '<span class="unread-dot"></span>' : '';
                 let pmHtml = '';
@@ -1240,6 +1748,11 @@
                 html += '</div>';
             }
 
+            // Internal notes (sales-only, client never sees this)
+            html += '<div class="detail-section"><h4>内部备注 <span style="font-weight:400;font-size:11px;color:#999">(仅销售可见)</span></h4>';
+            html += '<textarea id="editNotes" style="width:100%;min-height:72px;padding:10px 12px;border:1px solid #e8e8e8;border-radius:8px;font-size:13px;color:#1a1a1a;background:#fafafa;outline:none;resize:vertical;font-family:inherit;line-height:1.5" placeholder="添加内部备注...">' + escHTML(o.notes || '') + '</textarea>';
+            html += '</div>';
+
             // Factory process
             html += '<div class="detail-section"><h4>作业流程</h4>';
             if (o.process && o.process.steps && o.process.steps.length > 0) {
@@ -1284,6 +1797,25 @@
 
             container.innerHTML = html;
 
+            // Auto-save notes on blur (independent of the main save button)
+            const notesField = document.getElementById('editNotes');
+            if (notesField) {
+                notesField.addEventListener('blur', async function() {
+                    const newNotes = this.value;
+                    const oldNotes = o.notes || '';
+                    if (newNotes === oldNotes) return;
+                    try {
+                        await updateDoc(doc(db, 'users', clientUid, 'quotes', o.id), { notes: newNotes });
+                        if (o.publishedByUid) {
+                            const srId = o.originalRecordId || o.id;
+                            await updateDoc(doc(db, 'users', o.publishedByUid, 'quotes', srId), { notes: newNotes });
+                        }
+                        o.notes = newNotes;
+                        auditLog(o.id, 'note_update', '备注', oldNotes || '空', newNotes);
+                    } catch (e) { console.warn('备注自动保存失败:', e); }
+                });
+            }
+
         }
 
         window.showOrderEdit = showOrderEdit;
@@ -1300,6 +1832,8 @@
 
         let _pendingSave = null;
 
+        const _statusLabelsForLog = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+
         async function performSave(clientUid, orderId, updateData, originalOrder) {
             try {
                 await updateDoc(doc(db, 'users', clientUid, 'quotes', orderId), updateData);
@@ -1312,6 +1846,20 @@
                     } catch (syncErr) {
                         console.error('同步到业务员端失败:', syncErr);
                     }
+                }
+
+                // Audit logging for status change
+                const oldStatus = originalOrder.status || 'pending';
+                const newStatus = updateData.status || 'pending';
+                if (oldStatus !== newStatus) {
+                    auditLog(orderId, 'status_change', '状态', _statusLabelsForLog[oldStatus] || oldStatus, _statusLabelsForLog[newStatus] || newStatus);
+                }
+
+                // Audit logging for notes change
+                const oldNotes = originalOrder.notes || '';
+                const newNotes = updateData.notes || '';
+                if (oldNotes !== newNotes) {
+                    auditLog(orderId, 'note_update', '备注', oldNotes || '空', newNotes);
                 }
 
                 const btn = document.getElementById('btnSaveEdit');
@@ -1356,7 +1904,8 @@
                 fixing: document.getElementById('editFixing')?.value || '',
                 status: newStatus,
                 totalLetterPrice, surfacePrice, paintPrice, powerPrice, laborFee,
-                totalPrice
+                totalPrice,
+                notes: document.getElementById('editNotes')?.value || ''
             };
             if (freightData) updateData.freight = freightData;
 
@@ -1468,6 +2017,7 @@
 
         // ---- Chat ----
         let _chatUid = null;
+        let _chatConvId = null;
         let _chatPollInterval = null;
 
         function formatChatTime(ts) {
@@ -1497,21 +2047,62 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        window.openChatForClient = function(uid, name) {
+        window.openChatForClient = async function(uid, name) {
             _chatUid = uid;
+            dismissBellFor(uid);
             document.getElementById('chatTitle').textContent = (name || '对话') + (isAdmin ? ' (只读)' : '');
             document.getElementById('chatMessages').innerHTML = '<div class="empty">加载中...</div>';
             document.getElementById('chatInputArea').style.display = isAdmin ? 'none' : 'flex';
             document.getElementById('chatOverlay').classList.add('show');
 
-            // Mark unread as false
-            setDoc(doc(db, 'users', uid, 'conversations', 'main'), { unreadForSales: false }, { merge: true }).catch(() => {});
+            // Find or create the conversation (one conversation per client, always)
+            try {
+                // Step 1: exact match by ownerUid + salesEmail
+                const convSnap = await getDocs(query(
+                    collection(db, 'conversations'),
+                    where('ownerUid', '==', uid),
+                    where('salesEmail', '==', user.email)
+                ));
+                convSnap.forEach(d => { _chatConvId = d.id; });
 
-            // Poll messages every 2 seconds
+                // Step 2: fallback — any conversation for this client (regardless of salesEmail)
+                if (!_chatConvId) {
+                    const fallbackSnap = await getDocs(query(
+                        collection(db, 'conversations'),
+                        where('ownerUid', '==', uid)
+                    ));
+                    fallbackSnap.forEach(d => { _chatConvId = d.id; });
+                    // Update salesEmail to current salesperson so future lookups match
+                    if (_chatConvId) {
+                        updateDoc(doc(db, 'conversations', _chatConvId), {
+                            salesEmail: user.email, salesUid: user.id
+                        }).catch(() => {});
+                    }
+                }
+
+                // Step 3: only create if no conversation exists at all
+                if (!_chatConvId) {
+                    let customerName = name || '';
+                    let customerEmail = '';
+                    const cpSnap = await getDocs(query(collection(db, 'clientProfiles'), where('uid', '==', uid)));
+                    cpSnap.forEach(d => { customerName = d.data().name || customerName; customerEmail = d.data().contactEmail || ''; });
+                    const newConv = await addDoc(collection(db, 'conversations'), {
+                        ownerUid: uid, salesEmail: user.email, salesUid: user.id,
+                        customerEmail, customerName,
+                        lastMessage: '', lastTimestamp: new Date().toISOString(),
+                        unreadForSales: 0, unreadForCustomer: 0
+                    });
+                    _chatConvId = newConv.id;
+                }
+                // Mark unread as read
+                updateDoc(doc(db, 'conversations', _chatConvId), { unreadForSales: 0 }).catch(() => {});
+            } catch (e) { console.warn('Chat init error:', e); }
+
+            // Poll messages by conversationId
             const pollMessages = async () => {
                 if (!_chatUid || _chatUid !== uid) return;
                 try {
-                    const q = query(collection(db, 'users', uid, 'conversations', 'main', 'messages'), orderBy('timestamp', 'asc'));
+                    const q = query(collection(db, 'messages'), where('conversationId', '==', _chatConvId), orderBy('timestamp', 'asc'));
                     const snap = await getDocs(q);
                     const msgs = [];
                     snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
@@ -1528,6 +2119,7 @@
         window.closeChat = function() {
             document.getElementById('chatOverlay').classList.remove('show');
             _chatUid = null;
+            _chatConvId = null;
             if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
         };
 
@@ -1535,24 +2127,24 @@
             const input = document.getElementById('chatInput');
             const btn = document.getElementById('btnChatSend');
             const text = input.value.trim();
-            if (!text || !_chatUid) return;
+            if (!text || !_chatUid || !_chatConvId) return;
 
             btn.disabled = true;
             input.disabled = true;
 
             try {
-                await setDoc(doc(db, 'users', _chatUid, 'conversations', 'main'), {
-                    salesEmail: user.email,
+                const now = new Date().toISOString();
+                await updateDoc(doc(db, 'conversations', _chatConvId), {
                     lastMessage: text,
-                    lastTimestamp: serverTimestamp(),
-                    unreadForSales: false,
-                    unreadForCustomer: true
-                }, { merge: true });
+                    lastTimestamp: now,
+                    unreadForCustomer: 1
+                });
 
-                await addDoc(collection(db, 'users', _chatUid, 'conversations', 'main', 'messages'), {
+                await addDoc(collection(db, 'messages'), {
+                    conversationId: _chatConvId,
                     from: user.email,
                     text,
-                    timestamp: serverTimestamp()
+                    timestamp: now
                 });
 
                 input.value = '';
@@ -1576,9 +2168,268 @@
             this.style.height = Math.min(this.scrollHeight, 80) + 'px';
         });
 
+        // ---- Data Dashboard (admin only) ----
+        let _dashData = null;
+
+        window.switchView = function(view) {
+            document.querySelectorAll('.view-toggle-btn').forEach(b => {
+                b.classList.toggle('active', b.dataset.view === view);
+            });
+            document.getElementById('workbenchView').style.display = view === 'workbench' ? 'block' : 'none';
+            document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
+            if (view === 'dashboard' && !_dashData) loadDashboard();
+        };
+
+        async function loadDashboard() {
+            try {
+                const records = await pb.collection('quotes').getFullList({ sort: '-createdAt', $autoCancel: false });
+                _dashData = records;
+
+                // Summary stats
+                const now = new Date();
+                const thisMonth = now.getMonth();
+                const thisYear = now.getFullYear();
+                let totalRevenue = 0, monthRevenue = 0, monthOrders = 0;
+                const bySales = {}; // email -> { count, revenue }
+                const byMonth = {}; // 'YYYY-MM' -> { count, revenue }
+                const byStatus = {}; // status -> count
+
+                records.forEach(r => {
+                    const price = r.totalPrice || 0;
+                    totalRevenue += price;
+
+                    const d = r.createdAt ? new Date(r.createdAt) : null;
+                    if (d) {
+                        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                        if (!byMonth[key]) byMonth[key] = { count: 0, revenue: 0 };
+                        byMonth[key].count++;
+                        byMonth[key].revenue += price;
+
+                        if (d.getFullYear() === thisYear && d.getMonth() === thisMonth) {
+                            monthRevenue += price;
+                            monthOrders++;
+                        }
+                    }
+
+                    const sales = r.publishedBy;
+                    if (sales) {
+                        if (!bySales[sales]) bySales[sales] = { count: 0, revenue: 0 };
+                        bySales[sales].count++;
+                        bySales[sales].revenue += price;
+                    }
+
+                    const st = r.status || 'pending';
+                    if (!byStatus[st]) byStatus[st] = 0;
+                    byStatus[st]++;
+                });
+
+                document.getElementById('dashTotalOrders').textContent = records.length;
+                document.getElementById('dashTotalRevenue').textContent = '¥' + totalRevenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('dashMonthOrders').textContent = monthOrders;
+                document.getElementById('dashMonthRevenue').textContent = '¥' + monthRevenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                // Average per order this month
+                const avg = monthOrders > 0 ? monthRevenue / monthOrders : 0;
+                document.getElementById('dashMonthSub').textContent = '均单 ¥' + avg.toFixed(2);
+
+                // Sales ranking table
+                const salesList = Object.entries(bySales).sort((a, b) => b[1].revenue - a[1].revenue);
+                document.getElementById('dashSalesTable').innerHTML = salesList.map(([email, stats], i) => {
+                    const name = (userProfileMap[email] && userProfileMap[email].displayName) || email.split('@')[0];
+                    return '<tr>' +
+                        '<td class="rank">' + (i + 1) + '</td>' +
+                        '<td>' + escHTML(name) + ' <span style="font-size:11px;color:#999">' + escHTML(email) + '</span></td>' +
+                        '<td class="count">' + stats.count + '</td>' +
+                        '<td class="money">¥' + stats.revenue.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</td>' +
+                        '</tr>';
+                }).join('') || '<tr><td colspan="4" style="text-align:center;color:#ccc;padding:20px">暂无数据</td></tr>';
+
+                // Monthly trend (last 12 months)
+                const monthKeys = [];
+                for (let i = 11; i >= 0; i--) {
+                    const d = new Date(thisYear, thisMonth - i, 1);
+                    monthKeys.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+                }
+                const maxRevenue = Math.max(1, ...monthKeys.map(k => (byMonth[k] ? byMonth[k].revenue : 0)));
+                const maxCount = Math.max(1, ...monthKeys.map(k => (byMonth[k] ? byMonth[k].count : 0)));
+                const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+                document.getElementById('dashMonthChart').innerHTML = monthKeys.map(k => {
+                    const m = byMonth[k] || { count: 0, revenue: 0 };
+                    const hRev = Math.max(4, (m.revenue / maxRevenue) * 140);
+                    const hCnt = Math.max(4, (m.count / maxCount) * 140);
+                    const label = monthNames[parseInt(k.split('-')[1]) - 1];
+                    return '<div class="bar-col">' +
+                        '<div class="bar-fill-wrap" style="height:160px">' +
+                        '<div class="bar-fill" style="height:' + hRev + 'px" title="¥' + m.revenue.toLocaleString() + '">' +
+                        '<span class="bar-tooltip">¥' + m.revenue.toLocaleString() + '</span></div>' +
+                        '<div class="bar-fill secondary" style="height:' + hCnt + 'px;margin-left:2px" title="' + m.count + '单">' +
+                        '<span class="bar-tooltip">' + m.count + '单</span></div>' +
+                        '</div>' +
+                        '<div class="bar-label">' + label + '</div></div>';
+                }).join('');
+
+                // Status distribution
+                const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+                const statusColors = { pending:'#eab308', confirmed:'#3b82f6', in_production:'#2563eb', completed:'#22c55e', shipped:'#a855f7', signed:'#16a34a' };
+                const totalOrders = records.length || 1;
+                document.getElementById('dashStatusBars').innerHTML = Object.entries(statusLabels).map(([st, label]) => {
+                    const cnt = byStatus[st] || 0;
+                    const pct = Math.round(cnt / totalOrders * 100);
+                    return '<div class="status-bar-item" onclick="showStatusDrilldown(\'' + st + '\')" title="点击查看 ' + label + ' 订单">' +
+                        '<div class="status-bar-num">' + cnt + '</div>' +
+                        '<div class="status-bar-label">' + label + '</div>' +
+                        '<div class="status-bar-track"><div class="status-bar-fill ' + st + '" style="width:' + pct + '%"></div></div>' +
+                        '</div>';
+                }).join('');
+
+            } catch (e) {
+                console.error('Dashboard load error:', e);
+            }
+        }
+
+        // ---- CSV Export ----
+        function csvEscape(v) {
+            if (v == null) return '';
+            var s = String(v);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                return '"' + s.replace(/"/g, '""') + '"';
+            }
+            return s;
+        }
+
+        window.exportOrdersCSV = function() {
+            if (!_dashData || _dashData.length === 0) { alert('暂无数据可导出'); return; }
+
+            var from = document.getElementById('exportDateFrom').value;
+            var to = document.getElementById('exportDateTo').value;
+            var fromDate = from ? new Date(from + 'T00:00:00') : null;
+            var toDate = to ? new Date(to + 'T23:59:59') : null;
+
+            var filtered = _dashData.filter(function(r) {
+                if (!r.createdAt) return true;
+                var d = new Date(r.createdAt);
+                if (fromDate && d < fromDate) return false;
+                if (toDate && d > toDate) return false;
+                return true;
+            });
+
+            var statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+            var headers = ['报价编号', '客户名', '产品名称', '金额', '状态', '销售', '日期'];
+            var rows = [headers.map(csvEscape).join(',')];
+
+            var total = 0;
+            filtered.forEach(function(r) {
+                var status = statusLabels[r.status] || r.status || '待确认';
+                var sales = r.publishedBy ? r.publishedBy.split('@')[0] : '';
+                var date = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-CN') : '';
+                var price = r.totalPrice || 0;
+                total += price;
+                rows.push([
+                    csvEscape(r.quoteNumber || ''),
+                    csvEscape(r.customerName || ''),
+                    csvEscape(r.productName || ''),
+                    price.toFixed(2),
+                    csvEscape(status),
+                    csvEscape(sales),
+                    csvEscape(date)
+                ].join(','));
+            });
+
+            rows.push('合计,,,' + total.toFixed(2) + ',,,');
+
+            var bom = '﻿';
+            var csv = bom + rows.join('\n');
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            var label = (from || '全部') + (to ? '_至_' + to : '');
+            a.href = url;
+            a.download = '订单报表_' + label + '.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        // ---- Status Drill-Down ----
+        const _statusDrillLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+        const _statusDrillSalesCache = {};
+
+        function lookupSalesName(email) {
+            if (_statusDrillSalesCache[email]) return _statusDrillSalesCache[email];
+            if (userProfileMap[email] && userProfileMap[email].displayName) {
+                _statusDrillSalesCache[email] = userProfileMap[email].displayName;
+                return userProfileMap[email].displayName;
+            }
+            var name = email ? email.split('@')[0] : '';
+            _statusDrillSalesCache[email] = name;
+            return name;
+        }
+
+        window.showStatusDrilldown = function(status) {
+            if (!_dashData) return;
+            var label = _statusDrillLabels[status] || status;
+            var filtered = _dashData.filter(function(r) { return (r.status || 'pending') === status; });
+            filtered.sort(function(a, b) {
+                return (b.createdAt || '').localeCompare(a.createdAt || '');
+            });
+
+            var totalAmount = 0;
+            var rows = filtered.map(function(r) {
+                var price = r.totalPrice || 0;
+                totalAmount += price;
+                var sales = lookupSalesName(r.publishedBy);
+                var date = r.createdAt ? new Date(r.createdAt).toLocaleDateString('zh-CN') : '';
+                return '<tr>' +
+                    '<td><a class="order-link" onclick="goToOrderDetail(\'' + escAttr(r.id) + '\')">' + escHTML(r.quoteNumber || '-') + '</a></td>' +
+                    '<td>' + escHTML(r.customerName || '') + '</td>' +
+                    '<td>' + escHTML(r.productName || '') + '</td>' +
+                    '<td class="money">¥' + price.toFixed(2) + '</td>' +
+                    '<td>' + escHTML(sales) + '</td>' +
+                    '<td>' + date + '</td>' +
+                    '</tr>';
+            }).join('');
+
+            document.getElementById('drilldownDialog').innerHTML =
+                '<button class="drilldown-close" onclick="closeStatusDrilldown()">&times;</button>' +
+                '<h3>' + label + ' 订单（' + filtered.length + '）</h3>' +
+                '<table class="drilldown-table">' +
+                '<thead><tr><th>报价编号</th><th>客户名</th><th>产品</th><th class="money">金额</th><th>销售</th><th>日期</th></tr></thead>' +
+                '<tbody>' + (rows || '<tr><td colspan="6" style="text-align:center;color:#ccc;padding:20px">暂无订单</td></tr>') + '</tbody>' +
+                '</table>' +
+                '<div class="drilldown-summary">合计：¥' + totalAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</div>';
+
+            document.getElementById('drilldownOverlay').classList.add('show');
+        };
+
+        window.closeStatusDrilldown = function() {
+            document.getElementById('drilldownOverlay').classList.remove('show');
+        };
+
+        // Helper: escape for use in single-quoted HTML attribute values
+        function escAttr(s) { return String(s).replace(/'/g, "&#39;").replace(/"/g, '&quot;'); }
+
+        window.goToOrderDetail = function(quoteId) {
+            window.open('factory-detail.html?id=' + encodeURIComponent(quoteId), '_blank');
+        };
+
+        // Real-time refresh for dashboard (debounced)
+        let _dashRefreshTimer = null;
+        subscribe('quotes', function() {
+            if (!_dashData || document.getElementById('dashboardView').style.display === 'none') return;
+            clearTimeout(_dashRefreshTimer);
+            _dashRefreshTimer = setTimeout(loadDashboard, 500);
+        });
+
         // Initial load
+        await loadUserProfiles();
         loadPaymentMethods();
         loadClients();
+
+        // Show view toggle for admin
+        if (isAdmin) {
+            document.getElementById('viewToggleBar').style.display = 'flex';
+        }
 
         // Real-time subscription: auto-refresh when admin changes client profiles
         let _reloadTimer = null;

@@ -1,9 +1,73 @@
 // PocketBase 共享初始化模块 - 替代 Firebase
 // 用法：HTML 中先加载 <script src="../shared/pocketbase.umd.js"></script>
 //       再 import { ... } from '../shared/pocketbase-init.js'
+//
+// 多账号自动隔离：每个标签页使用独立的 localStorage key
+// 如需跨标签页共享同一账号，URL 加 ?as=标识
+// 例如：/admin/myorders.html?as=sales02
 
-const PB_HOST = window.location.hostname;
-const pb = new PocketBase(`http://${PB_HOST}:8090`);
+// -------- 确定隔离的 localStorage key --------
+var _pbStorageKey;
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var storageKey = params.get('as');
+
+  if (!storageKey) {
+    var prevKey = sessionStorage.getItem('_pb_tab_key');
+    var newKey = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    sessionStorage.setItem('_pb_tab_key', newKey);
+
+    if (prevKey) {
+      var oldData = localStorage.getItem('pocketbase_auth_' + prevKey);
+      if (oldData) {
+        localStorage.setItem('pocketbase_auth_' + newKey, oldData);
+      }
+    }
+
+    storageKey = newKey;
+  }
+
+  _pbStorageKey = 'pocketbase_auth_' + storageKey;
+})();
+
+// -------- 创建隔离的 auth store（不 monkey-patch localStorage）--------
+var _token = '';
+var _model = null;
+var _listeners = [];
+
+try {
+  var raw = localStorage.getItem(_pbStorageKey);
+  if (raw) {
+    var data = JSON.parse(raw);
+    _token = data.token || '';
+    _model = data.record || data.model || null;
+  }
+} catch (e) {}
+
+var _isolatedAuthStore = {
+  get token() { return _token; },
+  get record() { return _model; },
+  get model() { return _model; },
+  get isValid() { return !!_token; },
+  save: function(token, record) {
+    _token = token;
+    _model = record;
+    localStorage.setItem(_pbStorageKey, JSON.stringify({ token: token, record: record }));
+    _listeners.forEach(function(fn) { fn && fn(token, record); });
+  },
+  clear: function() {
+    _token = '';
+    _model = null;
+    localStorage.removeItem(_pbStorageKey);
+    _listeners.forEach(function(fn) { fn && fn('', null); });
+  },
+  onChange: function(callback) {
+    _listeners.push(callback);
+    return function() { _listeners = _listeners.filter(function(f) { return f !== callback; }); };
+  }
+};
+
+const pb = new PocketBase('http://127.0.0.1:8090', _isolatedAuthStore);
 
 // ===== Auth 适配 =====
 export const auth = {
@@ -80,6 +144,10 @@ function _resolve(colOrDb, path, ...subPaths) {
     'billingStatements': 'billing_statements',
     'quotes': 'quotes',
     'users': 'users',
+    'conversations': 'conversations',
+    'messages': 'messages',
+    'myCustomers': 'my_customers',
+    'salespersonProfiles': 'salesperson_profiles',
   };
 
   // collection(db, 'clientProfiles')
@@ -255,6 +323,12 @@ const _colNameMap = {
   'myCustomers': 'my_customers',
   'conversations': 'conversations',
   'messages': 'messages',
+  'salesperson_profiles': 'salesperson_profiles',
+  'users': 'users',
+    'conversations': 'conversations',
+    'messages': 'messages',
+    'myCustomers': 'my_customers',
+    'salespersonProfiles': 'salesperson_profiles',
 };
 
 /**
@@ -272,10 +346,10 @@ export function subscribe(collectionName, callback, filter) {
   try {
     const realName = _colNameMap[collectionName] || collectionName;
     const topic = filter ? `${realName}/?filter=${encodeURIComponent(filter)}` : realName;
-    const unsub = pb.realtime.subscribe(topic, (data) => {
+    const unsubPromise = pb.realtime.subscribe(topic, (data) => {
       callback({ action: data.action, record: data.record });
     });
-    return unsub || (() => {});
+    return () => { unsubPromise.then(fn => { if (fn) fn(); }).catch(() => {}); };
   } catch (e) {
     console.warn('subscribe failed for', collectionName, ':', e.message);
     return () => {};
@@ -292,10 +366,10 @@ export function subscribeRecord(collectionName, recordId, callback) {
   }
   try {
     const realName = _colNameMap[collectionName] || collectionName;
-    const unsub = pb.collection(realName).subscribe(recordId, (data) => {
+    const unsubPromise = pb.collection(realName).subscribe(recordId, (data) => {
       callback({ action: data.action, record: data.record });
     });
-    return unsub || (() => {});
+    return () => { unsubPromise.then(fn => { if (fn) fn(); }).catch(() => {}); };
   } catch (e) {
     console.warn('subscribeRecord failed for', collectionName, recordId, ':', e.message);
     return () => {};
@@ -355,3 +429,48 @@ window.saveQuoteToFirestore = async function(quoteData, freightData, quoteNumber
     } catch (e) { /* ignore */ }
   }
 };
+
+// ===== 订单修改日志 =====
+function _fmtVal(v) {
+  if (v === null || v === undefined) return '空';
+  if (typeof v === 'boolean') return v ? '是' : '否';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+/**
+ * 记录订单修改日志
+ */
+export async function auditLog(quoteId, action, field, oldValue, newValue) {
+  try {
+    const user = pb.authStore.model;
+    const changedBy = user ? user.email : 'unknown';
+    await pb.collection('order_audit_logs').create({
+      quoteId: quoteId,
+      action: action,
+      field: field || '',
+      oldValue: _fmtVal(oldValue),
+      newValue: _fmtVal(newValue),
+      changedBy: changedBy
+    }, { $autoCancel: false });
+  } catch (e) {
+    console.warn('auditLog failed:', e.message);
+  }
+}
+
+/**
+ * 获取订单的修改日志
+ */
+export async function getAuditLogs(quoteId) {
+  try {
+    const records = await pb.collection('order_audit_logs').getFullList({
+      filter: `quoteId = "${quoteId}"`,
+      sort: '-created',
+      $autoCancel: false
+    });
+    return records;
+  } catch (e) {
+    console.warn('getAuditLogs failed:', e.message);
+    return [];
+  }
+}

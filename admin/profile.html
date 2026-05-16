@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料 - 报价系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f5f5; min-height: 100vh;
+        }
+
+        .bg-gradient {
+            position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 30% 20%, rgba(99,102,241,0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 70% 80%, rgba(139,92,246,0.04) 0%, transparent 50%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .header {
+            position: relative; z-index: 1; background: #fff; border-bottom: 1px solid #eee;
+            padding: 0 32px; height: 56px;
+            display: flex; align-items: center; gap: 12px;
+        }
+
+        .btn-back { text-decoration: none; color: #666; font-size: 14px; transition: color 0.15s; }
+        .btn-back:hover { color: #1a1a1a; }
+        .header-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+
+        .main {
+            position: relative; z-index: 1;
+            max-width: 560px; margin: 0 auto; padding: 32px 20px;
+        }
+
+        .card {
+            background: #fff; border: 1px solid #eee; border-radius: 12px;
+            padding: 28px; margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 20px;
+        }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-group label {
+            display: block; font-size: 13px; font-weight: 500;
+            color: #666; margin-bottom: 6px;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; padding: 10px 14px; border: 1px solid #e8e8e8;
+            border-radius: 10px; font-size: 14px; outline: none;
+            transition: border-color 0.2s; background: #fff;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group textarea:focus { border-color: #6366f1; }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        .contact-row {
+            display: flex; gap: 8px; margin-bottom: 8px; align-items: center;
+        }
+        .contact-row input { flex: 1; }
+        .contact-row .contact-type {
+            width: 120px; flex-shrink: 0;
+        }
+        .btn-remove {
+            width: 32px; height: 32px; border-radius: 8px;
+            border: none; background: #fef2f2; color: #dc2626;
+            font-size: 16px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .btn-remove:hover { background: #fecaca; }
+
+        .btn-add {
+            font-size: 13px; color: #6366f1;
+            background: #eef2ff; border: 1px solid #e0e7ff;
+            padding: 6px 14px; border-radius: 8px; cursor: pointer;
+            transition: all 0.15s; margin-top: 4px;
+        }
+        .btn-add:hover { background: #e0e7ff; }
+
+        .btn-save {
+            width: 100%; height: 44px; border-radius: 10px;
+            border: none; background: #1a1a1a; color: #fff;
+            font-size: 15px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; margin-top: 8px;
+        }
+        .btn-save:hover { background: #333; }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            padding: 12px 24px; border-radius: 10px; font-size: 14px;
+            color: #fff; z-index: 999; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #16a34a; }
+        .toast.error { background: #dc2626; }
+
+        .email-display {
+            font-size: 13px; color: #999; margin-bottom: 16px;
+            padding: 8px 12px; background: #fafafa; border-radius: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .header { padding: 0 16px; }
+            .main { padding: 20px 16px; }
+            .card { padding: 24px 20px; }
+            .contact-row { flex-wrap: wrap; }
+            .contact-row .contact-type { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <header class="header">
+        <a href="myorders.html" class="btn-back">← 返回</a>
+        <span class="header-title">个人资料</span>
+    </header>
+
+    <main class="main">
+        <div class="card">
+            <div class="card-title">编辑个人信息</div>
+            <div class="email-display" id="emailDisplay"></div>
+
+            <div class="form-group">
+                <label>姓名</label>
+                <input type="text" id="displayName" placeholder="你的姓名（客户可见）" maxlength="100">
+            </div>
+
+            <div class="form-group">
+                <label>联系电话</label>
+                <input type="text" id="phone" placeholder="手机号或座机" maxlength="50">
+            </div>
+
+            <div class="form-group">
+                <label>联系方式 <span style="color:#999;font-weight:400;font-size:12px;">（微信、WhatsApp等，客户可见）</span></label>
+                <div id="contactsContainer"></div>
+                <button class="btn-add" onclick="addContact()">+ 添加联系方式</button>
+            </div>
+
+            <div class="form-group">
+                <label>简介</label>
+                <textarea id="bio" placeholder="简单介绍自己（客户可见）" maxlength="500"></textarea>
+            </div>
+
+            <button class="btn-save" id="btnSave" onclick="saveProfile()">保存</button>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../shared/pocketbase.umd.js"></script>
+    <script type="module">
+        import { getCurrentUser, pb } from '../shared/pocketbase-init.js';
+
+        let currentUser = null;
+
+        async function init() {
+            currentUser = await getCurrentUser();
+            if (!currentUser) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+            document.getElementById('emailDisplay').textContent = '账号：' + currentUser.email;
+            loadProfile();
+        }
+
+        function loadProfile() {
+            document.getElementById('displayName').value = currentUser.displayName || '';
+            document.getElementById('phone').value = currentUser.phone || '';
+            document.getElementById('bio').value = currentUser.bio || '';
+            renderContacts(currentUser.contacts || []);
+        }
+
+        function renderContacts(contacts) {
+            const container = document.getElementById('contactsContainer');
+            if (!contacts || contacts.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            container.innerHTML = contacts.map((c, i) => `
+                <div class="contact-row">
+                    <select class="contact-type" data-index="${i}">
+                        <option value="微信" ${c.type === '微信' ? 'selected' : ''}>微信</option>
+                        <option value="WhatsApp" ${c.type === 'WhatsApp' ? 'selected' : ''}>WhatsApp</option>
+                        <option value="Line" ${c.type === 'Line' ? 'selected' : ''}>Line</option>
+                        <option value="电话" ${c.type === '电话' ? 'selected' : ''}>电话</option>
+                        <option value="邮箱" ${c.type === '邮箱' ? 'selected' : ''}>邮箱</option>
+                        <option value="其他" ${c.type === '其他' ? 'selected' : ''}>其他</option>
+                    </select>
+                    <input type="text" value="${escHTML(c.value)}" placeholder="联系方式" data-index="${i}">
+                    <button class="btn-remove" onclick="removeContact(${i})" title="删除">×</button>
+                </div>
+            `).join('');
+        }
+
+        function escHTML(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        window.escHTML = escHTML;
+
+        window.addContact = function(type, value) {
+            const contacts = getContactsFromForm();
+            contacts.push({ type: type || '微信', value: value || '' });
+            renderContacts(contacts);
+        };
+
+        window.removeContact = function(index) {
+            const contacts = getContactsFromForm();
+            contacts.splice(index, 1);
+            renderContacts(contacts);
+        };
+
+        function getContactsFromForm() {
+            const container = document.getElementById('contactsContainer');
+            const rows = container.querySelectorAll('.contact-row');
+            const contacts = [];
+            rows.forEach(row => {
+                const select = row.querySelector('select');
+                const input = row.querySelector('input');
+                contacts.push({
+                    type: select ? select.value : '微信',
+                    value: input ? input.value : ''
+                });
+            });
+            return contacts;
+        }
+
+        window.saveProfile = async function() {
+            const btn = document.getElementById('btnSave');
+            const displayName = document.getElementById('displayName').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const contacts = getContactsFromForm().filter(c => c.value.trim());
+            const bio = document.getElementById('bio').value.trim();
+
+            btn.disabled = true;
+            btn.textContent = '保存中...';
+
+            try {
+                const data = { displayName, phone, contacts, bio };
+                await pb.collection('users').update(currentUser.id, data);
+
+                // 同步到 salesperson_profiles（供客户端查询，绕过 auth 集合的权限限制）
+                try {
+                    const spRecords = await pb.collection('salesperson_profiles').getFullList({ filter: `uid = "${currentUser.id}"` });
+                    if (spRecords.length > 0) {
+                        await pb.collection('salesperson_profiles').update(spRecords[0].id, { ...data, email: currentUser.email });
+                    } else {
+                        await pb.collection('salesperson_profiles').create({ uid: currentUser.id, email: currentUser.email, ...data });
+                    }
+                } catch (e) { console.warn('sync salesperson_profiles:', e); }
+
+                const updated = await pb.collection('users').getOne(currentUser.id);
+                currentUser = updated;
+
+                showToast('保存成功', 'success');
+            } catch (e) {
+                console.error('保存失败:', e);
+                showToast('保存失败: ' + (e.message || '未知错误'), 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+        };
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(() => { toast.className = 'toast'; }, 2000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

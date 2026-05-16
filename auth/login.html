@@ -248,7 +248,11 @@
         }
 
         function redirectByRole(email) {
-            window.location.href = isSalesAccount(email) ? '../admin/myorders.html' : '../client/user.html';
+            var base = isSalesAccount(email) ? '../admin/myorders.html' : '../client/user.html';
+            // Preserve ?as= parameter for multi-account isolation
+            var params = new URLSearchParams(window.location.search);
+            var as = params.get('as');
+            window.location.href = as ? (base + '?as=' + encodeURIComponent(as)) : base;
         }
 
         form.addEventListener('submit', async function(e) {

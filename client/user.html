@@ -175,6 +175,144 @@
         .payment-status-tag.finalized { background: #f0fdf4; color: #16a34a; }
         .payment-status-tag.active { background: #f5f5f5; color: #888; }
 
+        /* Manager area in header */
+        .header-mgr {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 8px;
+            cursor: pointer; transition: all 0.15s;
+            border: 1px solid transparent;
+            max-width: 160px; text-decoration: none;
+        }
+        .header-mgr:hover { background: #f5f5f5; border-color: #e8e8e8; }
+        .header-mgr.waiting { opacity: 0.55; cursor: default; }
+        .header-mgr.waiting:hover { background: transparent; border-color: transparent; }
+        .header-mgr-avatar {
+            width: 26px; height: 26px; border-radius: 8px;
+            background: #eef2ff; color: #6366f1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 600; flex-shrink: 0;
+        }
+        .header-mgr.waiting .header-mgr-avatar { background: #f5f5f5; color: #ccc; }
+        .header-mgr-text { line-height: 1.2; min-width: 0; }
+        .header-mgr-label { font-size: 9px; color: #aaa; display: block; }
+        .header-mgr-name {
+            font-size: 12px; font-weight: 500; color: #1a1a1a;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .header-mgr.waiting .header-mgr-name { color: #bbb; }
+
+        /* Chat overlay */
+        .chat-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 300;
+            align-items: center; justify-content: center;
+        }
+        .chat-overlay.show { display: flex; }
+        .chat-dialog {
+            background: #fff; border-radius: 16px;
+            width: 440px; max-width: 92vw; max-height: 580px;
+            display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden;
+        }
+        .chat-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; border-bottom: 1px solid #eee; flex-shrink: 0;
+        }
+        .chat-header-left { display: flex; align-items: center; gap: 10px; }
+        .chat-header-avatar {
+            width: 34px; height: 34px; border-radius: 10px;
+            background: #eef2ff; color: #6366f1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 600; flex-shrink: 0;
+        }
+        .chat-header-info h4 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+        .chat-header-info span { font-size: 12px; color: #999; }
+        .chat-header-actions { display: flex; gap: 6px; }
+        .chat-btn-detail {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #f5f5f5; color: #888;
+            font-size: 13px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            transition: all 0.15s; text-decoration: none;
+        }
+        .chat-btn-detail:hover { background: #e0e7ff; color: #6366f1; }
+        .chat-close {
+            width: 30px; height: 30px; border-radius: 8px;
+            border: none; background: #f5f5f5;
+            font-size: 18px; color: #666; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .chat-close:hover { background: #eee; color: #1a1a1a; }
+        .chat-messages {
+            flex: 1; overflow-y: auto; padding: 16px 18px;
+            display: flex; flex-direction: column; gap: 10px;
+            min-height: 200px; max-height: 360px;
+        }
+        .chat-messages .empty { text-align: center; color: #ccc; font-size: 13px; padding: 60px 0; }
+        .chat-bubble {
+            max-width: 72%; padding: 10px 14px;
+            border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word;
+        }
+        .chat-bubble.left { align-self: flex-start; background: #f5f5f5; color: #333; border-bottom-left-radius: 4px; }
+        .chat-bubble.right { align-self: flex-end; background: #6366f1; color: #fff; border-bottom-right-radius: 4px; }
+        .chat-bubble .time { font-size: 10px; opacity: 0.5; margin-top: 3px; text-align: right; }
+        .chat-input-area {
+            display: flex; gap: 8px; padding: 12px 14px;
+            border-top: 1px solid #eee; flex-shrink: 0;
+        }
+        .chat-input-area input {
+            flex: 1; border: 1px solid #e8e8e8; border-radius: 10px;
+            padding: 10px 14px; font-size: 14px; outline: none;
+            font-family: inherit;
+        }
+        .chat-input-area input:focus { border-color: #6366f1; }
+        .chat-input-area button {
+            padding: 0 18px; border-radius: 10px; border: none;
+            background: #6366f1; color: #fff; font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+        }
+        .chat-input-area button:hover { background: #4f46e5; }
+        .chat-input-area button:disabled { opacity: 0.5; cursor: default; }
+
+        /* Business card overlay */
+        .bizcard-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3); z-index: 320;
+            align-items: center; justify-content: center;
+        }
+        .bizcard-overlay.show { display: flex; }
+        .bizcard {
+            background: #fff; border-radius: 16px; padding: 28px;
+            width: 380px; max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .bizcard-header {
+            display: flex; align-items: center; gap: 14px; margin-bottom: 20px;
+        }
+        .bizcard-avatar {
+            width: 48px; height: 48px; border-radius: 12px;
+            background: #eef2ff; color: #6366f1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 600; flex-shrink: 0;
+        }
+        .bizcard-name { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+        .bizcard-email { font-size: 13px; color: #999; }
+        .bizcard-section { margin-bottom: 14px; }
+        .bizcard-label { font-size: 11px; color: #aaa; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .bizcard-value { font-size: 14px; color: #333; }
+        .bizcard-contact-item {
+            display: inline-block; padding: 4px 10px; margin: 2px 4px 2px 0;
+            background: #f5f5f5; border-radius: 6px; font-size: 13px; color: #555;
+        }
+        .bizcard-contact-item strong { color: #888; font-weight: 500; font-size: 11px; }
+        .bizcard-bio { font-size: 13px; color: #666; line-height: 1.6; }
+        .bizcard-close-row { margin-top: 16px; text-align: right; }
+        .bizcard-close-row button {
+            padding: 8px 20px; border-radius: 8px; border: 1px solid #e8e8e8;
+            background: #fff; color: #666; font-size: 13px; cursor: pointer;
+        }
+        .bizcard-close-row button:hover { background: #f5f5f5; }
+
         .main {
             position: relative; z-index: 1;
             max-width: 720px; margin: 0 auto; padding: 60px 32px;
@@ -375,6 +513,13 @@
             <span class="header-title" data-i18n="app_name">报价系统</span>
         </div>
         <div class="header-right">
+            <div class="header-mgr waiting" id="headerMgr" onclick="openChat()" title="客户经理">
+                <div class="header-mgr-avatar" id="mgrAvatar">?</div>
+                <div class="header-mgr-text">
+                    <span class="header-mgr-label">客户经理</span>
+                    <span class="header-mgr-name" id="mgrName">待分配</span>
+                </div>
+            </div>
             <select class="lang-switch" onchange="switchLang(this.value)">
                 <option value="zh">中文</option>
                 <option value="en">EN</option>
@@ -449,11 +594,42 @@
         <div class="detail-container" id="accountContainer"></div>
     </div>
 
+    <!-- Chat overlay -->
+    <div class="chat-overlay" id="chatOverlay" onclick="if(event.target===this)closeChat()">
+        <div class="chat-dialog">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <div class="chat-header-avatar" id="chatAvatar">S</div>
+                    <div class="chat-header-info">
+                        <h4 id="chatName">业务员</h4>
+                        <span id="chatEmail">loading...</span>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="chat-btn-detail" onclick="showBizcard()" title="查看资料">i</button>
+                    <button class="chat-close" onclick="closeChat()">×</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="empty">暂无消息，发送第一条消息吧</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="输入消息..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendMessage()}">
+                <button id="chatSendBtn" onclick="sendMessage()">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business card overlay -->
+    <div class="bizcard-overlay" id="bizcardOverlay" onclick="if(event.target===this)closeBizcard()">
+        <div class="bizcard" id="bizcardContent"></div>
+    </div>
+
     <script src="../shared/pocketbase.umd.js"></script>
     <script src="../shared/i18n.js" type="module"></script>
     <script type="module">
-        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/pocketbase-init.js?v=2";
-        import { collection, getDocs, query, updateDoc, doc, where } from "../shared/pocketbase-init.js?v=2";
+        import { auth, getCurrentUser, logout as firebaseLogout, db } from "../shared/pocketbase-init.js?v=3";
+        import { collection, getDocs, query, updateDoc, doc, where, subscribe, addDoc, pb, orderBy, limit, serverTimestamp, getDoc } from "../shared/pocketbase-init.js?v=3";
         import { t, getLang } from "../shared/i18n.js";
 
         // 初始化语言选择器
@@ -543,6 +719,7 @@
                     });
                 }
                 updateHeaderFromProfile();
+                loadSalespersonInfo();
             } catch (e) { console.warn('加载账户信息失败:', e); }
         }
         loadClientProfile();
@@ -550,6 +727,184 @@
         window.addEventListener('langChanged', () => {
             updateHeaderFromProfile();
         });
+
+        // ===== 客户经理 =====
+        let salespersonInfo = null;
+        let conversationId = null;
+        let _chatPollInterval = null;
+        let profileUnsub = null;
+
+        async function loadSalespersonInfo() {
+            try {
+                let assignedTo = clientProfile ? clientProfile.assignedTo : null;
+                if (!assignedTo) {
+                    const cpSnap = await getDocs(query(collection(db, 'clientProfiles'), where('uid', '==', user.id)));
+                    cpSnap.forEach(d => { assignedTo = d.data().assignedTo; });
+                }
+                const mgrArea = document.getElementById('headerMgr');
+                if (!assignedTo) {
+                    mgrArea.classList.add('waiting');
+                    document.getElementById('mgrAvatar').textContent = '?';
+                    document.getElementById('mgrName').textContent = '待分配';
+                    return;
+                }
+                const spRecords = await pb.collection('salesperson_profiles').getFullList({ filter: `email = "${assignedTo}"` });
+                let spData = null, spUid = null;
+                if (spRecords.length > 0) { spData = spRecords[0]; spUid = spData.uid; }
+                if (!spData) {
+                    mgrArea.classList.add('waiting');
+                    document.getElementById('mgrAvatar').textContent = '!';
+                    document.getElementById('mgrName').textContent = '未找到';
+                    return;
+                }
+                salespersonInfo = {
+                    email: spData.email || assignedTo, uid: spUid,
+                    displayName: spData.displayName || '',
+                    phone: spData.phone || '',
+                    contacts: spData.contacts || [],
+                    bio: spData.bio || ''
+                };
+                mgrArea.classList.remove('waiting');
+                const dn = salespersonInfo.displayName || assignedTo.split('@')[0];
+                document.getElementById('mgrAvatar').textContent = dn.charAt(0).toUpperCase();
+                document.getElementById('mgrName').textContent = dn;
+                const convSnap = await getDocs(query(
+                    collection(db, 'conversations'),
+                    where('ownerUid', '==', user.id),
+                    where('salesEmail', '==', assignedTo)
+                ));
+                convSnap.forEach(d => { conversationId = d.id; });
+                // Fallback: any conversation for this client (regardless of salesEmail)
+                if (!conversationId) {
+                    const fallbackSnap = await getDocs(query(
+                        collection(db, 'conversations'),
+                        where('ownerUid', '==', user.id)
+                    ));
+                    fallbackSnap.forEach(d => { conversationId = d.id; });
+                    if (conversationId) {
+                        updateDoc(doc(db, 'conversations', conversationId), {
+                            salesEmail: assignedTo, salesUid: salespersonInfo.uid
+                        }).catch(() => {});
+                    }
+                }
+                if (!conversationId) {
+                    const newConv = await addDoc(collection(db, 'conversations'), {
+                        ownerUid: user.id, salesEmail: assignedTo, salesUid: salespersonInfo.uid,
+                        customerEmail: user.email,
+                        customerName: (clientProfile && clientProfile.name) || user.email.split('@')[0],
+                        lastMessage: '', lastTimestamp: new Date().toISOString(),
+                        unreadForSales: 0, unreadForCustomer: 0
+                    });
+                    conversationId = newConv.id;
+                }
+                if (profileUnsub) profileUnsub();
+                profileUnsub = subscribe('salesperson_profiles', (data) => {
+                    if (data.action === 'update' && data.record.email === assignedTo) {
+                        salespersonInfo.displayName = data.record.displayName || salespersonInfo.displayName;
+                        salespersonInfo.phone = data.record.phone || '';
+                        salespersonInfo.contacts = data.record.contacts || [];
+                        salespersonInfo.bio = data.record.bio || '';
+                        const dn2 = salespersonInfo.displayName || assignedTo.split('@')[0];
+                        document.getElementById('mgrAvatar').textContent = dn2.charAt(0).toUpperCase();
+                        document.getElementById('mgrName').textContent = dn2;
+                    }
+                }, `email = "${assignedTo}"`);
+            } catch (e) { console.warn('加载客户经理失败:', e); }
+        }
+
+        window.openChat = function() {
+            if (conversationId) {
+                updateDoc(doc(db, 'conversations', conversationId), { unreadForCustomer: 0 }).catch(() => {});
+                notifList = notifList.filter(n => n.id !== 'chat_' + conversationId);
+                updateBellBadge();
+                renderNotifList();
+            }
+            if (!salespersonInfo) return;
+            const dn = salespersonInfo.displayName || salespersonInfo.email.split('@')[0];
+            document.getElementById('chatAvatar').textContent = dn.charAt(0).toUpperCase();
+            document.getElementById('chatName').textContent = dn;
+            document.getElementById('chatEmail').textContent = salespersonInfo.email;
+            document.getElementById('chatMessages').innerHTML = '<div class="empty">加载中...</div>';
+            document.getElementById('chatOverlay').classList.add('show');
+            loadMessages();
+            if (_chatPollInterval) clearInterval(_chatPollInterval);
+            _chatPollInterval = setInterval(loadMessages, 1000);
+        };
+        window.closeChat = function() {
+            document.getElementById('chatOverlay').classList.remove('show');
+            if (_chatPollInterval) { clearInterval(_chatPollInterval); _chatPollInterval = null; }
+        };
+
+        async function loadMessages() {
+            if (!conversationId) return;
+            try {
+                const q = query(collection(db, 'messages'),
+                    where('conversationId', '==', conversationId),
+                    orderBy('timestamp', 'asc'), limit(200));
+                const snap = await getDocs(q);
+                const container = document.getElementById('chatMessages');
+                const msgs = [];
+                snap.forEach(d => { msgs.push(d.data()); });
+                msgs.sort((a, b) => (new Date(a.timestamp || 0).getTime()) - (new Date(b.timestamp || 0).getTime()));
+                if (msgs.length === 0) {
+                    container.innerHTML = '<div class="empty">暂无消息，发送第一条消息吧</div>';
+                } else {
+                    container.innerHTML = msgs.map(m => renderBubble(m)).join('');
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (e) { console.warn('加载消息失败:', e); }
+        }
+
+        function renderBubble(m) {
+            const isMine = m.from === user.email;
+            const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) : '';
+            return `<div class="chat-bubble ${isMine ? 'right' : 'left'}">${escHTML(m.text)}<div class="time">${time}</div></div>`;
+        }
+
+        window.sendMessage = async function() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || !conversationId || !salespersonInfo) return;
+            input.disabled = true;
+            document.getElementById('chatSendBtn').disabled = true;
+            try {
+                const now = new Date().toISOString();
+                await addDoc(collection(db, 'messages'), {
+                    conversationId, from: user.email, text, timestamp: now
+                });
+                try {
+                    await updateDoc(doc(db, 'conversations', conversationId), {
+                        lastMessage: text, lastTimestamp: now, unreadForSales: 1
+                    });
+                } catch (e2) { /* ignore */ }
+                input.value = ''; input.focus();
+            } catch (e) {
+                console.error('发送失败:', e);
+                alert('发送失败，请重试');
+            } finally {
+                input.disabled = false;
+                document.getElementById('chatSendBtn').disabled = false;
+            }
+        };
+
+        window.showBizcard = function() {
+            if (!salespersonInfo) return;
+            const dn = salespersonInfo.displayName || salespersonInfo.email.split('@')[0];
+            let html = `<div class="bizcard-header"><div class="bizcard-avatar">${dn.charAt(0).toUpperCase()}</div><div><div class="bizcard-name">${escHTML(dn)}</div><div class="bizcard-email">${escHTML(salespersonInfo.email)}</div></div></div>`;
+            if (salespersonInfo.phone) html += `<div class="bizcard-section"><div class="bizcard-label">电话</div><div class="bizcard-value">${escHTML(salespersonInfo.phone)}</div></div>`;
+            if (salespersonInfo.contacts && salespersonInfo.contacts.length > 0) {
+                html += '<div class="bizcard-section"><div class="bizcard-label">联系方式</div>';
+                salespersonInfo.contacts.forEach(c => { html += `<span class="bizcard-contact-item"><strong>${escHTML(c.type)}</strong> ${escHTML(c.value)}</span>`; });
+                html += '</div>';
+            }
+            if (salespersonInfo.bio) html += `<div class="bizcard-section"><div class="bizcard-label">简介</div><div class="bizcard-bio">${escHTML(salespersonInfo.bio)}</div></div>`;
+            html += '<div class="bizcard-close-row"><button onclick="closeBizcard()">关闭</button></div>';
+            document.getElementById('bizcardContent').innerHTML = html;
+            document.getElementById('bizcardOverlay').classList.add('show');
+        };
+        window.closeBizcard = function() {
+            document.getElementById('bizcardOverlay').classList.remove('show');
+        };
 
         // Notification bell with dropdown
         let notifList = [];
@@ -571,6 +926,36 @@
                 renderNotifList();
             } catch (e) { /* ignore */ }
         }
+
+        const _origLoadNotif = loadNotifications;
+        loadNotifications = async function() {
+            await _origLoadNotif();
+            try {
+                const convSnap = await getDocs(query(
+                    collection(db, 'conversations'),
+                    where('ownerUid', '==', user.id)
+                ));
+                convSnap.forEach(d => {
+                    const data = d.data();
+                    if (data.unreadForCustomer > 0) {
+                        const cid = 'chat_' + d.id;
+                        if (!notifList.find(n => n.id === cid)) {
+                            notifList.push({
+                                id: cid, type: 'chat',
+                                title: '客户经理发来消息',
+                                body: data.lastMessage || '点击查看',
+                                read: false,
+                                createdAt: data.lastTimestamp || new Date().toISOString(),
+                                link: null, _convId: d.id
+                            });
+                        }
+                    }
+                });
+                notifList.sort((a, b) => (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime()));
+                updateBellBadge();
+                renderNotifList();
+            } catch (e) { /* ignore */ }
+        };
 
         function updateBellBadge() {
             const count = notifList.filter(n => !n.read).length;
@@ -610,10 +995,15 @@
 
         window.clickNotif = async function(el) {
             const nid = el.dataset.nid;
+            if (nid && nid.startsWith('chat_')) {
+                document.getElementById('notifDropdown').classList.remove('show');
+                openChat();
+                return;
+            }
             const link = el.dataset.link;
             // Mark as read
             try {
-                const { updateDoc, doc } = await import("../shared/pocketbase-init.js?v=2");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js?v=3");
                 await updateDoc(doc(db, 'notifications', nid), { read: true });
                 const n = notifList.find(x => x.id === nid);
                 if (n) n.read = true;
@@ -625,7 +1015,7 @@
 
         window.markAllNotifRead = async function() {
             try {
-                const { updateDoc, doc } = await import("../shared/pocketbase-init.js?v=2");
+                const { updateDoc, doc } = await import("../shared/pocketbase-init.js?v=3");
                 const unread = notifList.filter(n => !n.read);
                 await Promise.all(unread.map(n => updateDoc(doc(db, 'notifications', n.id), { read: true })));
                 unread.forEach(n => n.read = true);
@@ -645,6 +1035,7 @@
 
         await loadNotifications();
         setInterval(loadNotifications, 10000);
+        subscribe('conversations', () => { loadNotifications(); }, `ownerUid = "${user.id}"`);
 
         document.getElementById('accountOverlay').addEventListener('click', function(e) {
             if (e.target === this) closeAccount();
@@ -726,7 +1117,7 @@
                     });
                 } else {
                     // No profile yet - create one
-                    const { setDoc } = await import("../shared/pocketbase-init.js?v=2");
+                    const { setDoc } = await import("../shared/pocketbase-init.js?v=3");
                     await setDoc(doc(db, 'clientProfiles', user.id), {
                         name: user.email.split('@')[0],
                         company, contactEmail, country,
