@@ -1,3 +1,4 @@
+// 作者：王睿哲 18912609149
 // Shared Bell Notification Component
 // Usage: import { initBell, BELL_HTML } from '../shared/bell-notification.js';
 // 1. Include BELL_HTML in your page where you want the bell to appear

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 作者：王睿哲 18912609149 -->
     <title>报价 - 报价系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -340,7 +341,7 @@
             <div class="card">
                 <div class="file-upload-row">
                     <label class="file-upload-btn">
-                        <span class="upload-icon">+</span> 上传矢量图
+                        <span class="upload-icon">+</span> 上传图示
                         <input type="file" id="vectorFile" accept=".svg,.pdf" onchange="handleFileUpload(event)">
                     </label>
                     <span class="file-upload-hint">支持 SVG，自动识别字体尺寸</span>
@@ -943,6 +944,10 @@
                         statusDiv.textContent = '未识别到有效的图形元素，请检查文件格式';
                         return;
                     }
+
+                    // 保存 SVG 尺寸标注数据（第一个字的高度 + 总宽度）
+                    window._svgFirstCharHeightCm = shapes[0].width.toFixed(1);
+                    window._svgTotalWidthCm = shapes.reduce((sum, s) => sum + s.length, 0).toFixed(1);
 
                     const groupedShapes = groupShapesBySize(shapes);
 

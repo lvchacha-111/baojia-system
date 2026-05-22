@@ -211,10 +211,13 @@
         .price-total small { font-size: 13px; color: #999; font-weight: 400; display: block; }
 
         .svg-preview {
-            text-align: center; padding: 12px;
-            max-height: 280px; overflow: auto;
+            position: relative;
+            text-align: center; padding: 20px 20px 28px 60px;
         }
         .svg-preview svg { max-width: 100%; max-height: 250px; }
+        .dim-annotation { pointer-events: none; }
+        .dim-info { display: flex; justify-content: center; gap: 16px; margin-top: 8px; }
+        .dim-badge { display: inline-block; padding: 4px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; color: #dc2626; font-size: 13px; font-weight: 600; }
 
         /* ---- Progress ---- */
         .progress-wrap {
@@ -467,6 +470,7 @@
     <header class="header">
         <a href="../client/user.html" class="btn-back">← 返回</a>
         <span class="header-title">订单详情</span>
+        <button id="btnLangToggle" onclick="toggleLang()" style="font-size:12px;font-weight:600;padding:4px 10px;border:1px solid #d4d4d8;border-radius:6px;background:#fff;color:#6366f1;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='#6366f1';this.style.background='#eef2ff'" onmouseout="this.style.borderColor='#d4d4d8';this.style.background='#fff'">EN</button>
         <div class="header-user-area" id="headerUserArea2">
             <span class="header-pm-tag" id="headerPmTag2" style="display:none"></span>
             <div class="header-user-text">
@@ -484,8 +488,8 @@
             </button>
             <div class="notif-dropdown" id="notifDropdown2">
                 <div class="notif-header">
-                    <span>消息通知</span>
-                    <button class="notif-mark-all" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
+                    <span id="notifTitle2">消息通知</span>
+                    <button class="notif-mark-all" id="notifMarkAll2" onclick="event.stopPropagation();markAllNotifRead()">全部已读</button>
                 </div>
                 <div class="notif-list" id="notifList2"></div>
             </div>
@@ -546,6 +550,177 @@
         document.getElementById('headerUserName2').textContent = emailPrefix2;
         document.getElementById('headerUserEmail2').textContent = user.email;
 
+        // ---- Language toggle ----
+        let currentLang = 'zh';
+        const TR = {
+            // Header / nav
+            orderDetail: { zh: '订单详情', en: 'Order Details' },
+            back: { zh: '← 返回', en: '← Back' },
+            notifications: { zh: '消息通知', en: 'Notifications' },
+            markAllRead: { zh: '全部已读', en: 'Mark All Read' },
+            noNotifs: { zh: '暂无消息', en: 'No messages' },
+            // Sidebar tabs
+            tabDetail: { zh: '订单详情', en: 'Order Detail' },
+            tabProcess: { zh: '作业流程', en: 'Process' },
+            tabTracking: { zh: '快递进度', en: 'Tracking' },
+            // Detail header
+            quoteNo: { zh: '报价编号', en: 'Quote No.' },
+            salesRep: { zh: '负责销售', en: 'Sales Rep' },
+            confirmQuote: { zh: '确认报价', en: 'Confirm Quote' },
+            confirmed: { zh: '已确认 ✓', en: 'Confirmed ✓' },
+            confirming: { zh: '确认中...', en: 'Confirming...' },
+            // Section titles
+            productInfo: { zh: '产品信息', en: 'Product Info' },
+            fontDetails: { zh: '字体明细', en: 'Font Details' },
+            configOptions: { zh: '配置选项', en: 'Configuration' },
+            priceDetails: { zh: '价格明细', en: 'Price Details' },
+            freight: { zh: '运费', en: 'Freight' },
+            preview: { zh: '图示', en: 'Preview' },
+            // Product fields
+            productId: { zh: '产品ID', en: 'Product ID' },
+            productName: { zh: '产品名称', en: 'Product Name' },
+            usageArea: { zh: '使用区域', en: 'Usage Area' },
+            // Config fields
+            surfaceColor: { zh: '表面颜色', en: 'Surface Color' },
+            paintStandard: { zh: '喷漆标准', en: 'Paint Standard' },
+            powerSupply: { zh: '开关电源', en: 'Power Supply' },
+            fixingMethod: { zh: '固定方式', en: 'Fixing Method' },
+            // Price fields
+            subtotal: { zh: '产品总价', en: 'Subtotal' },
+            surfaceTreatment: { zh: '表面处理', en: 'Surface Treatment' },
+            paintFee: { zh: '喷漆费用', en: 'Paint Fee' },
+            powerFee: { zh: '电源费用', en: 'Power Fee' },
+            laborFee: { zh: '人工费', en: 'Labor Fee' },
+            total: { zh: '总价', en: 'Total' },
+            // Freight fields
+            destination: { zh: '目的地', en: 'Destination' },
+            volWeight: { zh: '体积重', en: 'Vol. Weight' },
+            chargeWeight: { zh: '计费重', en: 'Chargeable Weight' },
+            freightCost: { zh: '运费金额', en: 'Freight Cost' },
+            // Status
+            status_pending: { zh: '待确认', en: 'Pending' },
+            status_confirmed: { zh: '已确认', en: 'Confirmed' },
+            status_in_production: { zh: '生产中', en: 'In Production' },
+            status_completed: { zh: '已完成', en: 'Completed' },
+            status_shipped: { zh: '已发货', en: 'Shipped' },
+            status_signed: { zh: '已签收', en: 'Signed' },
+            // Payment
+            paymentReceived: { zh: '已收款', en: 'Paid' },
+            paymentPending: { zh: '待收款', en: 'Unpaid' },
+            payment_monthly: { zh: '月付', en: 'Monthly' },
+            payment_credit: { zh: '信用额度', en: 'Credit' },
+            payment_pay_before_ship: { zh: '款到发货', en: 'Pay Before Ship' },
+            payment_prepaid: { zh: '预付款', en: 'Prepaid' },
+            payment_full: { zh: '全款', en: 'Full' },
+            creditExhausted: { zh: '已用完', en: 'Exhausted' },
+            // Process tab
+            overallProgress: { zh: '整体进度', en: 'Overall Progress' },
+            productionProcess: { zh: '作业流程', en: 'Production Process' },
+            noProcessTitle: { zh: '暂无工序信息', en: 'No Process Info' },
+            noProcessBody: { zh: '工厂排工序后将在此显示进度', en: 'Progress will be shown here once scheduled by the factory' },
+            // Process steps (from data, may need translation)
+            step_作图: { zh: '作图', en: 'Design' },
+            step_厂内工作: { zh: '厂内工作', en: 'Production' },
+            step_包装: { zh: '包装', en: 'Packing' },
+            step_发货: { zh: '发货', en: 'Shipping' },
+            // Tracking tab
+            trackingTitle: { zh: '快递进度', en: 'Tracking' },
+            trackingStatus: { zh: '状态', en: 'Status' },
+            customer: { zh: '客户', en: 'Customer' },
+            noTracking: { zh: '暂无快递信息', en: 'No tracking info' },
+            querying: { zh: '等待查询', en: 'Awaiting query' },
+            inTransit: { zh: '运输中', en: 'In Transit' },
+            consolidated: { zh: '合并发货', en: 'Consolidated' },
+            shipDate: { zh: '发货时间', en: 'Ship Date' },
+            estDelivery: { zh: '预计送达', en: 'Est. Delivery' },
+            noLogistics: { zh: '暂无物流详情', en: 'No logistics details' },
+            // SVG annotations
+            charHeight: { zh: '字高', en: 'Height: ' },
+            totalWidth: { zh: '总长', en: 'Width: ' },
+            // Font row format
+            fontDim: { zh: '长', en: 'L' },
+            fontWidth: { zh: '宽', en: 'W' },
+            fontThick: { zh: '厚', en: 'H' },
+            fontQty: { zh: '个', en: 'pcs' },
+            // Account
+            accountInfo: { zh: '账户信息', en: 'Account Info' },
+            basicInfo: { zh: '基本信息', en: 'Basic Info' },
+            customerName: { zh: '客户名称', en: 'Customer Name' },
+            email: { zh: '邮箱', en: 'Email' },
+            companyName: { zh: '公司名称', en: 'Company' },
+            contactEmail: { zh: '联系邮箱', en: 'Contact Email' },
+            country: { zh: '国家/地区', en: 'Country' },
+            paymentInfo: { zh: '付款信息', en: 'Payment Info' },
+            paymentMethod: { zh: '付款方式', en: 'Payment Method' },
+            notSet: { zh: '未设置', en: 'Not Set' },
+            creditLimit: { zh: '信用额度', en: 'Credit Limit' },
+            creditUsed: { zh: '已用额度', en: 'Credit Used' },
+            creditRemain: { zh: '剩余额度', en: 'Remaining' },
+            saveChanges: { zh: '保存修改', en: 'Save Changes' },
+            saving: { zh: '保存中...', en: 'Saving...' },
+            saved: { zh: '已保存', en: 'Saved' },
+            // Misc
+            loading: { zh: '加载中...', en: 'Loading...' },
+            orderNotFound: { zh: '订单不存在', en: 'Order not found' },
+            missingId: { zh: '缺少订单ID', en: 'Missing order ID' },
+            loadFailed: { zh: '加载失败，请刷新重试', en: 'Load failed, please refresh' },
+            questions: { zh: '有问题？联系我们', en: 'Questions? Contact us' },
+            kg: { zh: ' kg', en: ' kg' },
+            // Chat
+            messages: { zh: 'Messages', en: 'Messages' },
+            typeMessage: { zh: 'Type your message...', en: 'Type your message...' },
+            send: { zh: 'Send', en: 'Send' },
+            sendMessagePlaceholder: { zh: 'Send a message and we\'ll get back to you', en: 'Send a message and we\'ll get back to you' },
+            // Alerts
+            creditInsufficient: { zh: '信用额度不足！', en: 'Insufficient credit!' },
+            creditAlertContact: { zh: '请联系销售充值后再确认。', en: 'Please contact your sales rep to top up before confirming.' },
+            unpaidBillBlock: { zh: '存在未付账单，请先结清上月账单后再确认新订单。\n请联系销售了解详情。', en: 'You have an unpaid bill. Please settle it before confirming new orders.\nContact your sales rep for details.' },
+            prepaidNotSet: { zh: '预付款比例未设置，请联系销售设置后再确认。', en: 'Deposit percentage not set. Please contact your sales rep.' },
+            confirmFailed: { zh: '确认失败', en: 'Confirmation failed' },
+            confirmFailedMsg: { zh: '确认失败: ', en: 'Confirmation failed: ' },
+            prepaidConfirmTitle: { zh: '预付款定金待支付', en: 'Deposit Payment Required' },
+            prepaidConfirmMsg: { zh: '您需要先支付预付款定金 $', en: 'A deposit of $' },
+            prepaidConfirmPost: { zh: '%）才能开始生产。\n\n确认后将通知您支付定金。', en: '% is required to start production.\n\nAfter confirmation, you will be notified to pay the deposit.' },
+            fullConfirmTitle: { zh: '全款待支付', en: 'Full Payment Required' },
+            fullConfirmMsg: { zh: '此订单为全款订单，您需要支付全款 $', en: 'This order requires full payment of $' },
+            fullConfirmPost: { zh: ' 才能开始生产。\n\n确认后将通知您支付全款。', en: ' to start production.\n\nAfter confirmation, you will be notified to pay the full amount.' },
+            sendFailed: { zh: '发送失败，请重试', en: 'Send failed, please retry' },
+            cannotFindManager: { zh: '无法找到客户经理，请稍后重试', en: 'Cannot find account manager, please try later' },
+            // Credit header
+            totalCredit: { zh: '总额度', en: 'Total Limit' },
+            usedCredit: { zh: '已用额度', en: 'Used' },
+        };
+
+        function __(key) {
+            const entry = TR[key];
+            if (!entry) return key;
+            return entry[currentLang] || entry.zh || key;
+        }
+
+        function toggleLang() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            const btn = document.getElementById('btnLangToggle');
+            if (btn) { btn.textContent = currentLang === 'zh' ? 'EN' : '中文'; }
+            document.querySelector('.header-title').textContent = __('orderDetail');
+            document.querySelector('.sidebar-nav').querySelectorAll('li').forEach(li => {
+                const tab = li.dataset.tab;
+                if (tab === 'detail') li.childNodes[0].textContent = __('tabDetail');
+                else if (tab === 'process') li.childNodes[0].textContent = __('tabProcess');
+                else if (tab === 'tracking') li.childNodes[0].textContent = __('tabTracking');
+            });
+            const backLink = document.querySelector('.btn-back');
+            if (backLink) backLink.textContent = __('back');
+            const notifTitle = document.getElementById('notifTitle2');
+            if (notifTitle) notifTitle.textContent = __('notifications');
+            const notifMarkAll = document.getElementById('notifMarkAll2');
+            if (notifMarkAll) notifMarkAll.textContent = __('markAllRead');
+            renderDetail();
+            if (document.getElementById('tab-process').classList.contains('active')) renderProcess();
+            if (document.getElementById('tab-tracking').classList.contains('active')) renderTrackingTab();
+        }
+
+        window.toggleLang = toggleLang;
+
         let clientProfile2 = null;
 
         function updateHeaderFromProfile2() {
@@ -556,30 +731,29 @@
 
             const pm = p ? p.paymentMethod : null;
             if (pm) {
-                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
                 pmTag.style.display = '';
                 let popupHtml = '';
                 let warnHtml = '';
-                let labelText = pmLabels[pm] || pm;
+                let labelText = __('payment_' + pm);
                 let tagClass = 'header-pm-tag ' + pm;
 
                 if (pm === 'credit') {
                     const limit = p.creditLimit || 0;
                     const used = p.creditUsed || 0;
                     if (limit > 0 && used >= limit) {
-                        warnHtml = '<span class="header-pm-warn danger" title="额度已用完，请充值">!</span>';
-                        labelText = '已用完';
+                        warnHtml = '<span class="header-pm-warn danger" title="' + __('creditExhausted') + '">!</span>';
+                        labelText = __('creditExhausted');
                         tagClass = 'header-pm-tag exhausted';
                     } else if (limit > 0 && used >= limit * 2 / 3) {
-                        warnHtml = '<span class="header-pm-warn" title="额度即将用完，请充值">!</span>';
+                        warnHtml = '<span class="header-pm-warn" title="' + __('creditExhausted') + '">!</span>';
                     }
                     popupHtml = '<div class="header-pm-popup"><div class="popup-row">';
-                    popupHtml += '<div><div class="popup-label">总额度</div><div class="popup-val">$' + fmt(limit) + '</div></div>';
+                    popupHtml += '<div><div class="popup-label">' + __('totalCredit') + '</div><div class="popup-val">$' + fmt(limit) + '</div></div>';
                     popupHtml += '<div class="popup-divider">/</div>';
-                    popupHtml += '<div><div class="popup-label">已用额度</div><div class="popup-val">$' + fmt(used) + '</div></div>';
+                    popupHtml += '<div><div class="popup-label">' + __('creditUsed') + '</div><div class="popup-val">$' + fmt(used) + '</div></div>';
                     popupHtml += '</div></div>';
                 } else {
-                    popupHtml = '<div class="header-pm-popup"><div style="font-size:13px">' + (pmLabels[pm] || pm) + '</div></div>';
+                    popupHtml = '<div class="header-pm-popup"><div style="font-size:13px">' + __('payment_' + pm) + '</div></div>';
                 }
                 pmTag.className = tagClass;
                 pmTag.innerHTML = warnHtml + labelText + popupHtml;
@@ -644,7 +818,7 @@
             const container = document.getElementById('notifList2');
             if (!container) return;
             if (notifList.length === 0) {
-                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>暂无消息</p></div>';
+                container.innerHTML = '<div class="notif-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><p>' + __('noNotifs') + '</p></div>';
                 return;
             }
             let html = '';
@@ -708,41 +882,39 @@
             const container = document.getElementById('accountDialog2');
             const p = clientProfile2 || {};
             const pm = p.paymentMethod || '';
-            const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
-
-            let html = '<div class="chat-header"><h3>账户信息</h3><button class="chat-close" onclick="closeAccount2()">×</button></div>';
+            let html = '<div class="chat-header"><h3>' + __('accountInfo') + '</h3><button class="chat-close" onclick="closeAccount2()">×</button></div>';
             html += '<div style="padding:16px 20px;max-height:500px;overflow-y:auto">';
 
-            html += '<div class="section"><h4>基本信息</h4>';
-            html += '<div class="row"><span class="label">客户名称</span><span class="value">' + esc(p.name || user.email) + '</span></div>';
-            html += '<div class="row"><span class="label">邮箱</span><span class="value">' + esc(user.email) + '</span></div>';
-            html += '<div class="row"><span class="label">公司名称</span>';
-            html += '<input class="account-input" id="acctCompany2" value="' + esc(p.company || '') + '" placeholder="公司名称">';
+            html += '<div class="section"><h4>' + __('basicInfo') + '</h4>';
+            html += '<div class="row"><span class="label">' + __('customerName') + '</span><span class="value">' + esc(p.name || user.email) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('email') + '</span><span class="value">' + esc(user.email) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('companyName') + '</span>';
+            html += '<input class="account-input" id="acctCompany2" value="' + esc(p.company || '') + '" placeholder="' + __('companyName') + '">';
             html += '</div>';
-            html += '<div class="row"><span class="label">联系邮箱</span>';
-            html += '<input class="account-input" id="acctEmail2" value="' + esc(p.contactEmail || '') + '" placeholder="联系邮箱">';
+            html += '<div class="row"><span class="label">' + __('contactEmail') + '</span>';
+            html += '<input class="account-input" id="acctEmail2" value="' + esc(p.contactEmail || '') + '" placeholder="' + __('contactEmail') + '">';
             html += '</div>';
-            html += '<div class="row"><span class="label">国家/地区</span>';
-            html += '<input class="account-input" id="acctCountry2" value="' + esc(p.country || '') + '" placeholder="国家">';
+            html += '<div class="row"><span class="label">' + __('country') + '</span>';
+            html += '<input class="account-input" id="acctCountry2" value="' + esc(p.country || '') + '" placeholder="' + __('country') + '">';
             html += '</div>';
             html += '</div>';
 
-            html += '<div class="section"><h4>付款信息</h4>';
-            html += '<div class="row"><span class="label">付款方式</span><span class="value">';
-            html += pm ? '<span class="payment-tag ' + pm + '">' + (pmLabels[pm] || pm) + '</span>' : '未设置';
+            html += '<div class="section"><h4>' + __('paymentInfo') + '</h4>';
+            html += '<div class="row"><span class="label">' + __('paymentMethod') + '</span><span class="value">';
+            html += pm ? '<span class="payment-tag ' + pm + '">' + __('payment_' + pm) + '</span>' : __('notSet');
             html += '</span></div>';
             if (pm === 'credit') {
                 const limit = p.creditLimit || 0;
                 const used = p.creditUsed || 0;
                 const remain = Math.max(0, limit - used);
-                html += '<div class="row"><span class="label">信用额度</span><span class="value">$' + fmt(limit) + '</span></div>';
-                html += '<div class="row"><span class="label">已用额度</span><span class="value">$' + fmt(used) + '</span></div>';
-                html += '<div class="row"><span class="label">剩余额度</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + fmt(remain) + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('creditLimit') + '</span><span class="value">$' + fmt(limit) + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('creditUsed') + '</span><span class="value">$' + fmt(used) + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('creditRemain') + '</span><span class="value" style="color:' + (remain > 0 ? '#16a34a' : '#dc2626') + ';font-weight:600">$' + fmt(remain) + '</span></div>';
             }
             html += '</div>';
 
             html += '<div style="text-align:right;margin-top:12px">';
-            html += '<button class="btn-save-account" id="btnSaveAccount2" onclick="saveAccount2()">保存修改</button>';
+            html += '<button class="btn-save-account" id="btnSaveAccount2" onclick="saveAccount2()">' + __('saveChanges') + '</button>';
             html += '</div>';
             html += '</div>';
 
@@ -758,7 +930,7 @@
 
         window.saveAccount2 = async function() {
             const btn = document.getElementById('btnSaveAccount2');
-            btn.textContent = '保存中...';
+            btn.textContent = __('saving');
             btn.disabled = true;
             try {
                 const company = document.getElementById('acctCompany2').value.trim();
@@ -777,11 +949,11 @@
                 clientProfile2.company = company;
                 clientProfile2.contactEmail = contactEmail;
                 clientProfile2.country = country;
-                btn.textContent = '已保存';
-                setTimeout(() => { btn.textContent = '保存修改'; btn.disabled = false; }, 1500);
+                btn.textContent = __('saved');
+                setTimeout(() => { btn.textContent = __('saveChanges'); btn.disabled = false; }, 1500);
             } catch (e) {
-                alert('保存失败: ' + (e.message || ''));
-                btn.textContent = '保存修改';
+                alert(__('confirmFailedMsg') + (e.message || ''));
+                btn.textContent = __('saveChanges');
                 btn.disabled = false;
             }
         };
@@ -793,7 +965,7 @@
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get('id');
         if (!orderId) {
-            document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>缺少订单ID</p></div>';
+            document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>' + __('missingId') + '</p></div>';
             throw new Error('缺少订单ID');
         }
 
@@ -802,14 +974,14 @@
         try {
             const snap = await getDoc(doc(db, 'users', user.id, 'quotes', orderId));
             if (!snap.exists()) {
-                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>订单不存在</p></div>';
+                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p>' + __('orderNotFound') + '</p></div>';
                 throw new Error('订单不存在');
             }
             order = { id: snap.id, ...snap.data() };
         } catch (e) {
             console.error('加载订单失败:', e);
             if (!order) {
-                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p style="color:#dc2626">加载失败，请刷新重试</p></div>';
+                document.getElementById('tab-detail').innerHTML = '<div class="state-loading"><p style="color:#dc2626">' + __('loadFailed') + '</p></div>';
                 throw e;
             }
         }
@@ -864,11 +1036,122 @@
         }
         function fmt(n) { return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
+        // ---- SVG dimension annotation lines (post-render) ----
+        function annotateDetailSvgs() {
+            const svgEls = document.querySelectorAll('.svg-preview svg');
+            svgEls.forEach(svgEl => {
+                try { annotateOneSvg(svgEl); } catch (e) {}
+            });
+        }
+
+        function annotateOneSvg(svgEl) {
+            if (svgEl.querySelector('.dim-annotation')) return;
+            svgEl.setAttribute('overflow', 'visible');
+
+            var paths = svgEl.querySelectorAll('path');
+            var pieces = [];
+            paths.forEach(function(p) {
+                try {
+                    var bb = p.getBBox();
+                    if (bb.width > 0.1 && bb.height > 0.1) pieces.push({ x: bb.x, y: bb.y, w: bb.width, h: bb.height });
+                } catch (e) {}
+            });
+            if (pieces.length === 0) return;
+
+            pieces.sort(function(a, b) { return a.x - b.x; });
+            var chars = [], cur = { xMin: pieces[0].x, xMax: pieces[0].x + pieces[0].w, yMin: pieces[0].y, yMax: pieces[0].y + pieces[0].h };
+            for (var i = 1; i < pieces.length; i++) {
+                var p = pieces[i];
+                if (p.x <= cur.xMax + 50) {
+                    cur.xMax = Math.max(cur.xMax, p.x + p.w);
+                    cur.yMin = Math.min(cur.yMin, p.y);
+                    cur.yMax = Math.max(cur.yMax, p.y + p.h);
+                } else {
+                    chars.push(cur);
+                    cur = { xMin: p.x, xMax: p.x + p.w, yMin: p.y, yMax: p.y + p.h };
+                }
+            }
+            chars.push(cur);
+
+            var pad = 14, ext = 7;
+            var hx = chars[0].xMin - pad;
+            var hy0 = chars[0].yMin, hy1 = chars[0].yMax;
+            var wy = Math.max.apply(null, chars.map(function(c) { return c.yMax; })) + pad;
+            var xMin = Math.min.apply(null, chars.map(function(c) { return c.xMin; }));
+            var xMax = Math.max.apply(null, chars.map(function(c) { return c.xMax; }));
+
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('dim-annotation');
+            // Lines via innerHTML (works for pure SVG elements)
+            g.innerHTML =
+                // Vertical dimension line
+                '<line x1="'+hx+'" y1="'+hy0+'" x2="'+hx+'" y2="'+hy1+'" stroke="#2563eb" stroke-width="3"/>' +
+                // Vertical arrows (top↓ bottom↑)
+                '<polygon points="'+(hx-5)+','+(hy0+10)+' '+hx+','+hy0+' '+(hx+5)+','+(hy0+10)+'" fill="#2563eb"/>' +
+                '<polygon points="'+(hx-5)+','+(hy1-10)+' '+hx+','+hy1+' '+(hx+5)+','+(hy1-10)+'" fill="#2563eb"/>' +
+                // Tick marks
+                '<line x1="'+(hx-ext)+'" y1="'+hy0+'" x2="'+(hx+ext)+'" y2="'+hy0+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<line x1="'+(hx-ext)+'" y1="'+hy1+'" x2="'+(hx+ext)+'" y2="'+hy1+'" stroke="#2563eb" stroke-width="3"/>' +
+                // Horizontal dimension line
+                '<line x1="'+xMin+'" y1="'+wy+'" x2="'+xMax+'" y2="'+wy+'" stroke="#2563eb" stroke-width="3"/>' +
+                // Horizontal arrows (left→ right←)
+                '<polygon points="'+(xMin+10)+','+(wy-5)+' '+xMin+','+wy+' '+(xMin+10)+','+(wy+5)+'" fill="#2563eb"/>' +
+                '<polygon points="'+(xMax-10)+','+(wy-5)+' '+xMax+','+wy+' '+(xMax-10)+','+(wy+5)+'" fill="#2563eb"/>' +
+                // Tick marks
+                '<line x1="'+xMin+'" y1="'+(wy-ext)+'" x2="'+xMin+'" y2="'+(wy+ext)+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<line x1="'+xMax+'" y1="'+(wy-ext)+'" x2="'+xMax+'" y2="'+(wy+ext)+'" stroke="#2563eb" stroke-width="3"/>';
+            svgEl.appendChild(g);
+
+            // ---- HTML overlay labels (bypasses SVG text rendering quirks) ----
+            var container = svgEl.closest('.svg-preview') || svgEl.closest('.svg-preview-box');
+            if (container) {
+                container.querySelectorAll('.dim-label-overlay').forEach(function(el) { el.remove(); });
+
+                var hCm = container.getAttribute('data-dim-h') || '';
+                var wCm = container.getAttribute('data-dim-w') || '';
+
+                if (hCm || wCm) {
+                    var vb = svgEl.getAttribute('viewBox');
+                    if (vb) {
+                        var vbParts = vb.trim().split(/[\s,]+/);
+                        var vbX = parseFloat(vbParts[0]) || 0;
+                        var vbY = parseFloat(vbParts[1]) || 0;
+                        var vbW = parseFloat(vbParts[2]) || 1000;
+                        var vbH = parseFloat(vbParts[3]) || 1000;
+                        var svgRect = svgEl.getBoundingClientRect();
+                        var cRect = container.getBoundingClientRect();
+                        var sx = svgRect.width / vbW;
+                        var sy = svgRect.height / vbH;
+                        var ox = svgRect.left - cRect.left;
+                        var oy = svgRect.top - cRect.top;
+                        function toX(v) { return ox + (v - vbX) * sx; }
+                        function toY(v) { return oy + (v - vbY) * sy; }
+
+                        if (hCm) {
+                            var midY = (hy0 + hy1) / 2;
+                            var el = document.createElement('div');
+                            el.className = 'dim-label-overlay';
+                            el.style.cssText = 'position:absolute;left:' + toX(hx) + 'px;top:' + toY(midY) + 'px;transform:translate(calc(-100% - 6px),-50%);color:#dc2626;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;pointer-events:none;white-space:nowrap;z-index:5;text-shadow:0 0 3px #fff;';
+                            el.textContent = __('charHeight') + hCm + 'cm';
+                            container.appendChild(el);
+                        }
+                        if (wCm) {
+                            var wcx = (xMin + xMax) / 2;
+                            var el = document.createElement('div');
+                            el.className = 'dim-label-overlay';
+                            el.style.cssText = 'position:absolute;left:' + toX(wcx) + 'px;top:' + toY(wy) + 'px;transform:translate(-50%,6px);color:#dc2626;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;pointer-events:none;white-space:nowrap;z-index:5;text-shadow:0 0 3px #fff;';
+                            el.textContent = __('totalWidth') + wCm + 'cm';
+                            container.appendChild(el);
+                        }
+                    }
+                }
+            }
+        }
+
         // ---- Render order detail tab ----
         function renderDetail() {
             const o = order;
-            const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString('zh-CN') : '-';
-            const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
+            const date = o.publishedAt ? new Date(o.publishedAt).toLocaleDateString(currentLang === 'zh' ? 'zh-CN' : 'en-US') : '-';
             const st = o.status || 'pending';
 
             let html = '';
@@ -877,82 +1160,91 @@
             html += '<div class="detail-header-block">';
             html += '<div class="detail-header-top">';
             html += '<div class="left">';
-            html += '<div class="quote-num">报价编号<br><span>' + esc(o.quoteNumber) + '</span></div>';
+            html += '<div class="quote-num">' + __('quoteNo') + '<br><span>' + esc(o.quoteNumber) + '</span></div>';
             html += '<div class="meta">';
-            html += '<span class="status-badge status-' + st + '">' + (statusLabels[st] || '待确认') + '</span>';
+            html += '<span class="status-badge status-' + st + '">' + __('status_' + st) + '</span>';
             if (customerPayment && customerPayment.paymentMethod) {
-                const pmLabels = { monthly: '月付', credit: '信用额度', pay_before_ship: '款到发货', prepaid: '预付款', full: '全款' };
-                html += '<span class="payment-tag ' + customerPayment.paymentMethod + '">' + (pmLabels[customerPayment.paymentMethod] || customerPayment.paymentMethod) + '</span>';
+                html += '<span class="payment-tag ' + customerPayment.paymentMethod + '">' + __('payment_' + customerPayment.paymentMethod) + '</span>';
                 const paid = o.paymentStatus === 'paid';
-                html += '<span class="payment-status-tag ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? '已收款' : '待收款') + '</span>';
+                html += '<span class="payment-status-tag ' + (paid ? 'paid' : 'unpaid') + '">' + (paid ? __('paymentReceived') : __('paymentPending')) + '</span>';
             }
             html += '<span>' + date + '</span>';
-            if (o.publishedBy) html += '<span>负责销售: ' + esc(o.publishedBy.split('@')[0]) + '</span>';
+            if (o.publishedBy) html += '<span>' + __('salesRep') + ': ' + esc(o.publishedBy.split('@')[0]) + '</span>';
             html += '</div>';
             if (st === 'pending') {
-                html += '<button class="btn-confirm-inline" id="btnConfirmInline" onclick="confirmQuote()">确认报价</button>';
+                html += '<button class="btn-confirm-inline" id="btnConfirmInline" onclick="confirmQuote()">' + __('confirmQuote') + '</button>';
             } else if (st === 'confirmed') {
-                html += '<button class="btn-confirm-inline confirmed" disabled>已确认 ✓</button>';
+                html += '<button class="btn-confirm-inline confirmed" disabled>' + __('confirmed') + '</button>';
             }
             html += '</div>';
-            html += '<div class="confused-link" id="confusedLink" onclick="openChat()"><span class="dot"></span>Questions? Contact us</div>';
+            html += '<div class="confused-link" id="confusedLink" onclick="openChat()"><span class="dot"></span>' + __('questions') + '</div>';
             html += '</div>';
             html += '</div>';
 
             // Product info
-            html += '<div class="section"><h4>产品信息</h4>';
-            html += '<div class="row"><span class="label">产品ID</span><span class="value">' + esc(o.productId) + '</span></div>';
-            html += '<div class="row"><span class="label">产品名称</span><span class="value">' + esc(o.productName) + '</span></div>';
-            html += '<div class="row"><span class="label">使用区域</span><span class="value">' + esc(o.usageArea) + '</span></div>';
+            html += '<div class="section"><h4>' + __('productInfo') + '</h4>';
+            html += '<div class="row"><span class="label">' + __('productId') + '</span><span class="value">' + esc(o.productId) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('productName') + '</span><span class="value">' + esc(o.productName) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('usageArea') + '</span><span class="value">' + esc(o.usageArea) + '</span></div>';
             html += '</div>';
 
             // Font details
             if (o.fontPrices && o.fontPrices.length > 0) {
-                html += '<div class="section"><h4>字体明细</h4>';
+                html += '<div class="section"><h4>' + __('fontDetails') + '</h4>';
                 o.fontPrices.forEach(f => {
-                    html += '<div class="row"><span class="label">长' + (f.length||0).toFixed(2) + '×宽' + (f.width||0).toFixed(2) + '×厚' + (f.thickness||0) + 'mm × ' + (f.quantity||0) + '个</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
+                    html += '<div class="row"><span class="label">' + __('fontDim') + (f.length||0).toFixed(2) + '×' + __('fontWidth') + (f.width||0).toFixed(2) + '×' + __('fontThick') + (f.thickness||0) + 'mm × ' + (f.quantity||0) + __('fontQty') + '</span><span class="value">¥' + (f.letterPrice||0).toFixed(2) + '</span></div>';
                 });
                 html += '</div>';
             }
 
             // Config
-            html += '<div class="section"><h4>配置选项</h4>';
-            html += '<div class="row"><span class="label">表面颜色</span><span class="value">' + esc(o.surfaceColor) + '</span></div>';
-            html += '<div class="row"><span class="label">喷漆标准</span><span class="value">' + esc(o.paint) + '</span></div>';
-            html += '<div class="row"><span class="label">开关电源</span><span class="value">' + esc(o.power) + '</span></div>';
-            html += '<div class="row"><span class="label">固定方式</span><span class="value">' + esc(o.fixing) + '</span></div>';
+            html += '<div class="section"><h4>' + __('configOptions') + '</h4>';
+            html += '<div class="row"><span class="label">' + __('surfaceColor') + '</span><span class="value">' + esc(o.surfaceColor) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('paintStandard') + '</span><span class="value">' + esc(o.paint) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('powerSupply') + '</span><span class="value">' + esc(o.power) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('fixingMethod') + '</span><span class="value">' + esc(o.fixing) + '</span></div>';
             html += '</div>';
 
             // Price
-            html += '<div class="section"><h4>价格明细</h4>';
-            html += '<div class="row"><span class="label">产品总价</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="row"><span class="label">表面处理</span><span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="row"><span class="label">喷漆费用</span><span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span></div>';
-            html += '<div class="row"><span class="label">开关电源</span><span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span></div>';
-            if (o.laborFee > 0) html += '<div class="row"><span class="label">人工费</span><span class="value">¥' + (o.laborFee||0).toFixed(2) + '</span></div>';
+            html += '<div class="section"><h4>' + __('priceDetails') + '</h4>';
+            html += '<div class="row"><span class="label">' + __('subtotal') + '</span><span class="value">¥' + (o.totalLetterPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('surfaceTreatment') + '</span><span class="value">¥' + (o.surfacePrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('paintFee') + '</span><span class="value">¥' + (o.paintPrice||0).toFixed(2) + '</span></div>';
+            html += '<div class="row"><span class="label">' + __('powerFee') + '</span><span class="value">¥' + (o.powerPrice||0).toFixed(2) + '</span></div>';
+            if (o.laborFee > 0) html += '<div class="row"><span class="label">' + __('laborFee') + '</span><span class="value">¥' + (o.laborFee||0).toFixed(2) + '</span></div>';
             html += '</div>';
 
             // Freight
             if (o.freight) {
-                html += '<div class="section"><h4>运费</h4>';
-                html += '<div class="row"><span class="label">目的地</span><span class="value">' + esc(o.freight.destination) + '</span></div>';
-                html += '<div class="row"><span class="label">体积重</span><span class="value">' + (o.freight.volumetricWeight||0).toFixed(2) + ' kg</span></div>';
-                html += '<div class="row"><span class="label">计费重</span><span class="value">' + (o.freight.chargeableWeight||0).toFixed(2) + ' kg</span></div>';
-                html += '<div class="row"><span class="label">运费金额</span><span class="value">¥' + (o.freight.price||0).toFixed(2) + '</span></div>';
+                html += '<div class="section"><h4>' + __('freight') + '</h4>';
+                html += '<div class="row"><span class="label">' + __('destination') + '</span><span class="value">' + esc(o.freight.destination) + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('volWeight') + '</span><span class="value">' + (o.freight.volumetricWeight||0).toFixed(2) + __('kg') + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('chargeWeight') + '</span><span class="value">' + (o.freight.chargeableWeight||0).toFixed(2) + __('kg') + '</span></div>';
+                html += '<div class="row"><span class="label">' + __('freightCost') + '</span><span class="value">¥' + (o.freight.price||0).toFixed(2) + '</span></div>';
                 html += '</div>';
             }
 
             // Total
-            html += '<div class="price-total"><small>总价</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
+            html += '<div class="price-total"><small>' + __('total') + '</small>¥' + (o.totalPrice||0).toFixed(2) + '</div>';
 
             // SVG
             if (o.svgContent) {
-                html += '<div class="section"><h4>矢量图</h4>';
-                html += '<div class="svg-preview">' + o.svgContent + '</div>';
+                html += '<div class="section"><h4>' + __('preview') + '</h4>';
+                // 从 fontPrices 计算尺寸标注（mm → cm，不四舍五入）
+                var hCm = '', wCm = '';
+                if (o.fontPrices && o.fontPrices.length > 0) {
+                    hCm = parseFloat((o.fontPrices[0].width / 10).toFixed(4));
+                    wCm = parseFloat((o.fontPrices.reduce(function(s, f) { return s + (f.length || 0); }, 0) / 10).toFixed(4));
+                } else if (o.svgHeightCm || o.svgWidthCm) {
+                    hCm = o.svgHeightCm || '';
+                    wCm = o.svgWidthCm || '';
+                }
+                html += '<div class="svg-preview" data-dim-h="' + hCm + '" data-dim-w="' + wCm + '">' + o.svgContent + '</div>';
                 html += '</div>';
             }
 
             document.getElementById('tab-detail').innerHTML = html;
+            setTimeout(function() { annotateDetailSvgs(); }, 50);
         }
 
         // ---- Render process tab ----
@@ -970,14 +1262,14 @@
 
             if (!proc || !proc.steps || proc.steps.length === 0) {
                 document.getElementById('tab-process').innerHTML =
-                    '<div class="no-process"><h3 style="color:#666;font-size:16px">暂无工序信息</h3><p>工厂排工序后将在此显示进度</p></div>';
+                    '<div class="no-process"><h3 style="color:#666;font-size:16px">' + __('noProcessTitle') + '</h3><p>' + __('noProcessBody') + '</p></div>';
                 return;
             }
 
             const pct = calcProgress(proc, order.status);
             let html = '';
 
-            html += '<div class="section"><h4>整体进度</h4>';
+            html += '<div class="section"><h4>' + __('overallProgress') + '</h4>';
             html += '<div class="progress-wrap">';
             html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
             html += '<span class="progress-pct">' + pct + '%</span>';
@@ -985,11 +1277,11 @@
 
             // Main steps
             if (proc.steps && proc.steps.length > 0) {
-                html += '<div class="section"><h4>作业流程</h4><ul class="step-list">';
+                html += '<div class="section"><h4>' + __('productionProcess') + '</h4><ul class="step-list">';
                 proc.steps.forEach(s => {
                     html += '<li class="' + (s.done ? 'done' : '') + '">';
                     html += '<span class="step-check">✓</span>';
-                    html += '<span class="step-name">' + esc(s.name) + '</span>';
+                    html += '<span class="step-name">' + esc(__('step_' + s.name) || s.name) + '</span>';
                     html += '</li>';
                 });
                 html += '</ul></div>';
@@ -1030,9 +1322,8 @@
 
                     // Update status badge
                     const badge = document.querySelector('.status-badge');
-                    const statusLabels = { pending:'待确认', confirmed:'已确认', in_production:'生产中', completed:'已完成', shipped:'已发货', signed:'已签收' };
                     if (badge) {
-                        badge.textContent = statusLabels[newStatus] || '待确认';
+                        badge.textContent = __('status_' + newStatus);
                         badge.className = 'status-badge status-' + newStatus;
                     }
 
@@ -1047,7 +1338,7 @@
                         newBtn.className = 'btn-confirm-inline confirmed';
                         newBtn.id = 'btnConfirmInline';
                         newBtn.disabled = true;
-                        newBtn.textContent = '已确认 ✓';
+                        newBtn.textContent = __('confirmed');
                         btnArea.appendChild(newBtn);
                     }
                 } catch (e) { /* ignore */ }
@@ -1059,7 +1350,7 @@
         window.confirmQuote = async function() {
             if (!order || order.status !== 'pending') return;
             const btn = document.getElementById('btnConfirmInline');
-            if (btn) { btn.disabled = true; btn.textContent = '确认中...'; }
+            if (btn) { btn.disabled = true; btn.textContent = __('confirming'); }
 
             // Credit check: if credit customer, verify enough remaining credit
             if (customerPayment && customerPayment.paymentMethod === 'credit' && customerPayment.uid) {
@@ -1068,8 +1359,8 @@
                 const orderTotal = order.totalPrice || 0;
                 if (limit > 0 && used + orderTotal > limit) {
                     const remain = Math.max(0, limit - used);
-                    alert('信用额度不足！\n总额度：$' + fmt(limit) + '\n已用：$' + fmt(used) + '\n剩余：$' + fmt(remain) + '\n本单金额：$' + fmt(orderTotal) + '\n\n请联系销售充值后再确认。');
-                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    alert(__('creditInsufficient') + '\n' + __('totalCredit') + '：$' + fmt(limit) + '\n' + __('creditUsed') + '：$' + fmt(used) + '\n' + __('creditRemain') + '：$' + fmt(remain) + '\n' + __('total') + '：$' + fmt(orderTotal) + '\n\n' + __('creditAlertContact'));
+                    if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
                     return;
                 }
             }
@@ -1083,8 +1374,8 @@
                         where('status', '==', 'pending')
                     ));
                     if (!stmtSnap.empty) {
-                        alert('存在未付账单，请先结清上月账单后再确认新订单。\n请联系销售了解详情。');
-                        if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                        alert(__('unpaidBillBlock'));
+                        if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
                         return;
                     }
                 } catch (e) { console.warn('账单检查失败:', e); }
@@ -1099,12 +1390,12 @@
                 prepaidDepositAmt = Math.round(total * dpPct / 100 * 100) / 100;
                 prepaidRemainderAmt = Math.round((total - prepaidDepositAmt) * 100) / 100;
                 if (dpPct <= 0) {
-                    alert('预付款比例未设置，请联系销售设置后再确认。');
-                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                    alert(__('prepaidNotSet'));
+                    if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
                     return;
                 }
-                if (!confirm('您需要先支付预付款定金 $' + fmt(prepaidDepositAmt) + '（' + dpPct + '%）才能开始生产。\n\n确认后将通知您支付定金。')) {
-                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                if (!confirm(__('prepaidConfirmMsg') + fmt(prepaidDepositAmt) + '（' + dpPct + __('prepaidConfirmPost))) {
+                    if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
                     return;
                 }
             }
@@ -1116,8 +1407,8 @@
                 const total = order.totalPrice || 0;
                 prepaidDepositAmt = total;
                 prepaidRemainderAmt = 0;
-                if (!confirm('此订单为全款订单，您需要支付全款 $' + fmt(total) + ' 才能开始生产。\n\n确认后将通知您支付全款。')) {
-                    if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
+                if (!confirm(__('fullConfirmMsg') + fmt(total) + __('fullConfirmPost))) {
+                    if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
                     return;
                 }
             }
@@ -1205,13 +1496,13 @@
                     }).catch(() => {});
                 }
 
-                if (btn) { btn.textContent = '已确认 ✓'; btn.className = 'btn-confirm-inline confirmed'; btn.disabled = false; }
+                if (btn) { btn.textContent = __('confirmed'); btn.className = 'btn-confirm-inline confirmed'; btn.disabled = false; }
                 const badge = document.querySelector('.status-badge');
-                if (badge) { badge.textContent = '已确认'; badge.className = 'status-badge status-confirmed'; }
+                if (badge) { badge.textContent = __('status_confirmed'); badge.className = 'status-badge status-confirmed'; }
             } catch (err) {
                 console.error('确认失败:', err);
-                if (btn) { btn.disabled = false; btn.textContent = '确认报价'; }
-                alert('确认失败: ' + (err.message || '未知错误'));
+                if (btn) { btn.disabled = false; btn.textContent = __('confirmQuote'); }
+                alert(__('confirmFailedMsg') + (err.message || '未知错误'));
             }
         };
 
@@ -1378,7 +1669,7 @@
                 }
 
                 if (!_chatConvId) {
-                    alert('无法找到客户经理，请稍后重试');
+                    alert(__('cannotFindManager'));
                     return;
                 }
 
@@ -1401,7 +1692,7 @@
                 console.log('消息发送成功');
             } catch (err) {
                 console.error('发送消息失败:', err);
-                alert('发送失败，请重试: ' + (err.message || '未知错误'));
+                alert(__('sendFailed') + ': ' + (err.message || '未知错误'));
             } finally {
                 btn.disabled = false;
                 input.disabled = false;
@@ -1416,28 +1707,28 @@
             let html = '';
 
             html += '<div class="detail-header-block">';
-            html += '<div class="quote-num">快递进度<br><span>' + esc(o.quoteNumber) + '</span></div>';
-            html += '<div class="meta">客户：' + esc(o.customerName || '-') + '</div>';
+            html += '<div class="quote-num">' + __('trackingTitle') + '<br><span>' + esc(o.quoteNumber) + '</span></div>';
+            html += '<div class="meta">' + __('customer') + '：' + esc(o.customerName || '-') + '</div>';
             html += '</div>';
 
             if (shipments.length === 0) {
                 html += '<div class="section" style="text-align:center;padding:60px 20px;color:#bbb">';
-                html += '<p style="font-size:14px">暂无快递信息</p>';
+                html += '<p style="font-size:14px">' + __('noTracking') + '</p>';
                 html += '</div>';
             } else {
                 shipments.forEach(ship => {
                     if (!ship.publishedToClient) return;
-                    const statusText = ship.trackingData ? (ship.trackingData.statusText || '运输中') : '等待查询';
+                    const statusText = ship.trackingData ? (ship.trackingData.statusText || __('inTransit')) : __('querying');
                     html += '<div class="section">';
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
                     html += '<span class="carrier-tag carrier-' + (ship.carrier || 'dhl').toLowerCase() + '">' + esc(ship.carrier || 'DHL') + '</span>';
-                    html += '<span style="font-size:12px;color:#888">状态：' + statusText + '</span>';
+                    html += '<span style="font-size:12px;color:#888">' + __('trackingStatus') + '：' + statusText + '</span>';
                     html += '</div>';
                     html += '<div class="tracking-num">' + esc(ship.trackingNumber) + '</div>';
                     if (ship.shipmentType === 'merged' && ship.mergedOrderNumbers && ship.mergedOrderNumbers.length > 1) {
-                        html += '<div style="font-size:12px;color:#6366f1;margin:4px 0">合并发货：' + esc(ship.mergedOrderNumbers.join('、')) + '</div>';
+                        html += '<div style="font-size:12px;color:#6366f1;margin:4px 0">' + __('consolidated') + '：' + esc(ship.mergedOrderNumbers.join('、')) + '</div>';
                     }
-                    html += '<div class="ship-meta">发货时间：' + esc(ship.shipDate || '-') + ' · 预计送达：' + (ship.trackingData ? esc(ship.trackingData.estimatedDelivery || '-') : '-') + '</div>';
+                    html += '<div class="ship-meta">' + __('shipDate') + '：' + esc(ship.shipDate || '-') + ' · ' + __('estDelivery') + '：' + (ship.trackingData ? esc(ship.trackingData.estimatedDelivery || '-') : '-') + '</div>';
 
                     if (ship.trackingData && ship.trackingData.events && ship.trackingData.events.length > 0) {
                         html += '<div class="timeline">';
@@ -1449,7 +1740,7 @@
                         });
                         html += '</div>';
                     } else {
-                        html += '<p style="text-align:center;color:#bbb;font-size:13px;padding:12px">暂无物流详情</p>';
+                        html += '<p style="text-align:center;color:#bbb;font-size:13px;padding:12px">' + __('noLogistics') + '</p>';
                     }
                     html += '</div>';
                 });

@@ -4,7 +4,7 @@ echo "🚀 启动管理后台..."
 echo ""
 
 # 切换到脚本所在目录
-cd "$(dirname "$0")/管理后台"
+cd "$(dirname "$0")/管理后台" || exit 1
 
 # 检查 Python 依赖
 if ! python3 -c "import fastapi" 2>/dev/null; then

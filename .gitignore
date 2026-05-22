@@ -1,1 +1,5 @@
 .DS_Store
+pocketbase/pb_data/
+pocketbase/pocketbase
+pocketbase/pocketbase.zip
+firebase-debug.log

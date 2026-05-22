@@ -1,3 +1,4 @@
+// 作者：王睿哲 18912609149
 // PocketBase 共享初始化模块 - 替代 Firebase
 // 用法：HTML 中先加载 <script src="../shared/pocketbase.umd.js"></script>
 //       再 import { ... } from '../shared/pocketbase-init.js'
@@ -390,6 +391,8 @@ window.saveQuoteToFirestore = async function(quoteData, freightData, quoteNumber
     customerName: quoteData.customerName || '',
     userEmail: user.email,
     svgContent: window._svgContent || '',
+    svgHeightCm: window._svgFirstCharHeightCm || '',
+    svgWidthCm: window._svgTotalWidthCm || '',
     productId: quoteData.productId,
     productName: quoteData.productName,
     usageArea: quoteData.usageArea,

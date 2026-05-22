@@ -195,7 +195,7 @@ const TRANSLATIONS = {
     orders_width: '宽',
     orders_thickness: '厚',
     orders_pieces: '个',
-    orders_vector: '矢量图',
+    orders_vector: '图示',
     orders_total_label: '总价',
     orders_account_info: '账户信息',
     orders_customer_name_label: '客户名称',

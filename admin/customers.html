@@ -334,13 +334,17 @@
         .publish-dialog .dialog-btns { margin-top: 20px; }
 
         .svg-preview-box {
+            position: relative;
             background: #fff; border: 1px solid #eee;
-            border-radius: 10px; padding: 16px;
+            border-radius: 10px; padding: 20px 20px 28px 60px;
             text-align: center; margin-top: 8px;
             max-height: 300px; overflow: auto;
         }
 
         .svg-preview-box svg { max-width: 100%; max-height: 260px; }
+        .dim-annotation { pointer-events: none; }
+        .dim-info { display: flex; justify-content: center; gap: 16px; margin-top: 8px; }
+        .dim-badge { display: inline-block; padding: 4px 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; color: #dc2626; font-size: 13px; font-weight: 600; }
 
         .svg-hover-preview {
             display: none; position: fixed;
@@ -925,7 +929,7 @@
                             preview.innerHTML = q.svgContent;
                             preview.style.display = 'block';
                         } else {
-                            preview.innerHTML = '<div class="no-svg">无矢量图</div>';
+                            preview.innerHTML = '<div class="no-svg">无图示</div>';
                             preview.style.display = 'block';
                         }
                     }, 2000);
@@ -1467,6 +1471,111 @@
             }
         };
 
+        // ---- SVG dimension annotation lines (post-render) ----
+        function annotateDetailSvgs() {
+            const svgEls = document.querySelectorAll('.svg-preview-box svg, .svg-preview svg');
+            svgEls.forEach(svgEl => {
+                try { annotateOneSvg(svgEl); } catch (e) {}
+            });
+        }
+
+        function annotateOneSvg(svgEl) {
+            if (svgEl.querySelector('.dim-annotation')) return;
+            svgEl.setAttribute('overflow', 'visible');
+
+            var paths = svgEl.querySelectorAll('path');
+            var pieces = [];
+            paths.forEach(function(p) {
+                try {
+                    var bb = p.getBBox();
+                    if (bb.width > 0.1 && bb.height > 0.1) pieces.push({ x: bb.x, y: bb.y, w: bb.width, h: bb.height });
+                } catch (e) {}
+            });
+            if (pieces.length === 0) return;
+
+            pieces.sort(function(a, b) { return a.x - b.x; });
+            var chars = [], cur = { xMin: pieces[0].x, xMax: pieces[0].x + pieces[0].w, yMin: pieces[0].y, yMax: pieces[0].y + pieces[0].h };
+            for (var i = 1; i < pieces.length; i++) {
+                var p = pieces[i];
+                if (p.x <= cur.xMax + 50) {
+                    cur.xMax = Math.max(cur.xMax, p.x + p.w);
+                    cur.yMin = Math.min(cur.yMin, p.y);
+                    cur.yMax = Math.max(cur.yMax, p.y + p.h);
+                } else {
+                    chars.push(cur);
+                    cur = { xMin: p.x, xMax: p.x + p.w, yMin: p.y, yMax: p.y + p.h };
+                }
+            }
+            chars.push(cur);
+
+            var pad = 14, ext = 7;
+            var hx = chars[0].xMin - pad;
+            var hy0 = chars[0].yMin, hy1 = chars[0].yMax;
+            var wy = Math.max.apply(null, chars.map(function(c) { return c.yMax; })) + pad;
+            var xMin = Math.min.apply(null, chars.map(function(c) { return c.xMin; }));
+            var xMax = Math.max.apply(null, chars.map(function(c) { return c.xMax; }));
+
+            var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.classList.add('dim-annotation');
+            g.innerHTML =
+                '<line x1="'+hx+'" y1="'+hy0+'" x2="'+hx+'" y2="'+hy1+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<polygon points="'+(hx-5)+','+(hy0+10)+' '+hx+','+hy0+' '+(hx+5)+','+(hy0+10)+'" fill="#2563eb"/>' +
+                '<polygon points="'+(hx-5)+','+(hy1-10)+' '+hx+','+hy1+' '+(hx+5)+','+(hy1-10)+'" fill="#2563eb"/>' +
+                '<line x1="'+(hx-ext)+'" y1="'+hy0+'" x2="'+(hx+ext)+'" y2="'+hy0+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<line x1="'+(hx-ext)+'" y1="'+hy1+'" x2="'+(hx+ext)+'" y2="'+hy1+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<line x1="'+xMin+'" y1="'+wy+'" x2="'+xMax+'" y2="'+wy+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<polygon points="'+(xMin+10)+','+(wy-5)+' '+xMin+','+wy+' '+(xMin+10)+','+(wy+5)+'" fill="#2563eb"/>' +
+                '<polygon points="'+(xMax-10)+','+(wy-5)+' '+xMax+','+wy+' '+(xMax-10)+','+(wy+5)+'" fill="#2563eb"/>' +
+                '<line x1="'+xMin+'" y1="'+(wy-ext)+'" x2="'+xMin+'" y2="'+(wy+ext)+'" stroke="#2563eb" stroke-width="3"/>' +
+                '<line x1="'+xMax+'" y1="'+(wy-ext)+'" x2="'+xMax+'" y2="'+(wy+ext)+'" stroke="#2563eb" stroke-width="3"/>';
+            svgEl.appendChild(g);
+
+            // ---- HTML overlay labels (bypasses SVG text rendering quirks) ----
+            var container = svgEl.closest('.svg-preview') || svgEl.closest('.svg-preview-box');
+            if (container) {
+                container.querySelectorAll('.dim-label-overlay').forEach(function(el) { el.remove(); });
+
+                var hCm = container.getAttribute('data-dim-h') || '';
+                var wCm = container.getAttribute('data-dim-w') || '';
+
+                if (hCm || wCm) {
+                    var vb = svgEl.getAttribute('viewBox');
+                    if (vb) {
+                        var vbParts = vb.trim().split(/[\s,]+/);
+                        var vbX = parseFloat(vbParts[0]) || 0;
+                        var vbY = parseFloat(vbParts[1]) || 0;
+                        var vbW = parseFloat(vbParts[2]) || 1000;
+                        var vbH = parseFloat(vbParts[3]) || 1000;
+                        var svgRect = svgEl.getBoundingClientRect();
+                        var cRect = container.getBoundingClientRect();
+                        var sx = svgRect.width / vbW;
+                        var sy = svgRect.height / vbH;
+                        var ox = svgRect.left - cRect.left;
+                        var oy = svgRect.top - cRect.top;
+                        function toX(v) { return ox + (v - vbX) * sx; }
+                        function toY(v) { return oy + (v - vbY) * sy; }
+
+                        if (hCm) {
+                            var midY = (hy0 + hy1) / 2;
+                            var el = document.createElement('div');
+                            el.className = 'dim-label-overlay';
+                            el.style.cssText = 'position:absolute;left:' + toX(hx) + 'px;top:' + toY(midY) + 'px;transform:translate(calc(-100% - 6px),-50%);color:#dc2626;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;pointer-events:none;white-space:nowrap;z-index:5;text-shadow:0 0 3px #fff;';
+                            el.textContent = '字高' + hCm + 'cm';
+                            container.appendChild(el);
+                        }
+                        if (wCm) {
+                            var wcx = (xMin + xMax) / 2;
+                            var el = document.createElement('div');
+                            el.className = 'dim-label-overlay';
+                            el.style.cssText = 'position:absolute;left:' + toX(wcx) + 'px;top:' + toY(wy) + 'px;transform:translate(-50%,6px);color:#dc2626;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;pointer-events:none;white-space:nowrap;z-index:5;text-shadow:0 0 3px #fff;';
+                            el.textContent = '总长' + wCm + 'cm';
+                            container.appendChild(el);
+                        }
+                    }
+                }
+            }
+        }
+
         function showDetail(q) {
             const container = document.getElementById('detailContainer');
             const date = q.createdAt ? new Date(q.createdAt).toLocaleDateString('zh-CN') : '-';
@@ -1541,8 +1650,16 @@
             }
 
             if (q.svgContent) {
-                html += '<div class="detail-section"><h4>矢量图</h4>';
-                html += '<div class="svg-preview-box">' + q.svgContent + '</div>';
+                html += '<div class="detail-section"><h4>图示</h4>';
+                var hCm = '', wCm = '';
+                if (q.fontPrices && q.fontPrices.length > 0) {
+                    hCm = parseFloat((q.fontPrices[0].width / 10).toFixed(4));
+                    wCm = parseFloat((q.fontPrices.reduce(function(s, f) { return s + (f.length || 0); }, 0) / 10).toFixed(4));
+                } else if (q.svgHeightCm || q.svgWidthCm) {
+                    hCm = q.svgHeightCm || '';
+                    wCm = q.svgWidthCm || '';
+                }
+                html += '<div class="svg-preview-box" data-dim-h="' + hCm + '" data-dim-w="' + wCm + '">' + q.svgContent + '</div>';
                 html += '</div>';
             }
 
@@ -1557,6 +1674,7 @@
             html += '</div>';
 
             container.innerHTML = html;
+            setTimeout(function() { annotateDetailSvgs(); }, 50);
 
             container.querySelectorAll('.price-input').forEach(input => {
                 input.addEventListener('input', recalcDetailTotal);
